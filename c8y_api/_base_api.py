@@ -98,8 +98,8 @@ class CumulocityRestApi:
             self.auth = auth
             self.username = self._resolve_username_from_auth(auth)
         elif username and password:
-            self.auth = HTTPBasicAuth(f'{tenant_id}/{username}', password)
-            self.username = username
+            self.username = username.split('/', 1)[-1]
+            self.auth = HTTPBasicAuth(f'{tenant_id}/{self.username}', password)
         else:
             raise ValueError("One of 'auth' or 'username/password' must be defined.")
 

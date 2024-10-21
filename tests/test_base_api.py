@@ -14,8 +14,13 @@ import pytest
 import requests
 import responses
 
-from c8y_api._base_api import CumulocityRestApi, ProcessingMode, UnauthorizedError, \
-    AccessDeniedError, HttpError  # noqa (protected-access)
+from c8y_api._base_api import (
+    CumulocityRestApi,
+    ProcessingMode,
+    UnauthorizedError,
+    AccessDeniedError,
+    HttpError
+)
 
 
 @pytest.fixture(scope='function')
@@ -68,6 +73,18 @@ def assert_application_key_header(c8y, headers):
 def assert_processing_mode_header(c8y, headers):
     """Assert that the processing mode header matches the expectation."""
     assert headers[c8y.HEADER_PROCESSING_MODE] == c8y.processing_mode
+
+
+@pytest.mark.parametrize(
+    'tenant_id, username, password, expected_username',
+    [
+        ('t123', 'user', 'pass', 'user'),
+        ('t123', 't123/user', 'pass', 'user'),
+    ])
+def test_username_parsing(tenant_id, username, password, expected_username):
+    c8y = CumulocityRestApi(base_url="", tenant_id=tenant_id, username=username, password=password)
+    assert c8y.username == expected_username
+    assert c8y.auth.username == f'{tenant_id}/{expected_username}'
 
 
 @pytest.mark.parametrize('args, expected', [
