@@ -4,14 +4,11 @@
 # Use, reproduction, transfer, publication or disclosure is prohibited except
 # as specifically provided for in your License Agreement with Software AG.
 
-from pkg_resources import get_distribution, DistributionNotFound
+from importlib.metadata import version
 
 from c8y_api._base_api import ProcessingMode, CumulocityRestApi
 from c8y_api._main_api import CumulocityApi
 from c8y_api._registry_api import CumulocityDeviceRegistry
 from c8y_api._auth import HTTPBasicAuth, HTTPBearerAuth
 
-try:
-    __version__ = get_distribution(__name__).version
-except DistributionNotFound:
-    pass
+__version__ = version(__name__)
