@@ -40,6 +40,12 @@ class UnauthorizedError(HttpError):
         super().__init__(method, url, 401, message)
 
 
+class MissingTfaError(UnauthorizedError):
+    """Error raised for unauthorized access."""
+    def __init__(self, method: str, url: str = None, message: str = "Missing TFA Token."):
+        super().__init__(method, url, message)
+
+
 class AccessDeniedError(HttpError):
     """Error raised for denied access."""
     def __init__(self, method: str, url: str = None, message: str = "Access denied."):
@@ -111,6 +117,41 @@ class CumulocityRestApi:
         if self.processing_mode:
             self.__default_headers[self.HEADER_PROCESSING_MODE] = self.processing_mode
         self.session = self._create_session()
+
+    @classmethod
+    def authenticate(
+            cls,
+            base_url: str,
+            tenant_id: str,
+            username: str,
+            password: str,
+            tfa_token: str = None,
+    ) -> (str, str):
+        """Authenticate a user using using OAI Secure login method.
+
+        Args:
+            base_url (str):  Cumulocity base URL, e.g. https://cumulocity.com
+            tenant_id (str):  The ID of the tenant to connect to
+            username (str):  Username
+            password (str):  User password
+            tfa_token (str):  Currently valid two-factor authorization token
+
+        Returns:
+            A string tuple of JWT auth token and corresponding XRSF token.
+        """
+        url = f'{base_url.rstrip("/")}/tenant/oauth?tenant_id={tenant_id}'
+        form_data = {'grant_type': 'PASSWORD', 'username': username, 'password': password, 'tfa_token': tfa_token}
+        response = requests.post(url=url, data=form_data, timeout=60.0)
+        if response.status_code == 401:
+            message = response.json()['message'] if response.json() and 'message' in response.json() else None
+            # 1st request might fail due to missing TFA code
+            if any(x in response.json()['message'] for x in ['TOTP', 'TFA']):
+                raise MissingTfaError(cls.METHOD_POST, response.url, message)
+            raise UnauthorizedError(cls.METHOD_POST, response.url, message)
+        if response.status_code != 200:
+            message = response.json()['message'] if 'message' in response.json() else "Invalid request!"
+            raise HttpError(cls.METHOD_POST, response.url, response.status_code, message)
+        return response.cookies['authorization'], response.cookies['XSRF-TOKEN']
 
     def _create_session(self) -> requests.Session:
         s = requests.Session()

@@ -10,15 +10,14 @@ import logging
 import os
 from typing import List, Callable
 
-from dotenv import load_dotenv
 import pytest
+from dotenv import load_dotenv
 from requests.auth import HTTPBasicAuth
 
 from c8y_api._main_api import CumulocityApi
 from c8y_api._util import c8y_keys
 from c8y_api.app import SimpleCumulocityApp
 from c8y_api.model import Application, Device
-
 from util.testing_util import RandomNameGenerator
 
 
@@ -94,7 +93,7 @@ def app_factory(live_c8y) -> Callable[[str, List[str]], CumulocityApi]:
         A factory function with two arguments, application name (string) and
         application roles (list of strings).
     """
-    created:List[Application] = []
+    created: List[Application] = []
 
     def factory_fun(name: str, roles: List[str]):
 
@@ -103,9 +102,14 @@ def app_factory(live_c8y) -> Callable[[str, List[str]], CumulocityApi]:
             raise ValueError(f"Microservice application named '{name}' seems to be already registered.")
 
         # (2) Create application stub in Cumulocity
+        settings = [{
+                "defaultValue": "",
+                "key": x,
+            } for x in ("keyA", "keyB")]
         app = Application(live_c8y, name=name, key=f'{name}-key',
                           type=Application.MICROSERVICE_TYPE,
                           availability=Application.PRIVATE_AVAILABILITY,
+                          manifest={"settings": settings},
                           required_roles=roles).create()
         created.append(app)
 

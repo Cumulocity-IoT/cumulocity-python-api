@@ -82,6 +82,7 @@ def assert_processing_mode_header(c8y, headers):
         ('t123', 't123/user', 'pass', 'user'),
     ])
 def test_username_parsing(tenant_id, username, password, expected_username):
+    """Verify that usernames are parsed as expected."""
     c8y = CumulocityRestApi(base_url="", tenant_id=tenant_id, username=username, password=password)
     assert c8y.username == expected_username
     assert c8y.auth.username == f'{tenant_id}/{expected_username}'
@@ -281,6 +282,7 @@ def test_get_404():
         with pytest.raises(KeyError) as error:
             c8y.get('some/key')
         assert 'some/key' in str(error)
+
 
 @pytest.mark.parametrize(
     'name, code, ex',

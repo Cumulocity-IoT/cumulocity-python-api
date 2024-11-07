@@ -114,3 +114,13 @@ These values can easily be combined, e.g. when constructing a measurement:
 .. automodule:: c8y_api.model
     :members: Units, Celsius, Centimeters, Count, CubicMeters, Grams, Kelvin, Kilograms, Liters, Meters, Percentage, Value
     :undoc-members:
+
+
+.. _auxiliaries:
+
+Auxiliary Tools
+----------------
+
+.. automodule:: c8y_tk
+    :special-members: __init__
+    :undoc-members:

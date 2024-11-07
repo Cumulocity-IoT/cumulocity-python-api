@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import os
+import time
 from unittest.mock import patch
 
 import jwt
@@ -41,22 +42,34 @@ def test_c8y_keys():
     assert 'C8Y_THING' in keys
 
 
-@pytest.fixture(name='jwt_token_bytes')
-def fixture_jwt_token_bytes():
-    """Provide a sample JWT token as bytes."""
+def create_jwt_token(tenant_id, hostname, username, valid_seconds=60) -> str:
+    """Create a dummy JWT token as string."""
     payload = {
         'jti': None,
-        'iss': 't12345.cumulocity.com',
-        'aud': 't12345.cumulocity.com',
-        'sub': 'some.user@softwareag.com',
+        'iss': hostname,
+        'aud': hostname,
+        'sub': username,
         'tci': '0722ff7b-684f-4177-9614-3b7949b0b5c9',
-        'iat': 1638281885,
-        'nbf': 1638281885,
-        'exp': 1639491485,
+        'iat': int(time.time()),
+        'nbf': int(time.time()),
+        'exp': int(time.time()) + valid_seconds,
         'tfa': False,
-        'ten': 't12345',
-        'xsrfToken': 'something'}
-    return jwt.encode(payload, key='key').encode('utf-8')
+        'ten': tenant_id,
+        'xsrfToken': 'something',
+    }
+    return jwt.encode(payload, key='key')
+
+
+@pytest.fixture(name='jwt_token')
+def fixture_jwt_token() -> str:
+    """Provide a sample JWT token as string."""
+    return create_jwt_token('t12345', 't12345.cumulocity.com', 'some.user@softwareag.com')
+
+
+@pytest.fixture(name='jwt_token_bytes')
+def fixture_jwt_token_bytes(jwt_token) -> bytes:
+    """Provide a sample JWT token as bytes."""
+    return jwt_token.encode('utf-8')
 
 
 def test_resolve_tenant_id(jwt_token_bytes):
