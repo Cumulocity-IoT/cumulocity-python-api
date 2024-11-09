@@ -16,6 +16,7 @@ from requests.auth import AuthBase, HTTPBasicAuth
 
 from c8y_api._auth import HTTPBearerAuth
 from c8y_api._jwt import JWT
+from c8y_api._util import validate_base_url
 
 
 class ProcessingMode:
@@ -75,30 +76,28 @@ class CumulocityRestApi:
     CONTENT_MANAGED_OBJECT = 'application/vnd.com.nsn.cumulocity.managedobject+json'
     CONTENT_MEASUREMENT_COLLECTION = 'application/vnd.com.nsn.cumulocity.measurementcollection+json'
 
-    def __init__(self, base_url: str, tenant_id: str, username: str = None, password: str = None, tfa_token: str = None,
+    def __init__(self, base_url: str, tenant_id: str, username: str = None, password: str = None,
                  auth: AuthBase = None, application_key: str = None, processing_mode: str = None):
         """Build a CumulocityRestApi instance.
 
-        One of `auth` or `username/password` must be provided. The TFA token
-        parameter is only sensible for basic authentication.
+        One of `auth` or `username/password` must be provided.
 
         Args:
             base_url (str):  Cumulocity base URL, e.g. https://cumulocity.com
             tenant_id (str):  The ID of the tenant to connect to
             username (str):  Username
             password (str):  User password
-            tfa_token (str):  Currently valid two-factor authorization token
             auth (AuthBase):  Authentication details
             application_key (str):  Application ID to include in requests
                 (for billing/metering purposes).
             processing_mode (str);  Connection processing mode (see
                 also https://cumulocity.com/api/core/#processing-mode)
         """
-        self.base_url = base_url.rstrip('/')
+        self.base_url = validate_base_url(base_url)
+        self.is_tls = self.base_url.startswith('https')
         self.tenant_id = tenant_id
         self.application_key = application_key
         self.processing_mode = processing_mode
-        self.is_tls = self.base_url.startswith('https')
 
         if auth:
             self.auth = auth
@@ -109,14 +108,14 @@ class CumulocityRestApi:
         else:
             raise ValueError("One of 'auth' or 'username/password' must be defined.")
 
-        self.__default_headers = {}
-        if tfa_token:
-            self.__default_headers['tfatoken'] = tfa_token
-        if self.application_key:
-            self.__default_headers[self.HEADER_APPLICATION_KEY] = self.application_key
-        if self.processing_mode:
-            self.__default_headers[self.HEADER_PROCESSING_MODE] = self.processing_mode
-        self.session = self._create_session()
+        self._session = None
+
+    @property
+    def session(self) -> requests.Session:
+        """Provide session."""
+        if not self._session:
+            self._session = self._create_session()
+        return self._session
 
     @classmethod
     def authenticate(
@@ -127,7 +126,7 @@ class CumulocityRestApi:
             password: str,
             tfa_token: str = None,
     ) -> (str, str):
-        """Authenticate a user using using OAI Secure login method.
+        """Authenticate a user using OAI Secure login method.
 
         Args:
             base_url (str):  Cumulocity base URL, e.g. https://cumulocity.com
@@ -177,10 +176,8 @@ class CumulocityRestApi:
         Returns:
             A PreparedRequest instance
         """
-        hs = self.__default_headers
-        if additional_headers:
-            hs.update(additional_headers)
-        rq = requests.Request(method=method, url=self.base_url + resource, headers=hs, auth=self.auth)
+        headers = {**(self.session.headers or {}), **(additional_headers or {})}
+        rq = requests.Request(method=method, url=self.base_url + resource, headers=headers, auth=self.auth)
         if json:
             rq.json = json
         return rq.prepare()

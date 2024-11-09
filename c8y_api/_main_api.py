@@ -3,6 +3,7 @@
 # and/or its subsidiaries and/or its affiliates and/or their licensors.
 # Use, reproduction, transfer, publication or disclosure is prohibited except
 # as specifically provided for in your License Agreement with Software AG.
+import contextlib
 
 from requests.auth import AuthBase
 
@@ -23,7 +24,7 @@ from c8y_api.model.audit import AuditRecords
 from c8y_api.model.tenants import Tenants
 
 
-class CumulocityApi(CumulocityRestApi):
+class CumulocityApi(CumulocityRestApi, contextlib.AbstractContextManager):
     """Main Cumulocity API.
 
     Provides usage centric access to a Cumulocity instance.
@@ -35,7 +36,6 @@ class CumulocityApi(CumulocityRestApi):
             tenant_id: str,
             username: str = None,
             password: str = None,
-            tfa_token: str = None,
             auth: AuthBase = None,
             application_key: str = None,
             processing_mode: str = None,
@@ -45,7 +45,6 @@ class CumulocityApi(CumulocityRestApi):
             tenant_id,
             username=username,
             password=password,
-            tfa_token=tfa_token,
             auth=auth,
             application_key=application_key,
             processing_mode=processing_mode,
@@ -169,3 +168,9 @@ class CumulocityApi(CumulocityRestApi):
     def tenants(self) -> Tenants:
         """Provide access to the Audit API."""
         return self.__tenants
+
+    def __enter__(self) -> 'CumulocityApi':
+        return self
+
+    def __exit__(self, __exc_type, __exc_value, __traceback):
+        pass

@@ -15,9 +15,9 @@ from unittest.mock import patch
 import jwt
 import pytest
 
-from c8y_api._util import c8y_keys
+from c8y_api._util import c8y_keys, validate_base_url
 from c8y_api._jwt import JWT
-from model._util import _StringUtil
+from c8y_api.model._util import _StringUtil
 
 
 @pytest.mark.parametrize(
@@ -40,6 +40,17 @@ def test_c8y_keys():
     assert len(keys) == 2
     assert 'C8Y_SOME' in keys
     assert 'C8Y_THING' in keys
+
+
+@pytest.mark.parametrize('path', ['/', '/some/path', ''])
+@pytest.mark.parametrize('port', [':80', ''])
+@pytest.mark.parametrize('host', ['host.com', 'some.host.com'])
+@pytest.mark.parametrize('scheme', ['https://', 'http://', ''])
+def test_validate_base_url(scheme, host, port, path):
+    """Verify that the base URL validation works with all potential URL format combinations."""
+    url = scheme + host + port + path
+    url2 = validate_base_url(url)
+    assert url2 == (scheme or 'https://') + host + port
 
 
 def create_jwt_token(tenant_id, hostname, username, valid_seconds=60) -> str:

@@ -1,3 +1,9 @@
+# Copyright (c) 2020 Software AG,
+# Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA,
+# and/or its subsidiaries and/or its affiliates and/or their licensors.
+# Use, reproduction, transfer, publication or disclosure is prohibited except
+# as specifically provided for in your License Agreement with Software AG.
+
 import os
 from unittest.mock import patch, Mock
 
@@ -39,7 +45,7 @@ def test_with_token(monkeypatch):
         assert c8y.username == username
         assert c8y.tenant_id == tenant_id
 
-    assert CumulocityContext._cached_connections[token] is c8y
+    assert os.environ['C8Y_TOKEN'] == token
 
 
 @pytest.mark.parametrize('token', [60*60-1], indirect=True, ids=['Expired'])
@@ -77,10 +83,6 @@ def test_with_invalid_token(getpass_fun, post_fun, monkeypatch, token: str):
     post_args = post_fun.call_args.kwargs
     assert post_args['data']['username'] == old_token.username
     assert post_args['data']['password'] == 'some-password'
-
-    # new token's connection should be cached
-    assert token not in CumulocityContext._cached_connections
-    assert CumulocityContext._cached_connections[new_token] is c8y
 
     # new token should be written to environment
     assert os.environ['C8Y_TOKEN'] is new_token
@@ -171,8 +173,8 @@ def test_environment_use(input_fun, getpass_fun, post_fun,
     assert post_args['data']['username'] == ('env-user' if have_username else 'some-value')
     assert post_args['data']['password'] == ('env-password' if have_password else 'some-password')
 
-    # new token's connection should be cached
-    assert CumulocityContext._cached_connections[token] is c8y
+    # new token should be written to environment
+    assert os.environ['C8Y_TOKEN'] == token
 
 
 @patch('c8y_api._base_api.requests.post')

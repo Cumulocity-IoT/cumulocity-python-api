@@ -3,7 +3,7 @@
 # and/or its subsidiaries and/or its affiliates and/or their licensors.
 # Use, reproduction, transfer, publication or disclosure is prohibited except
 # as specifically provided for in your License Agreement with Software AG.
-
+import contextlib
 # pylint: disable=protected-access
 
 import getpass
@@ -15,7 +15,7 @@ from c8y_api import CumulocityApi, UnauthorizedError, MissingTfaError, HTTPBeare
 from c8y_api._jwt import JWT
 
 
-class CumulocityContext:
+class CumulocityContext(CumulocityApi):
     """Context manager to be used for interactive sessions.
 
     The context manager ensures that a valid Cumulocity connection is
@@ -32,7 +32,6 @@ class CumulocityContext:
     """
 
     _cached_passwords: dict[str, str] = {}
-    _cached_connections: dict[str, CumulocityApi] = {}
 
     @staticmethod
     def _read_variable(env_name: str, prompt: str = None, secret: bool = False):
@@ -46,8 +45,7 @@ class CumulocityContext:
             return getpass.getpass(prompt)
         return input(prompt)
 
-    def __enter__(self) -> CumulocityApi:
-        """Ensure that there is a valid connection present."""
+    def __init__(self):
 
         base_url = None
         tenant_id = None
@@ -65,8 +63,6 @@ class CumulocityContext:
             exp = int(jwt.get_claim('exp'))
             if time.time() > (exp - 60*60):
                 print("Access token found, but invalidated as it was almost expired.")
-                self._cached_connections.pop(token, None)
-                os.environ.pop('C8Y_TOKEN', None)
                 token = None
 
         # (2) no token (or invalidated)
@@ -123,15 +119,12 @@ class CumulocityContext:
                     self._cached_passwords.pop(username, None)
                     continue
 
-        # (3) there must be a token now, use cached connection if defined
-        if token in self._cached_connections:
-            return self._cached_connections[token]
-
-        # (4) build new connection from token and put to cache
-        c8y = CumulocityApi(base_url=base_url, tenant_id=tenant_id, auth=HTTPBearerAuth(token))
-        self._cached_connections[token] = c8y
+        # (1) build new connection from token and put to cache
         os.environ['C8Y_TOKEN'] = token
-        return c8y
+        super().__init__(base_url=base_url, tenant_id=tenant_id, auth=HTTPBearerAuth(token))
+
+    def __enter__(self) -> CumulocityApi:
+        return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         return True
