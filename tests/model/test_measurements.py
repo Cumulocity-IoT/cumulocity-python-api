@@ -3,7 +3,7 @@
 # and/or its subsidiaries and/or its affiliates and/or their licensors.
 # Use, reproduction, transfer, publication or disclosure is prohibited except
 # as specifically provided for in your License Agreement with Software AG.
-
+import itertools
 from datetime import datetime
 import json
 import os
@@ -38,6 +38,40 @@ def test_measurement_parsing():
         'c8y_Measurement': {'c8y_temperature': {'unit': 'x', 'value': 12.3}}
     }
     assert m.to_full_json() == expected_full_json
+
+
+def generate_series_data() -> tuple:
+    """Generate all kinds of combinations of series fragments."""
+
+    def gen_level2(n):
+        level2_single = ({n: {'1': {'value': 1}}}, [f'{n}.1'])
+        level2_multi = ({n: {'1': {'value': 1}, '2': {'value': 2}}}, [f'{n}.1', f'{n}.2'])
+        level2_invalid = ({n: {'1': {'data': 1}}}, [])
+        level2_mix1 = ({n: {'1': {'data': 1}, '2': {'value': 2}}}, [f'{n}.2'])
+        level2_mix2 = ({n: {'1': {'value': 1}, '2': {'data': 2}}}, [f'{n}.1'])
+
+        return [level2_single, level2_multi, level2_invalid, level2_mix1, level2_mix2]
+
+    a = gen_level2('A')
+    b = gen_level2('B')
+    # collecting combinations of A and B cases
+    # (first element is the json, 2nd the expectation for each combination)
+    ab = [({**r[0][0], **r[1][0]}, r[0][1] + r[1][1]) for r in itertools.product(a, b)]
+
+    cases = a + ab
+    # id is the beautified expectation, prefixed with a number
+    ids = [f'{i}: ' + ','.join(map(lambda x: x.replace('.', ''), x[1])) for i, x in enumerate(cases)]
+
+    return cases, ids
+
+
+@pytest.mark.parametrize('testcase', generate_series_data()[0], ids=generate_series_data()[1])
+def test_get_series(testcase):
+    """Verify that the get_series function works as expected."""
+    data = {**testcase[0], 'source': {'id': '1'}}
+    m = Measurement.from_json(data)
+    # expected = [*xs for xs in testcase[1]]
+    assert testcase[1] == m.get_series()
 
 
 @pytest.fixture(name='sample_series')

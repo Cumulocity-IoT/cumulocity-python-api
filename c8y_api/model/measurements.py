@@ -195,6 +195,28 @@ class Measurement(ComplexObject):
     def __getitem__(self, item):
         return _DictWrapper(self.fragments[item], on_update=None)
 
+    def get_series(self) -> list[str]:
+        """Collect series names.
+
+        Collect series names defined in this measurement. Any top level fragment having a nested element
+        featuring a _value_ field is considered a series. Multiple such series could be defined.
+
+        ```json
+        {
+            "c8y_Temperature": {
+                "T": {
+                    "unit": "C",
+                    "value": 12.8
+                }
+            }
+        }
+        ```
+
+        Returns:
+            A list of series names (e.g. `c8y_Temperature.T`) defined in this measurement.
+        """
+        return [f'{k1}.{k2}' for k1, v1 in self.fragments.items() for k2, v2 in v1.items() if 'value' in v2]
+
     @property
     def datetime(self) -> Type[datetime] | None:
         """ Convert the measurement's time to a Python datetime object.
