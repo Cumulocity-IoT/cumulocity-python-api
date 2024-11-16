@@ -4,7 +4,7 @@
 # Use, reproduction, transfer, publication or disclosure is prohibited except
 # as specifically provided for in your License Agreement with Software AG.
 # pylint: disable=protected-access
-
+import itertools
 from unittest.mock import Mock
 
 import pytest
@@ -13,6 +13,7 @@ from urllib import parse
 from c8y_api import CumulocityRestApi, CumulocityApi
 from c8y_api.model import Inventory
 from c8y_api.model._util import _QueryUtil
+
 from tests.utils import isolate_last_call_arg
 
 
@@ -26,9 +27,34 @@ def test_encode_odata_query_value(test, expected):
     assert _QueryUtil.encode_odata_query_value(test) == expected
 
 
+@pytest.mark.parametrize('specified, expected', [
+    (['query'], ['query']),  # only query
+    (['query', 'with'], ['query', 'with']),  # query with flag
+    (['query', 'type', 'with'], ['query', 'with']),  # query with flag, type ignored
+    (['type', 'with'], ['type', 'with']),
+    (['owner', 'with'], ['owner', 'with']),
+    (['text', 'with', 'with2'], ['text', 'with', 'with2']),
+    (['fragment', 'with'], ['fragment', 'with']),
+    (['fragments'], ['query']),  # multiple fragments -> query
+    (['fragments', 'with'], ['query', 'with']),
+    (['name', 'with'], ['query', 'with']),
+    (['fragments', 'fragment'], ['query']),  # only on of fragment/fragments is used
+    (['name', 'order_by'], ['query']),  # order_by -> query
+    (['fragments', 'name'], ['query']),  # fragments -> query
+    (['text', 'name', 'owner', 'type', 'order_by'], ['query']),  # fragments -> query
+    (['text', 'owner', 'type', 'fragment'], ['text', 'owner', 'type', 'fragment']),
+])
+def test_collect_query_params(specified, expected):
+    """Verify that query parameters are assembled correctly."""
+
+    kwargs = {x: x.upper() for x in specified}
+    params = Inventory._collate_filter_params(only_devices=False, **kwargs)
+    assert params.keys() == set(expected)
+
+
 @pytest.mark.parametrize('name, expected', [
-    ('some name', 'query=name eq \'some name\''),
-    ('some\'s name', 'query=name eq \'some\'\'s name\'')
+    ('some name', 'query=$filter=(name eq \'some name\')'),
+    ('some\'s name', 'query=$filter=(name eq \'some\'\'s name\')')
 ])
 def test_select_by_name(name, expected):
     """Verify that the inventory's select function can filter by name."""
@@ -61,8 +87,8 @@ def test_select_by_name_plus():
         'query=',
         'has(FRAGMENT)',
         'name eq \'NAME\'',
-        'owner eq \'OWNER\'',
-        'type eq \'TYPE\'']
+        'owner eq OWNER',
+        'type eq TYPE']
 
     assert c8y.get.call_count == 1
     url = parse.unquote_plus(isolate_last_call_arg(c8y.get, 'resource', 0))
@@ -72,185 +98,127 @@ def test_select_by_name_plus():
 
 
 def _invoke_target_and_isolate_url(target, kwargs):
-    """Auxiliary function to invoke a dynamic target function on a
-    fake CumulocityApi instance and return the resource of a get call."""
-    c8y: CumulocityApi = CumulocityApi('base', 'tenant','user', 'pass')
+    """Auxiliary function to invoke a HTTP target function (by name) on a
+    fake CumulocityApi instance and return the URL (resource) of a get call."""
+    c8y: CumulocityApi = CumulocityApi('base', 'tenant', 'user', 'pass')
     c8y.get = Mock(return_value={'managedObjects': [], 'statistics': {'totalPages': 1}})
     api, fun = target.split('.', maxsplit=1)
     getattr(getattr(c8y, api), fun)(**kwargs)
     return parse.unquote_plus(isolate_last_call_arg(c8y.get, 'resource', 0))
 
 
-@pytest.mark.parametrize(
-    'target',
-    [
+def gen_common_select_cases():
+    return [
+        # expression has the highest priority
+        ({'expression': 'EX', 'query': 'QUERY'}, ['?EX'], ['query=', 'QUERY']),
+        # ({'expression': 'EX', 'ids': [1, 2, 3]}, ['?EX'], ['ids=']),
+        # ({'expression': 'EX', 'name': 'NAME'}, ['?EX'], ['name=', 'NAME']),
+        # query has 2nd highest priority
+        # ({'query': 'QUERY', 'ids': [1, 2, 3]}, ['=QUERY'], ['ids=']),
+        # # ids has 3rd highest priority
+        # ({'ids': [1, 2, 3], 'name': 'NAME'}, ['ids=1,2,3'], ['name=', 'NAME']),
+        # # any of name, order_by, and fragments triggers "query mode"
+        # ({'name': "it's name"},
+        #  ['$filter=', "name eq 'it''s name'"],
+        #  ['name=']),
+        # ({'name': 'N', 'fragment': 'F'},
+        #  ['$filter=', "name eq 'N'", 'has(F)'],
+        #  ['fragment=', 'name=']),
+        # ({'order_by': 'a asc', 'type': 'T'},
+        #  ['$filter=', "type eq T", '$orderby=a asc'],
+        #  ['order_by', 'orderBy', 'type=']),
+        # ({'fragments': ['a', 'b'], 'owner': 'O', 'text': "it's text"},
+        #  ['$filter=', 'has(a)', 'has(b)', 'owner eq O', "text eq 'it''s text'"],
+        #  ['fragment=', 'owner=']),
+        # # otherwise, simple filters should be used as such
+        # ({'fragment': 'F'}, ['fragmentType=F'], ['$', 'has']),
+        # ({'owner': 'O'}, ['owner=O'], ['$', ' eq ']),
+        # ({'type': 'T'}, ['type=T'], ['$', ' eq ']),
+        # ({'text': "it's text"}, ["text='it''s text'"], ['$', ' eq ']),
+        # # other flags don't change the query mode
+        # ({'fragment': 'F', 'only_roots': True}, ['fragmentType=F', 'onlyRoots=True'], ['$', 'has']),
+        # ({'type': 'T', 'with_children': False}, ['type=T', 'withChildren=False'], ['$', 'has']),
+        # ({'owner': 'O', 'skip_children_names': False}, ['owner=O', 'skipChildrenNames=False'], ['$', 'has']),
+        # ({'text': "it's text", 'with_latest_values': True}, ["text='it''s text'", 'withLatestValues=T'], ['$', ' eq ']),
+        # ({'name': "it's name", 'with_groups': False}, ["name eq 'it''s name'", 'withGroups=False'], ['name=']),
+        # # test all kinds of known parameters
+        # ({'with_children_count': False}, ['withChildrenCount=False'], ['with_children_count']),
+        # ({'skip_children_names': False}, ['skipChildrenNames=False'], ['skip_children_names']),
+        # ({'with_groups': False}, ['withGroups=False'], ['with_groups']),
+        # ({'with_parents': False}, ['withParents=False'], ['with_parents']),
+        # ({'with_latest_values': False}, ['withLatestValues=False'], ['with_latest_values']),
+        # ({'any_other_param': False}, ['anyOtherParam=False'], ['any_other_param']),
+        # ({'pascalCaseParam': 12}, ['pascalCaseParam=12'], []),
+    ]
+
+
+def gen_common_select_cases_ids():
+    return ['+'.join(x[0].keys()) for x in gen_common_select_cases()]
+
+
+@pytest.mark.parametrize('params, expected, not_expected',
+                         gen_common_select_cases(),
+                         ids=gen_common_select_cases_ids())
+@pytest.mark.parametrize('fun', [
         'inventory.get_all',
         'inventory.get_count',
         'device_inventory.get_all',
         'device_inventory.get_count',
         'group_inventory.get_all',
         'group_inventory.get_count',
-    ])
-@pytest.mark.parametrize(
-    'name, args',
-    [
-        ('name', {
-            'kwargs': {'name': 'NAME'},
-            'expected': ["name eq 'NAME'"],
-            'not_expected': []
-        }),
-        ('type', {
-            'kwargs': {'type': 'TYPE'},
-            'expected': ['type=TYPE'],
-            'not_expected': ['and']
-        }),
-        ('owner', {
-            'kwargs': {'owner': 'OWNER'},
-            'expected': ['owner=OWNER'],
-            'not_expected': ['and']
-        }),
-        ('text', {
-            'kwargs': {'text': 'TEXT'},
-            'expected': ['text=TEXT'],
-            'not_expected': ['and']
-        }),
-        ('ids', {
-            'kwargs': {'ids': ['id1', 'id2']},
-            'expected': ['ids=id1,id2'],
-            'not_expected': ['and']
-        }),
-    ])
-def test_all_inventory_filters(target, name, args):
-    """Verify that the filter parameters are all forwarded correctly
-    end-to-end through all abstract helper methods."""
-    kwargs = args['kwargs']
-    expected = args['expected']
-    not_expected = args['not_expected']
-    url = _invoke_target_and_isolate_url(target, kwargs)
+])
+def test_common_select_params(fun, params, expected, not_expected):
+    url = _invoke_target_and_isolate_url(fun, params)
     for e in expected:
         assert e in url
-    for n in not_expected:
-        assert n not in url
+    for e in not_expected:
+        assert e not in url
 
 
-def execute_test_device_inventory_filters(target, args):
-    """Verify that the filter parameters are all forwarded correctly
-    end-to-end through all abstract helper methods."""
-    kwargs = args['kwargs']
-    expected = args['expected']
-    not_expected = args['not_expected']
-
-    c8y: CumulocityApi = CumulocityApi('base', 'tenant', 'user', 'pass')
-    c8y.get = Mock(return_value={'managedObjects': [], 'statistics': {'totalPages': 1}})
-    api, fun = target.split('.', maxsplit=1)
-    getattr(getattr(c8y, api), fun)(**kwargs)
-
-    url = parse.unquote_plus(isolate_last_call_arg(c8y.get, 'resource', 0))
-    for e in expected:
-        assert e in url
-    for n in not_expected:
-        assert n not in url
-
-
-@pytest.mark.parametrize(
-    'target',
-    [
-        'inventory.get_all',
-        'inventory.get_count',
-    ])
-@pytest.mark.parametrize(
-    'name, args',
-    [
-        ('name', {
-            'kwargs': {'name': 'NAME'},
-            'expected': ["query=name eq 'NAME'"],
-            'not_expected': ['and']
-        }),
-        ('fragment', {
-            'kwargs': {'fragment': 'FRAGMENT'},
-            'expected': ["fragmentType=FRAGMENT"],
-            'not_expected': ['and']
-         }),
-        ('name+fragment', {
-            'kwargs': {'name': 'NAME', 'fragment': 'FRAGMENT'},
-            'expected': ["query=", "name eq 'NAME'", " and ", "has(FRAGMENT)"],
-            'not_expected': []
-         }),
-        ('query', {
-            'kwargs': {'query': 'SOMETHING'},
-            'expected': ['query=SOMETHING'],
-            'not_expected': ['and']
-         }),
-        ('query+type', {
-            'kwargs': {'query': 'SOMETHING', 'type': 'TYPE'},
-            'expected': ['query=SOMETHING'],
-            'not_expected': ['and type=', 'TYPE']
-         }),
-        ('expression', {
-            'kwargs': {'expression': 'SOMETHING'},
-            'expected': ['SOMETHING&'],
-            'not_expected': ['and']
-         }),
-        ('expression+type', {
-            'kwargs': {'expression': 'SOMETHING', 'type': 'TYPE'},
-            'expected': ['SOMETHING&'],
-            'not_expected': ['type=', 'TYPE']
-         }),
-    ])
-def test_pure_inventory_filters(target, name, args):
-    """Verify that the filter parameters are all forwarded correctly
-    end-to-end through all abstract helper methods."""
-    execute_test_device_inventory_filters(target, args)
-
-
-@pytest.mark.parametrize(
-    'target',
-    [
+@pytest.mark.parametrize('fun',[
         'device_inventory.get_all',
         'device_inventory.get_count',
     ])
-@pytest.mark.parametrize(
-    'name, args',
-    [
-        ('name', {
-            'kwargs': {'name': 'NAME'},
-            'expected': ["query=", "has(c8y_IsDevice)", "and", "name eq 'NAME'"],
-            'not_expected': []
-        }),
-    ])
-def test_device_inventory_filters(target, name, args):
+@pytest.mark.parametrize('params, expected, not_expected', [
+    ({'name': "it's name"}, ['q=', "name eq 'it''s name'"], ['query']),
+], ids=[
+    'name'
+])
+def test_device_inventory_filters(fun, params, expected, not_expected):
     """Verify that the filter parameters are all forwarded correctly
     end-to-end through all abstract helper methods."""
-    execute_test_device_inventory_filters(target, args)
+    url = _invoke_target_and_isolate_url(fun, params)
+    for e in expected:
+        assert e in url
+    for e in not_expected:
+        assert e not in url
 
 
-@pytest.mark.parametrize(
-    'target',
-    [
+@pytest.mark.parametrize('fun', [
         'group_inventory.get_all',
         'group_inventory.get_count',
     ])
-@pytest.mark.parametrize(
-    'name, args',
-    [
-        ('parent', {
-            'kwargs': {'parent': 'PARENT'},
-            'expected': ['query=', 'bygroupid(PARENT)', "type eq 'c8y_DeviceSubGroup'"],
-            'not_expected': ['$filter']
-        }),
-        ('name+parent', {
-            'kwargs': {'name': 'NAME', 'parent': 'PARENT'},
-            'expected': ['query=', 'bygroupid(PARENT)', "name eq 'NAME'", "type eq 'c8y_DeviceSubGroup'"],
-            'not_expected': ['$filter']
-        }),
-        ('name+parent+query', {
-            'kwargs': {'name': 'NAME', 'parent': 'PARENT', 'query': '$func=(QUERY)'},
-            'expected': ['query=', '$filter=', 'bygroupid(PARENT)', "name eq 'NAME'",
-                         "type eq 'c8y_DeviceSubGroup'", '$func=(QUERY)'],
-            'not_expected': []
-        }),
-    ])
-def test_group_inventory_filters(target, name, args):
+@pytest.mark.parametrize('params, expected, not_expected', [
+    ({'parent': 'PARENT'},
+     ['query=', 'bygroupid(PARENT)', 'type eq c8y_DeviceGroup'],
+     []),
+    ({'parent': 'PARENT', 'name': "it's name"},
+     ['query=', "name eq 'it''s name'", 'bygroupid(PARENT)', 'type eq c8y_DeviceGroup'],
+     []),
+    # query invalidates all other parameters
+    ({'parent': 'PARENT', 'name': "it's name", 'query': 'QUERY'},
+     ['query=QUERY'],
+     ['name eq ', 'bygroupid', 'PARENT', 'c8y_DeviceGroup']),
+], ids=[
+    'parent',
+    'name+parent',
+    'name+parent+query'
+])
+def test_group_inventory_filters(fun, params, expected, not_expected):
     """Verify that the filter parameters are all forwarded correctly
     end-to-end through all abstract helper methods."""
-    execute_test_device_inventory_filters(target, args)
+    url = _invoke_target_and_isolate_url(fun, params)
+    for e in expected:
+        assert e in url
+    for e in not_expected:
+        assert e not in url
