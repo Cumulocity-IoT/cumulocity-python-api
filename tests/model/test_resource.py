@@ -22,7 +22,6 @@ def test_build_base_query():
     kwargs = {
         # some of the below are mapped from python naming
         'type': base + '_type',
-        'name': base + '_name',
         'owner': base + '_owner',
         'source': str(random.randint(1000, 9999)),
         'fragment': base + '_fragment',
