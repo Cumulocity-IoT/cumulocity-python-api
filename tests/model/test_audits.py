@@ -3,6 +3,7 @@
 # and/or its subsidiaries and/or its affiliates and/or their licensors.
 # Use, reproduction, transfer, publication or disclosure is prohibited except
 # as specifically provided for in your License Agreement with Software AG.
+
 from datetime import timedelta
 from unittest.mock import Mock
 from urllib.parse import unquote_plus
@@ -18,9 +19,9 @@ from tests.utils import isolate_last_call_arg
 def isolate_call_url(fun, **kwargs):
     """Call an Applications API function and isolate the request URL for further assertions."""
     c8y = CumulocityApi(base_url='some.host.com', tenant_id='t123', username='user', password='pass')
-    c8y.get = Mock(return_value={'events': [], 'statistics': {'totalPages': 1}})
-    c8y.delete = Mock(return_value={'events': [], 'statistics': {'totalPages': 1}})
-    fun(c8y.events, **kwargs)
+    c8y.get = Mock(return_value={'auditRecords': [], 'statistics': {'totalPages': 1}})
+    c8y.delete = Mock(return_value={'auditRecords': [], 'statistics': {'totalPages': 1}})
+    fun(c8y.audit_records, **kwargs)
     resource = isolate_last_call_arg(c8y.get, 'resource', 0) if c8y.get.called else None
     resource = resource or (isolate_last_call_arg(c8y.delete, 'resource', 0) if c8y.delete.called else None)
     return unquote_plus(resource)

@@ -19,6 +19,7 @@ def test_select_name(live_c8y: CumulocityApi):
     assert app.type == 'HOSTED'
     assert app.availability == 'MARKET'
 
+
 def test_select_owner(live_c8y: CumulocityApi):
     """Verify that select by owner works."""
     # this test assumes, that the live tenant owns at least one application
