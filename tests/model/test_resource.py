@@ -6,6 +6,7 @@
 
 import random
 from unittest.mock import Mock
+from urllib.parse import urlencode
 
 from c8y_api.model import CumulocityResource
 
@@ -37,7 +38,9 @@ def test_build_base_query():
         'reverse': True,
         'page_size': random.randint(0, 10000),
         # random parameters are supported as well and will be mapped 1:1
-        'random_' + base: True,
+        'pascalCase': True,
+        # snake_case parameters are supported as well and will be translated
+        'snake_case': 'value',
     }
 
     # mapped parameters (python name to API name)
@@ -51,6 +54,7 @@ def test_build_base_query():
         'after': 'dateFrom',
         'reverse': 'revert',
         'page_size': 'pageSize',
+        'snake_case': 'snakeCase',
     }
 
     # expected parameters, kwargs combined with mapping
@@ -60,7 +64,7 @@ def test_build_base_query():
 
     # (1) init mock resource and build query
     resource = CumulocityResource(Mock(), 'res')
-    base_query = resource._build_base_query(**kwargs)
+    base_query = urlencode(resource._map_params(**kwargs))
 
     # -> all expected params are there
     for key, value in expected_params.items():

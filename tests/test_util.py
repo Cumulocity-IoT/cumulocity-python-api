@@ -16,7 +16,7 @@ import pytest
 
 from c8y_api._util import c8y_keys
 from c8y_api._jwt import JWT
-from model._util import _StringUtil
+from c8y_api.model._util import _StringUtil
 
 
 @pytest.mark.parametrize(
