@@ -242,7 +242,9 @@ class Alarms(CumulocityResource):
         obj.c8y = self.c8y  # inject c8y connection into instance
         return obj
 
-    def select(self, type: str = None, source: str = None, fragment: str = None, # noqa (type)
+    def select(self,
+               expression: str = None,
+               type: str = None, source: str = None, fragment: str = None, # noqa (type)
                status: str = None, severity: str = None, resolved: str = None,
                before: str | datetime = None, after: str | datetime = None,
                date_from: str | datetime = None, date_to: str | datetime = None,
@@ -252,7 +254,9 @@ class Alarms(CumulocityResource):
                last_updated_from: str | datetime = None, last_updated_to: str | datetime = None,
                min_age: timedelta = None, max_age: timedelta = None,
                reverse: bool = False, limit: int = None,
-               page_size: int = 1000, page_number: int = None) -> Generator[Alarm]:
+               with_source_assets: bool = None, with_source_devices: bool = None,
+               page_size: int = 1000, page_number: int = None,
+               **kwargs) -> Generator[Alarm]:
         """Query the database for alarms and iterate over the results.
 
         This function is implemented in a lazy fashion - results will only be
@@ -263,6 +267,9 @@ class Alarms(CumulocityResource):
         combined (as defined in the Cumulocity REST API).
 
         Args:
+            expression (str):  Arbitrary filter expression which will be
+                passed to Cumulocity without change; all other filters
+                are ignored if this is provided
             type (str):  Alarm type
             source (str):  Database ID of a source device
             fragment (str):  Name of a present custom/standard fragment
@@ -289,6 +296,10 @@ class Alarms(CumulocityResource):
             created_to(str|datetime): Same as `created_before`
             last_updated_from (str|datetime): Same as `updated_after`
             last_updated_to (str|datetime): Same as `updated_before`
+            with_source_assets (bool): Whether also alarms for related source
+                assets should be included. Requires `source`.
+            with_source_devices (bool): Whether also alarms for related source
+                devices should be included. Requires `source`
             reverse (bool):  Invert the order of results, starting with the
                 most recent one
             limit (int): Limit the number of results to this number.
@@ -300,29 +311,38 @@ class Alarms(CumulocityResource):
         Returns:
             Generator of Alarm objects
         """
-        base_query = self._build_base_query(type=type, source=source, fragment=fragment,
-                                            status=status, severity=severity, resolved=resolved,
-                                            before=before, after=after,
-                                            date_from=date_from, date_to=date_to,
-                                            created_before=created_before, created_after=created_after,
-                                            created_from=created_from, created_to=created_to,
-                                            updated_before=updated_before, updated_after=updated_after,
-                                            last_updated_from=last_updated_from, last_updated_to=last_updated_to,
-                                            min_age=min_age, max_age=max_age,
-                                            reverse=reverse, page_size=page_size)
+        base_query = self._prepare_query(
+            expression=expression,
+            type=type, source=source, fragment=fragment,
+            status=status, severity=severity, resolved=resolved,
+            before=before, after=after,
+            date_from=date_from, date_to=date_to,
+            created_before=created_before, created_after=created_after,
+            created_from=created_from, created_to=created_to,
+            updated_before=updated_before, updated_after=updated_after,
+            last_updated_from=last_updated_from, last_updated_to=last_updated_to,
+            with_source_devices=with_source_devices, with_source_assets=with_source_assets,
+            min_age=min_age, max_age=max_age,
+            reverse=reverse, page_size=page_size,
+            **kwargs)
         return super()._iterate(base_query, page_number, limit, Alarm.from_json)
 
-    def get_all(self, type: str = None, source: str = None, fragment: str = None, # noqa (type)
-                status: str = None, severity: str = None, resolved: str = None,
-                before: str | datetime = None, after: str | datetime = None,
-                date_from: str | datetime = None, date_to: str | datetime = None,
-                created_before: str | datetime = None, created_after: str | datetime = None,
-                created_from: str | datetime = None, created_to: str | datetime = None,
-                updated_before: str | datetime = None, updated_after: str | datetime = None,
-                last_updated_from: str | datetime = None, last_updated_to: str | datetime = None,
-                min_age: timedelta = None, max_age: timedelta = None,
-                reverse: bool = False, limit: int = None,
-                page_size: int = 1000, page_number: int = None) -> List[Alarm]:
+    def get_all(
+            self,
+            expression: str = None,
+            type: str = None, source: str = None, fragment: str = None,  # noqa (type)
+            status: str = None, severity: str = None, resolved: str = None,
+            before: str | datetime = None, after: str | datetime = None,
+            date_from: str | datetime = None, date_to: str | datetime = None,
+            created_before: str | datetime = None, created_after: str | datetime = None,
+            created_from: str | datetime = None, created_to: str | datetime = None,
+            updated_before: str | datetime = None, updated_after: str | datetime = None,
+            last_updated_from: str | datetime = None, last_updated_to: str | datetime = None,
+            min_age: timedelta = None, max_age: timedelta = None,
+            with_source_assets: bool = None, with_source_devices: bool = None,
+            reverse: bool = False, limit: int = None,
+            page_size: int = 1000, page_number: int = None,
+            **kwargs) -> List[Alarm]:
         """Query the database for alarms and return the results as list.
 
         This function is a greedy version of the select function. All
@@ -333,24 +353,37 @@ class Alarms(CumulocityResource):
         Returns:
             List of Alarm objects
         """
-        return list(self.select(type=type, source=source, fragment=fragment,
-                                status=status, severity=severity, resolved=resolved,
-                                before=before, after=after,
-                                date_from=date_from, date_to=date_to,
-                                created_before=created_before, created_after=created_after,
-                                created_from=created_from, created_to=created_to,
-                                updated_before=updated_before, updated_after=updated_after,
-                                last_updated_from=last_updated_from, last_updated_to=last_updated_to,
-                                min_age=min_age, max_age=max_age, reverse=reverse,
-                                limit=limit, page_size=page_size, page_number=page_number))
+        return list(self.select(
+            expression=expression,
+            type=type, source=source, fragment=fragment,
+            status=status, severity=severity, resolved=resolved,
+            before=before, after=after,
+            date_from=date_from, date_to=date_to,
+            created_before=created_before, created_after=created_after,
+            created_from=created_from, created_to=created_to,
+            updated_before=updated_before, updated_after=updated_after,
+            last_updated_from=last_updated_from, last_updated_to=last_updated_to,
+            min_age=min_age, max_age=max_age, reverse=reverse,
+            with_source_devices=with_source_devices, with_source_assets=with_source_assets,
+            limit=limit, page_size=page_size, page_number=page_number,
+            **kwargs))
 
-    def count(self, type: str = None, source: str = None, fragment: str = None, # noqa (type)
-              status: str = None, severity: str = None, resolved: str = None,
-              before: str | datetime = None, after: str | datetime = None,
-              min_age: timedelta = None, max_age: timedelta = None) -> int:
+    def count(
+            self,
+            expression: str = None,
+            type: str = None, source: str = None, fragment: str = None,  # noqa (type)
+            status: str = None, severity: str = None, resolved: str = None,
+            date_from: str | datetime = None, date_to: str | datetime = None,
+            before: str | datetime = None, after: str | datetime = None,
+            min_age: timedelta = None, max_age: timedelta = None,
+            with_source_assets: bool = None, with_source_devices: bool = None,
+            **kwargs) -> int:
         """Count the number of certain alarms.
 
         Args:
+            expression (str):  Arbitrary filter expression which will be
+                passed to Cumulocity without change; all other filters
+                are ignored if this is provided
             type (str):  Alarm type
             source (str):  Database ID of a source device
             fragment (str):  Name of a present custom/standard fragment
@@ -361,16 +394,28 @@ class Alarms(CumulocityResource):
                 Only alarms assigned to a time before this date are returned.
             after (str|datetime):  Datetime object or ISO date/time string.
                 Only alarms assigned to a time after this date are returned
+            date_from (str|datetime): Same as `after`
+            date_to (str|datetime): Same as `before`
             min_age (timedelta):  Matches only alarms of at least this age
             max_age (timedelta):  Matches only alarms with at most this age
+            with_source_assets (bool): Whether also alarms for related source
+                assets should be included. Requires `source`.
+            with_source_devices (bool): Whether also alarms for related source
+                devices should be included. Requires `source`
 
         Returns:
             Number of matching alarms in Cumulocity.
         """
-        params = self._prepare_query_params(type=type, source=source, fragment=fragment,
-                                            status=status, severity=severity, resolved=resolved,
-                                            before=before, after=after, min_age=min_age, max_age=max_age)
-        response_json = self.c8y.get(self.resource + '/count', params)
+        base_query = self._prepare_query(
+            resource=f'{self.resource}/count',
+            expression=expression,
+            type=type, source=source, fragment=fragment,
+            status=status, severity=severity, resolved=resolved,
+            before=before, after=after, min_age=min_age, max_age=max_age,
+            date_from=date_from, date_to=date_to,
+            with_source_devices=with_source_devices, with_source_assets=with_source_assets,
+            **kwargs)
+        response_json = self.c8y.get(base_query)
         return response_json if isinstance(response_json, int) else None
 
     def create(self, *alarms):
@@ -399,13 +444,23 @@ class Alarms(CumulocityResource):
         """
         super()._apply_to(Alarm.to_full_json, alarm, *alarm_ids)
 
-    def apply_by(self, alarm: Alarm, type: str = None, source: str = None, fragment: str = None, # noqa (type)
-                status: str = None, severity: str = None, resolved: str = None,
-                before: str | datetime = None, after: str | datetime = None,
-                min_age: timedelta = None, max_age: timedelta = None):
+    def apply_by(
+            self,
+            alarm: Alarm,
+            expression: str = None,
+            type: str = None, source: str = None, fragment: str = None,
+            status: str = None, severity: str = None, resolved: str = None,
+            date_from: str | datetime = None, date_to: str | datetime = None,
+            before: str | datetime = None, after: str | datetime = None,
+            min_age: timedelta = None, max_age: timedelta = None,
+            with_source_assets: bool = None, with_source_devices: bool = None,
+            **kwargs):
         """Apply changes made to a single instance to other objects in the database.
 
         Args:
+            expression (str):  Arbitrary filter expression which will be
+                passed to Cumulocity without change; all other filters
+                are ignored if this is provided
             alarm (Alarm): Object serving as model for the update
             type (str):  Alarm type
             source (str):  Database ID of a source device
@@ -417,15 +472,26 @@ class Alarms(CumulocityResource):
                 Only alarms assigned to a time before this date are returned.
             after (str|datetime):  Datetime object or ISO date/time string.
                 Only alarms assigned to a time after this date are returned
+            date_from (str|datetime): Same as `after`
+            date_to (str|datetime): Same as `before`
             min_age (timedelta):  Matches only alarms of at least this age
             max_age (timedelta):  Matches only alarms with at most this age
+            with_source_assets (bool): Whether also alarms for related source
+                assets should be included. Requires `source`.
+            with_source_devices (bool): Whether also alarms for related source
+                devices should be included. Requires `source`
 
         See also: https://cumulocity.com/api/#operation/putAlarmCollectionResource
         """
-        params = self._prepare_query_params(type=type, source=source, fragment=fragment,
-                                            status=status, severity=severity, resolved=resolved,
-                                            before=before, after=after, min_age=min_age, max_age=max_age)
-        self.c8y.put(self.resource, alarm.to_full_json(), params=params, accept='')
+        base_query = self._prepare_query(
+            expression=expression,
+            type=type, source=source, fragment=fragment,
+            status=status, severity=severity, resolved=resolved,
+            before=before, after=after, min_age=min_age, max_age=max_age,
+            date_from=date_from, date_to=date_to,
+            with_source_devices=with_source_devices, with_source_assets=with_source_assets,
+            **kwargs)
+        self.c8y.put(base_query, alarm.to_full_json(), accept='')
 
     def delete(self, *alarms):
         """Delete alarm objects within the database.
@@ -440,10 +506,16 @@ class Alarms(CumulocityResource):
         for a in alarms:
             a.delete()
 
-    def delete_by(self, type: str = None, source: str = None, fragment: str = None, # noqa (type)
-               status: str = None, severity: str = None, resolved: str = None,
-               before: str | datetime = None, after: str | datetime = None,
-               min_age: timedelta = None, max_age: timedelta = None):
+    def delete_by(
+            self,
+            expression: str = None,
+            type: str = None, source: str = None, fragment: str = None,
+            status: str = None, severity: str = None, resolved: str = None,
+            date_from: str | datetime = None, date_to: str | datetime = None,
+            before: str | datetime = None, after: str | datetime = None,
+            min_age: timedelta = None, max_age: timedelta = None,
+            with_source_assets: bool = None, with_source_devices: bool = None,
+            **kwargs):
         """Query the database and delete matching alarms.
 
         All parameters are considered to be filters, limiting the result set
@@ -451,6 +523,9 @@ class Alarms(CumulocityResource):
         combined (as defined in the Cumulocity REST API).
 
         Args:
+            expression (str):  Arbitrary filter expression which will be
+                passed to Cumulocity without change; all other filters
+                are ignored if this is provided
             type (str):  Alarm type
             source (str):  Database ID of a source device
             fragment (str):  Name of a present custom/standard fragment
@@ -461,11 +536,22 @@ class Alarms(CumulocityResource):
                 Only alarms assigned to a time before this date are returned.
             after (str|datetime):  Datetime object or ISO date/time string.
                 Only alarms assigned to a time after this date are returned
+            date_from (str|datetime): Same as `after`
+            date_to (str|datetime): Same as `before`
             min_age (timedelta):  Matches only alarms of at least this age
             max_age (timedelta):  Matches only alarms with at most this age
+            with_source_assets (bool): Whether also alarms for related source
+                assets should be included. Requires `source`.
+            with_source_devices (bool): Whether also alarms for related source
+                devices should be included. Requires `source`
         """
         # build a base query
-        base_query = self._build_base_query(type=type, source=source, fragment=fragment,
-                                            status=status, severity=severity, resolved=resolved,
-                                            before=before, after=after, min_age=min_age, max_age=max_age)
+        base_query = self._prepare_query(
+            expression=expression,
+            type=type, source=source, fragment=fragment,
+            status=status, severity=severity, resolved=resolved,
+            before=before, after=after, min_age=min_age, max_age=max_age,
+            date_from=date_from, date_to=date_to,
+            with_source_devices=with_source_devices, with_source_assets=with_source_assets,
+            **kwargs)
         self.c8y.delete(base_query)
