@@ -225,14 +225,17 @@ class Tenants(CumulocityResource):
         tenant.c8y = self.c8y  # inject c8y connection into instance
         return tenant
 
-    def select(self,
-               parent: str = None,
-               domain: str = None,
-               company: str = None,
-               limit: int = None,
-               page_size: int = 1000,
-               page_number: int = None
-        ) -> Generator[Tenant]:
+    def select(
+            self,
+            expression: str = None,
+            parent: str = None,
+            domain: str = None,
+            company: str = None,
+            limit: int = None,
+            page_size: int = 1000,
+            page_number: int = None,
+            **kwargs
+    ) -> Generator[Tenant]:
         """ Query the database for tenants and iterate over the results.
 
         This function is implemented in a lazy fashion - results will only be
@@ -243,6 +246,9 @@ class Tenants(CumulocityResource):
         combined (within reason).
 
         Args:
+            expression (str):  Arbitrary filter expression which will be
+                passed to Cumulocity without change; all other filters
+                are ignored if this is provided
             parent (str): ID of the parent tenant
             domain (str):  Tenant domain
             company (str): Tenant's assigned company name
@@ -255,17 +261,26 @@ class Tenants(CumulocityResource):
         Returns:
             Generator for Tenant instances
         """
-        base_query = self._build_base_query(parent=parent, domain=domain, company=company, page_size=page_size)
+        base_query = self._prepare_query(
+            expression=expression,
+            parent=parent,
+            domain=domain,
+            company=company,
+            page_size=page_size,
+            **kwargs)
         return super()._iterate(base_query, page_number, limit, Tenant.from_json)
 
-    def get_all(self,
-                parent: str = None,
-                domain: str = None,
-                company: str = None,
-                limit: int = None,
-                page_size: int = 1000,
-                page_number: int = None
-        ) -> List[Tenant]:
+    def get_all(
+            self,
+            expression: str = None,
+            parent: str = None,
+            domain: str = None,
+            company: str = None,
+            limit: int = None,
+            page_size: int = 1000,
+            page_number: int = None,
+            **kwargs
+    ) -> List[Tenant]:
         """ Query the database for tenants and return the results as list.
 
         All parameters are considered to be filters, limiting the result set
@@ -273,6 +288,9 @@ class Tenants(CumulocityResource):
         combined (within reason).
 
         Args:
+            expression (str):  Arbitrary filter expression which will be
+                passed to Cumulocity without change; all other filters
+                are ignored if this is provided
             parent (str): ID of the parent tenant
             domain (str):  Tenant domain
             company (str): Tenant's assigned company name
@@ -286,10 +304,12 @@ class Tenants(CumulocityResource):
             List of Tenant instances
         """
         return list(self.select(
+            expression=expression,
             parent=parent,
             domain=domain,
             company=company,
             limit=limit,
             page_size=page_size,
-            page_number=page_number
+            page_number=page_number,
+            **kwargs
         ))
