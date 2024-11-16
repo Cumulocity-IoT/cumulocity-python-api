@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 import logging
-import urllib.parse
+from urllib.parse import quote_plus
 from typing import Any, Iterable, Set
 
 from collections.abc import MutableMapping
@@ -16,7 +16,7 @@ from urllib.parse import urlencode
 
 from c8y_api._base_api import CumulocityRestApi
 
-from c8y_api.model._util import _DateUtil, _StringUtil
+from c8y_api.model._util import _DateUtil, _StringUtil, _QueryUtil
 
 
 class _DictWrapper(MutableMapping):
@@ -65,7 +65,7 @@ class _DictWrapper(MutableMapping):
 class CumulocityObject:
     """Base class for all Cumulocity database objects."""
 
-    def __init__(self, c8y: CumulocityRestApi):
+    def __init__(self, c8y: CumulocityRestApi | None):
         self.c8y = c8y
         self.id: str | None = None
 
@@ -311,7 +311,7 @@ class ComplexObject(SimpleObject):
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, c8y: CumulocityRestApi, **kwargs):
+    def __init__(self, c8y: CumulocityRestApi | None, **kwargs):
         super().__init__(c8y)
         self._updated_fragments = None
         self.fragments = {}
@@ -475,36 +475,72 @@ class CumulocityResource:
         """
         return self.resource + '/' + str(object_id)
 
+
     @staticmethod
-    def _prepare_query_params(
-            type=None, name=None, fragment=None, source=None,  # noqa (type)
-            value=None, series=None, owner=None,
-            device_id=None, agent_id=None, bulk_id=None, ids=None,
+    def _map_params(
+            q=None,
+            query=None,
+            type=None,
+            name=None,
+            fragment=None,
+            source=None,  # noqa (type)
+            value=None,
+            series=None,
+            owner=None,
+            device_id=None,
+            agent_id=None,
+            bulk_id=None,
+            ids=None,
             text=None,
-            before=None, after=None,
-            date_from=None, date_to=None,
-            created_before=None, created_after=None,
-            created_from=None, created_to=None,
-            updated_before=None, updated_after=None,
-            last_updated_from=None, last_updated_to=None,
-            min_age=None, max_age=None,
-            reverse=None, page_size=None,
+            before=None,
+            after=None,
+            date_from=None,
+            date_to=None,
+            created_before=None,
+            created_after=None,
+            created_from=None,
+            created_to=None,
+            updated_before=None,
+            updated_after=None,
+            last_updated_from=None,
+            last_updated_to=None,
+            min_age=None,
+            max_age=None,
+            with_source_assets=None,
+            with_source_devices=None,
+            reverse=None,
+            page_size=None,
             page_number=None,  # (must not be part of the prepared query)
-            **kwargs):
+            **kwargs) -> dict:
         assert not page_number
-        # min_age/max_age should be timedelta objects that can be used for
+
+        def multi(*xs):
+            return sum(bool(x) for x in xs) > 1
+
+        if multi(min_age, before, date_to):
+            raise ValueError("Only one of 'min_age', 'before' and 'date_to' query parameters must be used.")
+        if multi(max_age, after, date_from):
+            raise ValueError("Only one of 'max_age', 'after' and 'date_from' query parameters must be used.")
+        if multi(created_from, created_after):
+            raise ValueError("Only one of 'created_from' and 'created_after' query parameters must be used.")
+        if multi(created_to, created_before):
+            raise ValueError("Only one of 'created_to' and 'created_before' query parameters must be used.")
+        if multi(last_updated_from, updated_after):
+            raise ValueError("Only one of 'last_updated_from' and 'updated_after' query parameters must be used.")
+        if multi(last_updated_to, updated_before):
+            raise ValueError("Only one of 'last_updated_to' and 'updated_before' query parameters must be used.")
+
+        if (not source) and any([with_source_devices, with_source_assets]):
+            raise ValueError("Can only include source assets/devices if 'source' parameter is provided.")
+
+            # min_age/max_age should be timedelta objects that can be used for
         # alternative calculation of the before/after parameters
         if min_age:
-            if before or date_to:
-                raise ValueError("Only one of 'min_age', 'before' and 'date_to' query parameters must be used.")
             min_age = _DateUtil.ensure_timedelta(min_age)
             before = _DateUtil.now() - min_age
         if max_age:
-            if after or date_from:
-                raise ValueError("Only one of 'max_age', 'after' and 'date_from' query parameters must be used.")
             max_age = _DateUtil.ensure_timedelta(max_age)
             after = _DateUtil.now() - max_age
-
         # before/after can also be datetime objects,
         # if so they need to be timezone aware
         date_from = _DateUtil.ensure_timestring(date_from) or _DateUtil.ensure_timestring(after)
@@ -514,9 +550,11 @@ class CumulocityResource:
         updated_from = _DateUtil.ensure_timestring(last_updated_from) or _DateUtil.ensure_timestring(updated_after)
         updated_to = _DateUtil.ensure_timestring(last_updated_to) or _DateUtil.ensure_timestring(updated_before)
 
-        params = {
+        params = {k: v for k, v in {
+            'q': q,
+            'query': query,
             'type': type,
-            'name': name,
+            'name': f"'{_QueryUtil.encode_odata_query_value(name)}'" if name else None,
             'owner': owner,
             'source': source,
             'fragmentType': fragment,
@@ -525,8 +563,8 @@ class CumulocityResource:
             'deviceId': device_id,
             'agentId': agent_id,
             'bulkId': bulk_id,
-            'text': text,
-            'ids': ','.join(ids) if ids else None,
+            'text': f"'{_QueryUtil.encode_odata_query_value(text)}'" if text else None,
+            'ids': ','.join(str(i) for i in ids) if ids else None,
             'bulkOperationId': bulk_id,
             'dateFrom': date_from,
             'dateTo': date_to,
@@ -534,24 +572,40 @@ class CumulocityResource:
             'createdTo': created_to,
             'lastUpdatedFrom': updated_from,
             'lastUpdatedTo': updated_to,
-            'revert': str(reverse) if reverse else None,
-            'pageSize': page_size}
-        params = {k: v for k, v in params.items() if v}
-        params.update({k: v for k, v in kwargs.items() if v is not None})
+            'withSourceAssets': with_source_assets,
+            'withSourceDevices': with_source_devices,
+            'revert': str(reverse) if reverse is not None else None,
+            'pageSize': page_size}.items() if v is not None}
+        params.update({_StringUtil.to_pascal_case(k): v for k, v in kwargs.items() if v is not None})
         return params
 
-    def _build_base_query(self, expression: str = None, **kwargs):
-        if expression:
-            encoded_params = urllib.parse.quote_plus(expression)
-        else:
-            encoded_params = urlencode(CumulocityResource._prepare_query_params(**kwargs))
-        return self.resource + '?' + encoded_params
+    def _prepare_query(self, resource: str = None, expression: str = None, **kwargs):
+        encoded = quote_plus(expression) if expression else urlencode(self._map_params(**kwargs))
+        if not encoded:
+            return resource or self.resource
+        return (resource or self.resource) + '?' + encoded
 
+    def _prepare_request_string(self, expression: str = None, **kwargs):
+        """Prepare a query string.
+        """
+        encoded = quote_plus(expression) if expression else urlencode(**kwargs)
+        if not encoded:
+            return self.resource
+        return self.resource + '?' + encoded
+
+    # def _build_base_query(self, expression: str = None, **kwargs):
+    #     if expression:
+    #         encoded_params = urllib.parse.quote_plus(expression)
+    #     else:
+    #         encoded_params = urlencode(CumulocityResource._prepare_query_params(**kwargs))
+    #     return self.resource + '?' + encoded_params
+    #
     def _get_object(self, object_id):
         return self.c8y.get(self.build_object_path(object_id))
 
     def _get_page(self, base_query: str, page_number: int):
-        result_json = self.c8y.get(base_query +  '&currentPage=' + str(page_number))
+        sep = '&' if '?' in base_query else '?'
+        result_json = self.c8y.get(f'{base_query}{sep}currentPage={page_number}')
         return result_json[self.object_name]
 
     def _get_count(self, base_query: str) -> int:
@@ -559,7 +613,7 @@ class CumulocityResource:
         result_json = self.c8y.get(base_query + '&withTotalPages=true')
         return result_json['statistics']['totalPages']
 
-    def _iterate(self, base_query: str, page_number: int | None, limit: int, parse_func):
+    def _iterate(self, base_query: str, page_number: int | None, limit: int | None, parse_fun):
         # if no specific page is defined we just start at 1
         current_page = page_number if page_number else 1
         # we will read page after page until
@@ -567,14 +621,14 @@ class CumulocityResource:
         #  - there is no result (i.e. we were at the last page)
         num_results = 0
         while True:
-            results = [parse_func(x) for x in self._get_page(base_query, current_page)]
+            results = [parse_fun(x) for x in self._get_page(base_query, current_page)]
             # no results, so we are done
             if not results:
                 break
             for result in results:
-                result.c8y = self.c8y  # inject c8y connection into instance
                 if limit and num_results >= limit:
-                    break
+                    return
+                result.c8y = self.c8y  # inject c8y connection into instance
                 yield result
                 num_results = num_results + 1
             # when a specific page was specified we don't read more pages
