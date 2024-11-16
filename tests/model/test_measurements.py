@@ -4,13 +4,18 @@
 # Use, reproduction, transfer, publication or disclosure is prohibited except
 # as specifically provided for in your License Agreement with Software AG.
 import itertools
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import os
+from unittest.mock import Mock, patch
+from urllib.parse import unquote_plus
 
 import pytest
 
-from c8y_api.model import Measurement, Series
+from c8y_api import CumulocityApi
+from c8y_api.model import Measurement, Measurements, Series
+
+from tests.utils import isolate_last_call_arg
 
 
 def test_measurement_parsing():
@@ -38,6 +43,87 @@ def test_measurement_parsing():
         'c8y_Measurement': {'c8y_temperature': {'unit': 'x', 'value': 12.3}}
     }
     assert m.to_full_json() == expected_full_json
+
+
+def isolate_call_url(fun, **kwargs):
+    """Call an Applications API function and isolate the request URL for further assertions."""
+    c8y = CumulocityApi(base_url='some.host.com', tenant_id='t123', username='user', password='pass')
+    c8y.get = Mock(side_effect=[{'measurements': x, 'statistics': {'totalPages': 1}} for x in ([{}], [])])
+    c8y.delete = Mock(return_value={'measurements': [], 'statistics': {'totalPages': 1}})
+    with patch('c8y_api.model.Measurement.from_json') as parse_mock:
+        parse_mock.return_value = Measurement()
+        fun(c8y.measurements, **kwargs)
+    resource = isolate_last_call_arg(c8y.get, 'resource', 0) if c8y.get.called else None
+    resource = resource or (isolate_last_call_arg(c8y.delete, 'resource', 0) if c8y.delete.called else None)
+    return unquote_plus(resource)
+
+
+@pytest.mark.parametrize('fun', [
+    Measurements.get_all,
+    Measurements.get_last,
+    Measurements.delete_by,
+])
+@pytest.mark.parametrize('params, expected, not_expected', [
+    ({'expression': 'EX', 'type': 'T'}, ['?EX'], ['type']),
+    ({'type': 'T', 'source': 'S', 'fragment': 'F'},
+     ['type=T', 'source=S', 'fragmentType=F'],
+     ['fragment=']),
+    ({'value': 'V', 'series': 'S'}, ['valueFragmentType=V', 'valueFragmentSeries=S'], ['value=', 'series=']),
+    ({'date_from': '2020-12-31', 'date_to': '2021-12-31'},
+     ['dateFrom=2020-12-31', 'dateTo=2021-12-31'],
+     []),
+    ({'after': '2020-12-31', 'before': '2021-12-31'},
+     ['dateFrom=2020-12-31', 'dateTo=2021-12-31'],
+     []),
+    ({'min_age': timedelta(days=3), 'max_age': timedelta(weeks=1)},
+     ['dateFrom', 'dateTo'],
+     ['min', 'max']),
+    ({'snake_case': 'SC', 'pascalCase': 'PC'},
+     ['snakeCase=SC', 'pascalCase=PC'],
+     ['_']),
+], ids=[
+    'expression',
+    'type+source+fragment',
+    'value+series',
+    'date_from+date_to',
+    'after+before',
+    'min_age+max_age',
+    'kwargs'
+])
+def test_select(fun, params, expected, not_expected):
+    """Verify that the select function's parameters are processed as expected."""
+    if fun is Measurements.get_last:
+        params = {k: v for k, v in params.items() if k not in ['date_from', 'after', 'max_age']}
+        expected = list(filter(lambda x: 'dateFrom' not in x, expected))
+    resource = isolate_call_url(fun, **params)
+    for e in expected:
+        assert e in resource
+    for ne in not_expected:
+        assert ne not in resource
+
+
+@pytest.mark.parametrize('fun', [
+    Measurements.get_all,
+    Measurements.delete_by,
+])
+@pytest.mark.parametrize('args, errors', [
+    # date priorities
+    (['date_from', 'after'], ['date_from', 'after', 'max_age']),
+    (['date_from', 'max_age'], ['date_from', 'after', 'max_age']),
+    (['date_to', 'before'], ['date_to', 'before', 'min_age']),
+    (['date_to', 'min_age'], ['date_to', 'before', 'min_age']),
+], ids=[
+    "date_from+after",
+    'date_from+max_age',
+    'date_to+before',
+    'date_to+min_age',
+])
+def test_select_invalid_combinations(fun, args, errors):
+    """Verify that invalid query filter combinations are raised as expected."""
+    with pytest.raises(ValueError) as error:
+        params = {x: x.upper() for x in args}
+        isolate_call_url(fun, **params)
+    assert all(e in str(error) for e in errors)
 
 
 def generate_series_data() -> tuple:

@@ -37,71 +37,84 @@ class Units(object):
 
 class Value(dict):
     """Generic datapoint."""
+
     def __init__(self, value, unit):
         super().__init__(value=value, unit=unit)
 
 
 class Grams(Value):
     """Weight datapoint (Grams)."""
+
     def __init__(self, value):
         super().__init__(value, Units.Grams)
 
 
 class Kilograms(Value):
     """Weight datapoint (Kilograms)."""
+
     def __init__(self, value):
         super().__init__(value, Units.Kilograms)
 
 
 class Kelvin(Value):
     """Temperature datapoint (Kelvin)."""
+
     def __init__(self, value):
         super().__init__(value, Units.Kelvin)
 
 
 class Celsius(Value):
     """Temperature datapoint (Celsius)."""
+
     def __init__(self, value):
         super().__init__(value, Units.Celsius)
 
 
 class Meters(Value):
     """Length datapoint (Meters)."""
+
     def __init__(self, value):
         super().__init__(value, Units.Meters)
 
 
 class Centimeters(Value):
     """Length datapoint (Centimeters)."""
+
     def __init__(self, value):
         super().__init__(value, Units.Centimeters)
 
 
 class Millimeters(Value):
     """Length datapoint (Millimeters)."""
+
     def __init__(self, value):
         super().__init__(value, Units.Millimeters)
 
 
 class Liters(Value):
     """Volume datapoint (Liters)."""
+
     def __init__(self, value):
         super().__init__(value, Units.Liters)
 
 
 class CubicMeters(Value):
     """Volume datapoint (Cubic Meters)."""
+
     def __init__(self, value):
         super().__init__(value, Units.CubicMeters)
 
 
 class Count(Value):
     """Discrete number datapoint (number/count)."""
+
     def __init__(self, value):
         super().__init__(value, Units.Count)
 
+
 class Percentage(Value):
     """Percent value datapoint."""
+
     def __init__(self, value):
         super().__init__(value, Units.Percent)
 
@@ -119,10 +132,11 @@ class Measurement(ComplexObject):
     # these need to be defined like this for the abstract super functions
     _resource = '/measurement/measurements'
     _parser = ComplexObjectParser({'type': 'type', 'time': 'time'}, ['source'])
+
     # _accept
     # _not_updatable
 
-    def __init__(self, c8y=None, type=None, source=None, time: str|datetime = None, **kwargs):  # noqa (type)
+    def __init__(self, c8y=None, type=None, source=None, time: str | datetime = None, **kwargs):  # noqa (type)
         """ Create a new Measurement object.
 
         Args:
@@ -298,6 +312,7 @@ class Series(dict):
             A simple list or list of tuples (potentially nested) depending on the
             parameter combination.
         """
+
         # we want explicit else's to make the logic easier to understand
         # pylint: disable=no-else-return, too-many-return-statements, too-many-branches, line-too-long
 
@@ -331,7 +346,8 @@ class Series(dict):
                     return [v[i][value] for v in self['values'].values() if (len(v) > i and v[i])]
                 else:
                     # like above, but include timestamps
-                    return [(parse_timestamp(k), v[i][value]) for k, v in self['values'].items() if (len(v) > i and v[i])]
+                    return [(parse_timestamp(k), v[i][value]) for k, v in self['values'].items() if
+                            (len(v) > i and v[i])]
 
             # all values
             else:
@@ -342,7 +358,8 @@ class Series(dict):
                     return [(v[i]['min'], v[i]['max']) for v in self['values'].values() if (len(v) > i and v[i])]
                 else:
                     # like above, but include timestamps
-                    return [(parse_timestamp(k), v[i]['min'], v[i]['max']) for k, v in self['values'].items() if (len(v) > i and v[i])]
+                    return [(parse_timestamp(k), v[i]['min'], v[i]['max']) for k, v in self['values'].items() if
+                            (len(v) > i and v[i])]
 
         # multiple series
         if isinstance(series, Sequence):
@@ -382,7 +399,8 @@ class Series(dict):
                 else:
                     # like above, but prepend with timestamps
                     return [
-                        (parse_timestamp(k), *((v[i]['min'], v[i]['max']) if (len(v) > i and v[i]) else None for i in ii))
+                        (parse_timestamp(k),
+                         *((v[i]['min'], v[i]['max']) if (len(v) > i and v[i]) else None for i in ii))
                         for k, v in self['values'].items()
                     ]
 
@@ -425,6 +443,7 @@ class Measurements(CumulocityResource):
 
     def select(
             self,
+            expression: str = None,
             type: str = None,
             source: str | int = None,
             fragment: str = None,
@@ -437,7 +456,8 @@ class Measurements(CumulocityResource):
             reverse: bool = None,
             limit: int = None,
             page_size: int = 1000,
-            page_number: int = None
+            page_number: int = None,
+            **kwargs
     ) -> Generator[Measurement]:
         """ Query the database for measurements and iterate over the results.
 
@@ -449,6 +469,9 @@ class Measurements(CumulocityResource):
         combined (within reason).
 
         Args:
+            expression (str):  Arbitrary filter expression which will be
+                passed to Cumulocity without change; all other filters
+                are ignored if this is provided
             type (str):  Alarm type
             source (str|int):  Database ID of a source device
             fragment (str):  Name of a present custom/standard fragment
@@ -476,14 +499,19 @@ class Measurements(CumulocityResource):
         Returns:
             Generator[Measurement]: Iterable of matching Measurement objects
         """
-        base_query = self._build_base_query(type=type, source=source, fragment=fragment,
-                                            valueFragmentType=value, valueFragmentSeries=series,
-                                            before=before, after=after, min_age=min_age, max_age=max_age,
-                                            reverse=reverse, page_size=page_size)
+        base_query = self._prepare_query(
+            expression=expression,
+            type=type, source=source, fragment=fragment,
+            valueFragmentType=value, valueFragmentSeries=series,
+            before=before, after=after, min_age=min_age, max_age=max_age,
+            reverse=reverse, page_size=page_size,
+            **kwargs
+        )
         return super()._iterate(base_query, page_number, limit, Measurement.from_json)
 
     def get_all(
             self,
+            expression: str = None,
             type: str = None,
             source: str | int = None,
             fragment: str = None,
@@ -496,7 +524,8 @@ class Measurements(CumulocityResource):
             reverse: bool = None,
             limit: int = None,
             page_size: int = 1000,
-            page_number: int = None
+            page_number: int = None,
+            **kwargs
     ) -> List[Measurement]:
         """ Query the database for measurements and return the results
         as list.
@@ -508,6 +537,7 @@ class Measurements(CumulocityResource):
             List of matching Measurement objects
         """
         return list(self.select(
+            expression=expression,
             type=type,
             source=source,
             fragment=fragment,
@@ -520,17 +550,20 @@ class Measurements(CumulocityResource):
             reverse=reverse,
             limit=limit,
             page_size=page_size,
-            page_number=page_number))
+            page_number=page_number,
+            **kwargs))
 
     def get_last(
             self,
+            expression: str = None,
             type: str = None,
             source: str | int = None,
             fragment: str = None,
             value: str = None,
             series: str = None,
             before: str | datetime = None,
-            min_age: timedelta = None
+            min_age: timedelta = None,
+            **kwargs
     ) -> Measurement:
         """ Query the database and return the last matching measurement.
 
@@ -545,7 +578,8 @@ class Measurements(CumulocityResource):
         after = None
         if not before and not min_age:
             after = '1970-01-01'
-        base_query = self._build_base_query(
+        base_query = self._prepare_query(
+            expression=expression,
             type=type,
             source=source,
             fragment=fragment,
@@ -555,13 +589,15 @@ class Measurements(CumulocityResource):
             before=before,
             min_age=min_age,
             reverse=True,
-            page_size=1)
+            page_size=1,
+            **kwargs)
         m = Measurement.from_json(self._get_page(base_query, page_number=1)[0])
         m.c8y = self.c8y  # inject c8y connection into instance
         return m
 
     def get_series(
             self,
+            expression: str = None,
             source: str = None,
             aggregation: str = None,
             series: str | Sequence[str] = None,
@@ -569,10 +605,15 @@ class Measurements(CumulocityResource):
             after: str | datetime = None,
             min_age: timedelta = None,
             max_age: timedelta = None,
-            reverse=False) -> Series:
+            reverse: bool = None,
+            **kwargs
+    ) -> Series:
         """Query the database for a list of series and their values.
 
         Args:
+            expression (str):  Arbitrary filter expression which will be
+                passed to Cumulocity without change; all other filters
+                are ignored if this is provided
             source (str):  Database ID of a source device
             aggregation (str):  Aggregation type
             series (str|Sequence[str]):  Series' to query
@@ -595,7 +636,8 @@ class Measurements(CumulocityResource):
 
         See also: https://cumulocity.com/api/core/#operation/getMeasurementSeriesResource
         """
-        params = self._prepare_query_params(
+        params = self._prepare_query(
+            expression=expression,
             source=source,
             # this is a non-mapped parameter
             aggregationType=aggregation,
@@ -603,7 +645,8 @@ class Measurements(CumulocityResource):
             after=after,
             min_age=min_age,
             max_age=max_age,
-            reverse=reverse)
+            reverse=reverse,
+            **kwargs)
         # The 'series' parameter has to be added manually; because it
         # may be a list and because 'series' is by default converted to
         # the 'valueFragmentSeries' parameter
@@ -617,16 +660,20 @@ class Measurements(CumulocityResource):
 
     def delete_by(
             self,
+            expression: str = None,
             type: str = None,
             source: str | int = None,
             fragment: str = None,
             value: str = None,
             series: str = None,
+            date_from: str | datetime = None,
+            date_to: str | datetime = None,
             before: str | datetime = None,
             after: str | datetime = None,
             min_age: timedelta = None,
             max_age: timedelta = None,
-        ):
+            **kwargs
+    ):
         """ Query the database and delete matching measurements.
 
         All parameters are considered to be filters, limiting the result set
@@ -635,16 +682,20 @@ class Measurements(CumulocityResource):
 
         Args: See 'select' function
         """
-        base_query = self._build_base_query(
+        base_query = self._prepare_query(
+            expression=expression,
             type=type,
             source=source,
             fragment=fragment,
             value=value,
             series=series,
+            date_from=date_from,
+            date_to=date_to,
             before=before,
             after=after,
             min_age=min_age,
-            ax_age=max_age)
+            max_age=max_age,
+            **kwargs)
         self.c8y.delete(base_query)
 
     # delete function is defined in super class
