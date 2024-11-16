@@ -45,6 +45,9 @@ def isolate_call_url(fun, **kwargs):
     ({'date_from': '2020-12-31', 'date_to': '2021-12-31'},
      ['dateFrom=2020-12-31', 'dateTo=2021-12-31'],
      []),
+    ({'after': '2020-12-31', 'before': '2021-12-31'},
+     ['dateFrom=2020-12-31', 'dateTo=2021-12-31'],
+     []),
     ({'last_updated_from': '2020-12-31', 'last_updated_to': '2021-12-31'},
      ['lastUpdatedFrom=2020-12-31', 'lastUpdatedTo=2021-12-31'],
      []),
@@ -63,6 +66,7 @@ def isolate_call_url(fun, **kwargs):
     'reverse',
     'with_source',
     'date_from+date_to',
+    'after+before',
     'last_updated_from+last_updated_to',
     'min_age+max_age',
     'kwargs'
