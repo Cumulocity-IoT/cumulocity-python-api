@@ -249,7 +249,16 @@ class Events(CumulocityResource):
         event_object.c8y = self.c8y  # inject c8y connection into instance
         return event_object
 
-    def select(self, type: str = None, source: str = None, fragment: str = None,  # noqa (type)
+    @staticmethod
+    def _check_params(fragment, fragment_type, fragment_value):
+        """Check for invalid select parameter combinations."""
+        if fragment_value and not (fragment_type or fragment):
+            raise ValueError("Fragment value filter also needs 'fragment_type' or 'fragment' filter.")
+
+    def select(self,
+               expression: str = None,
+               type: str = None, source: str = None, fragment: str = None,  # noqa (type)
+               fragment_type: str = None, fragment_value: str = None,
                before: str | datetime = None, after: str | datetime = None,
                date_from: str | datetime = None, date_to: str | datetime = None,
                created_before: str | datetime = None, created_after: str | datetime = None,
@@ -258,7 +267,9 @@ class Events(CumulocityResource):
                last_updated_from: str | datetime = None, last_updated_to: str | datetime = None,
                min_age: timedelta = None, max_age: timedelta = None,
                reverse: bool = False, limit: int = None,
-               page_size: int = 1000, page_number: int = None) -> Generator[Event]:
+               with_source_assets: bool = None, with_source_devices: bool = None,
+               page_size: int = 1000, page_number: int = None,
+               **kwargs) -> Generator[Event]:
         """Query the database for events and iterate over the results.
 
         This function is implemented in a lazy fashion - results will only be
@@ -269,9 +280,14 @@ class Events(CumulocityResource):
         combined (within reason).
 
         Args:
+            expression (str):  Arbitrary filter expression which will be
+                passed to Cumulocity without change; all other filters
+                are ignored if this is provided
             type (str):  Event type
             source (str):  Database ID of a source device
             fragment (str):  Name of a present custom/standard fragment
+            fragment_type (str):  Name of a present custom/standard fragment.
+            fragment_value (str):  Value of present custom/standard fragment.
             before (str|datetime):  Datetime object or ISO date/time string. Only
                 events assigned to a time before this date are returned.
             after (str|datetime):  Datetime object or ISO date/time string. Only
@@ -294,6 +310,10 @@ class Events(CumulocityResource):
             last_updated_to (str|datetime): Same as `updated_before`
             reverse (bool): Invert the order of results, starting with the
                 most recent one.
+            with_source_assets (bool): Whether also alarms for related source
+                assets should be included. Requires `source`.
+            with_source_devices (bool): Whether also alarms for related source
+                devices should be included. Requires `source`
             limit (int): Limit the number of results to this number.
             page_size (int): Define the number of events which are read (and
                 parsed in one chunk). This is a performance related setting.
@@ -303,27 +323,41 @@ class Events(CumulocityResource):
         Returns:
             Generator for Event objects
         """
-        base_query = self._build_base_query(type=type, source=source, fragment=fragment,
-                                            before=before, after=after,
-                                            date_from=date_from, date_to=date_to,
-                                            created_before=created_before, created_after=created_after,
-                                            created_from=created_from, created_to=created_to,
-                                            updated_before=updated_before, updated_after=updated_after,
-                                            last_updated_from=last_updated_from, last_updated_to=last_updated_to,
-                                            min_age=min_age, max_age=max_age,
-                                            reverse=reverse, page_size=page_size)
+        Events._check_params(fragment, fragment_type, fragment_value)
+
+        base_query = self._prepare_query(
+            expression=expression,
+            type=type, source=source, fragment=fragment,
+            fragment_type=fragment_type, fragment_value=fragment_value,
+            before=before, after=after,
+            date_from=date_from, date_to=date_to,
+            created_before=created_before, created_after=created_after,
+            created_from=created_from, created_to=created_to,
+            updated_before=updated_before, updated_after=updated_after,
+            last_updated_from=last_updated_from, last_updated_to=last_updated_to,
+            min_age=min_age, max_age=max_age,
+            reverse=reverse,
+            with_source_devices=with_source_devices, with_source_assets=with_source_assets,
+            page_size=page_size,
+            **kwargs)
         return super()._iterate(base_query, page_number, limit, Event.from_json)
 
-    def get_all(self, type: str = None, source: str = None, fragment: str = None,  # noqa (type)
-               before: str | datetime = None, after: str | datetime = None,
-               date_from: str | datetime = None, date_to: str | datetime = None,
-               created_before: str | datetime = None, created_after: str | datetime = None,
-               created_from: str | datetime = None, created_to: str | datetime = None,
-               updated_before: str | datetime = None, updated_after: str | datetime = None,
-               last_updated_from: str | datetime = None, last_updated_to: str | datetime = None,
-               min_age: timedelta = None, max_age: timedelta = None,
-               reverse: bool = False, limit: int = None,
-                page_size: int = 1000, page_number: int = None) -> List[Event]:
+    def get_all(
+            self,
+            expression: str = None,
+            type: str = None, source: str = None, fragment: str = None,  # noqa (type)
+            fragment_type: str = None, fragment_value: str = None,
+            before: str | datetime = None, after: str | datetime = None,
+            date_from: str | datetime = None, date_to: str | datetime = None,
+            created_before: str | datetime = None, created_after: str | datetime = None,
+            created_from: str | datetime = None, created_to: str | datetime = None,
+            updated_before: str | datetime = None, updated_after: str | datetime = None,
+            last_updated_from: str | datetime = None, last_updated_to: str | datetime = None,
+            min_age: timedelta = None, max_age: timedelta = None,
+            reverse: bool = False, limit: int = None,
+            with_source_assets: bool = None, with_source_devices: bool = None,
+            page_size: int = 1000, page_number: int = None,
+            **kwargs) -> List[Event]:
         """Query the database for events and return the results as list.
 
         This function is a greedy version of the `select` function. All
@@ -334,15 +368,68 @@ class Events(CumulocityResource):
         Returns:
             List of Event objects
         """
-        return list(self.select(type=type, source=source, fragment=fragment,
-                                before=before, after=after,
-                                date_from=date_from, date_to=date_to,
-                                created_before=created_before, created_after=created_after,
-                                created_from=created_from, created_to=created_to,
-                                updated_before=updated_before, updated_after=updated_after,
-                                last_updated_from=last_updated_from, last_updated_to=last_updated_to,
-                                min_age=min_age, max_age=max_age,
-                                reverse=reverse, limit=limit, page_size=page_size, page_number=page_number))
+        return list(self.select(
+            expression=expression,
+            type=type, source=source, fragment=fragment,
+            fragment_type=fragment_type, fragment_value=fragment_value,
+            before=before, after=after,
+            date_from=date_from, date_to=date_to,
+            created_before=created_before, created_after=created_after,
+            created_from=created_from, created_to=created_to,
+            updated_before=updated_before, updated_after=updated_after,
+            last_updated_from=last_updated_from, last_updated_to=last_updated_to,
+            min_age=min_age, max_age=max_age,
+            reverse=reverse,
+            with_source_devices=with_source_devices, with_source_assets=with_source_assets,
+            limit=limit, page_size=page_size, page_number=page_number,
+            **kwargs
+        ))
+
+    def get_count(
+            self,
+            expression: str = None,
+            type: str = None, source: str = None, fragment: str = None,  # noqa (type)
+            fragment_type: str = None, fragment_value: str = None,
+            before: str | datetime = None, after: str | datetime = None,
+            date_from: str | datetime = None, date_to: str | datetime = None,
+            created_before: str | datetime = None, created_after: str | datetime = None,
+            created_from: str | datetime = None, created_to: str | datetime = None,
+            updated_before: str | datetime = None, updated_after: str | datetime = None,
+            last_updated_from: str | datetime = None, last_updated_to: str | datetime = None,
+            min_age: timedelta = None, max_age: timedelta = None,
+            reverse: bool = False, limit: int = None,
+            with_source_assets: bool = None, with_source_devices: bool = None,
+            **kwargs
+    ) -> int:
+        """Calculate the number of potential results of a database query.
+
+        This function uses the same parameters as the `select` function.
+
+        Returns:
+            Number of potential results
+        """
+        Events._check_params(
+            fragment=fragment,
+            fragment_type=fragment_type,
+            fragment_value=fragment_value,
+        )
+        base_query = self._prepare_query(
+            expression=expression,
+            type=type, source=source, fragment=fragment,
+            fragment_type=fragment_type, fragment_value=fragment_value,
+            before=before, after=after,
+            date_from=date_from, date_to=date_to,
+            created_before=created_before, created_after=created_after,
+            created_from=created_from, created_to=created_to,
+            updated_before=updated_before, updated_after=updated_after,
+            last_updated_from=last_updated_from, last_updated_to=last_updated_to,
+            min_age=min_age, max_age=max_age,
+            reverse=reverse,
+            with_source_devices=with_source_devices, with_source_assets=with_source_assets,
+            limit=limit, page_size=1,
+            **kwargs
+        )
+        return self._get_count(base_query)
 
     def create(self, *events: Event):
         """Create event objects within the database.
@@ -379,9 +466,13 @@ class Events(CumulocityResource):
 
     # delete function is defined in super class
 
-    def delete_by(self, type: str = None, source: str = None, fragment: str = None,  # noqa (type)
-               before: str | datetime = None, after: str | datetime = None,
-               min_age: timedelta = None, max_age: timedelta = None):
+    def delete_by(
+            self,
+            expression: str = None,
+            type: str = None, source: str = None, fragment: str = None,
+            before: str | datetime = None, after: str | datetime = None,
+            min_age: timedelta = None, max_age: timedelta = None,
+            **kwargs):
         """Query the database and delete matching events.
 
         All parameters are considered to be filters, limiting the result set
@@ -389,6 +480,9 @@ class Events(CumulocityResource):
         combined (within reason).
 
         Args:
+            expression (str):  Arbitrary filter expression which will be
+                passed to Cumulocity without change; all other filters
+                are ignored if this is provided
             type (str):  Event type
             source (str):  Database ID of a source device
             fragment (str):  Name of a present custom/standard fragment
@@ -399,12 +493,15 @@ class Events(CumulocityResource):
             min_age (timedelta): Minimum age for selected events.
             max_age (timedelta): Maximum age for selected events.
         """
+        # prepare for future support
+        Events._check_params(fragment, kwargs.get('fragment_type', None), kwargs.get('fragment_value'))
         # build a base query
-        base_query = self._build_base_query(type=type, source=source, fragment=fragment,
-                                            before=before, after=after, min_age=min_age, max_age=max_age)
-        # remove &page_number= from the end
-        query = base_query[:base_query.rindex('&')]
-        self.c8y.delete(query)
+        base_query = self._prepare_query(
+            expression=expression,
+            type=type, source=source, fragment=fragment,
+            before=before, after=after, min_age=min_age, max_age=max_age,
+            **kwargs)
+        self.c8y.delete(base_query)
 
     def create_attachment(self, event_id: str, file: str | BinaryIO, content_type: str = None) -> dict:
         """Add an event's binary attachment.
