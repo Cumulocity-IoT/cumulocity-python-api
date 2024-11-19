@@ -958,7 +958,7 @@ class InventoryRoles(CumulocityResource):
         Returns:
             Generator for InventoryRole objects
         """
-        base_query = self._build_base_query(page_size=page_size)
+        base_query = self._prepare_query(page_size=page_size)
         return super()._iterate(base_query, page_number, limit, InventoryRole.from_json)
 
     def get_all(self, limit: int = None, page_size: int = 1000, page_number: int = None) -> List[InventoryRole]:
@@ -1273,7 +1273,7 @@ class GlobalRoles(CumulocityResource):
                 page_number = page_number + 1
         else:
             # select all
-            query = self._build_base_query(page_size=page_size)
+            query = self._prepare_query(page_size=page_size)
             page_number = 1
             while True:
                 role_jsons = self._get_page(query, page_number)
