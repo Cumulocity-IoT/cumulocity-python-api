@@ -558,8 +558,6 @@ class CumulocityResource:
             'owner': owner,
             'source': source,
             'fragmentType': fragment,
-            'valueFragmentType': value,
-            'valueFragmentSeries': series,
             'deviceId': device_id,
             'agentId': agent_id,
             'bulkId': bulk_id,
@@ -585,21 +583,6 @@ class CumulocityResource:
             return resource or self.resource
         return (resource or self.resource) + '?' + encoded
 
-    def _prepare_request_string(self, expression: str = None, **kwargs):
-        """Prepare a query string.
-        """
-        encoded = quote_plus(expression) if expression else urlencode(**kwargs)
-        if not encoded:
-            return self.resource
-        return self.resource + '?' + encoded
-
-    # def _build_base_query(self, expression: str = None, **kwargs):
-    #     if expression:
-    #         encoded_params = urllib.parse.quote_plus(expression)
-    #     else:
-    #         encoded_params = urlencode(CumulocityResource._prepare_query_params(**kwargs))
-    #     return self.resource + '?' + encoded_params
-    #
     def _get_object(self, object_id):
         return self.c8y.get(self.build_object_path(object_id))
 
