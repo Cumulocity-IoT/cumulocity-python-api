@@ -3,14 +3,19 @@
 # and/or its subsidiaries and/or its affiliates and/or their licensors.
 # Use, reproduction, transfer, publication or disclosure is prohibited except
 # as specifically provided for in your License Agreement with Software AG.
-
-from datetime import datetime
+import itertools
+from datetime import datetime, timedelta
 import json
 import os
+from unittest.mock import Mock, patch
+from urllib.parse import unquote_plus
 
 import pytest
 
-from c8y_api.model import Measurement, Series
+from c8y_api import CumulocityApi
+from c8y_api.model import Measurement, Measurements, Series
+
+from tests.utils import isolate_last_call_arg
 
 
 def test_measurement_parsing():
@@ -38,6 +43,127 @@ def test_measurement_parsing():
         'c8y_Measurement': {'c8y_temperature': {'unit': 'x', 'value': 12.3}}
     }
     assert m.to_full_json() == expected_full_json
+
+
+def isolate_call_url(fun, **kwargs):
+    """Call an Applications API function and isolate the request URL for further assertions."""
+    c8y = CumulocityApi(base_url='some.host.com', tenant_id='t123', username='user', password='pass')
+    c8y.get = Mock(side_effect=[{'measurements': x, 'statistics': {'totalPages': 1}} for x in ([{}], [])])
+    c8y.delete = Mock(return_value={'measurements': [], 'statistics': {'totalPages': 1}})
+    with patch('c8y_api.model.Measurement.from_json') as parse_mock:
+        parse_mock.return_value = Measurement()
+        fun(c8y.measurements, **kwargs)
+    resource = isolate_last_call_arg(c8y.get, 'resource', 0) if c8y.get.called else None
+    resource = resource or (isolate_last_call_arg(c8y.delete, 'resource', 0) if c8y.delete.called else None)
+    return unquote_plus(resource)
+
+
+@pytest.mark.parametrize('fun', [
+    Measurements.get_all,
+    Measurements.get_last,
+    Measurements.delete_by,
+])
+@pytest.mark.parametrize('params, expected, not_expected', [
+    ({'expression': 'EX', 'type': 'T'}, ['?EX'], ['type']),
+    ({'type': 'T', 'source': 'S'},
+     ['type=T', 'source=S'],
+     []),
+    ({'value_fragment_type': 'T', 'value_fragment_series': 'S'},
+     ['valueFragmentType=T', 'valueFragmentSeries=S'],
+     ['_']),
+    ({'series': 'T.S'},
+     ['valueFragmentType=T', 'valueFragmentSeries=S'],
+     ['series']),
+    ({'date_from': '2020-12-31', 'date_to': '2021-12-31'},
+     ['dateFrom=2020-12-31', 'dateTo=2021-12-31'],
+     []),
+    ({'after': '2020-12-31', 'before': '2021-12-31'},
+     ['dateFrom=2020-12-31', 'dateTo=2021-12-31'],
+     []),
+    ({'min_age': timedelta(days=3), 'max_age': timedelta(weeks=1)},
+     ['dateFrom', 'dateTo'],
+     ['min', 'max']),
+    ({'snake_case': 'SC', 'pascalCase': 'PC'},
+     ['snakeCase=SC', 'pascalCase=PC'],
+     ['_']),
+], ids=[
+    'expression',
+    'type+source',
+    'type+series',
+    'series',
+    'date_from+date_to',
+    'after+before',
+    'min_age+max_age',
+    'kwargs'
+])
+def test_select(fun, params, expected, not_expected):
+    """Verify that the select function's parameters are processed as expected."""
+    if fun is Measurements.get_last:
+        params = {k: v for k, v in params.items() if k not in ['date_from', 'after', 'max_age']}
+        expected = list(filter(lambda x: 'dateFrom' not in x, expected))
+    resource = isolate_call_url(fun, **params)
+    for e in expected:
+        assert e in resource
+    for ne in not_expected:
+        assert ne not in resource
+
+
+@pytest.mark.parametrize('fun', [
+    Measurements.get_all,
+    Measurements.delete_by,
+])
+@pytest.mark.parametrize('args, errors', [
+    # date priorities
+    (['date_from', 'after'], ['date_from', 'after', 'max_age']),
+    (['date_from', 'max_age'], ['date_from', 'after', 'max_age']),
+    (['date_to', 'before'], ['date_to', 'before', 'min_age']),
+    (['date_to', 'min_age'], ['date_to', 'before', 'min_age']),
+], ids=[
+    "date_from+after",
+    'date_from+max_age',
+    'date_to+before',
+    'date_to+min_age',
+])
+def test_select_invalid_combinations(fun, args, errors):
+    """Verify that invalid query filter combinations are raised as expected."""
+    with pytest.raises(ValueError) as error:
+        params = {x: x.upper() for x in args}
+        isolate_call_url(fun, **params)
+    assert all(e in str(error) for e in errors)
+
+
+def generate_series_data() -> tuple:
+    """Generate all kinds of combinations of series fragments."""
+
+    def gen_level2(n):
+        level2_single = ({n: {'1': {'value': 1}}}, [f'{n}.1'])
+        level2_multi = ({n: {'1': {'value': 1}, '2': {'value': 2}}}, [f'{n}.1', f'{n}.2'])
+        level2_invalid = ({n: {'1': {'data': 1}}}, [])
+        level2_mix1 = ({n: {'1': {'data': 1}, '2': {'value': 2}}}, [f'{n}.2'])
+        level2_mix2 = ({n: {'1': {'value': 1}, '2': {'data': 2}}}, [f'{n}.1'])
+
+        return [level2_single, level2_multi, level2_invalid, level2_mix1, level2_mix2]
+
+    a = gen_level2('A')
+    b = gen_level2('B')
+    # collecting combinations of A and B cases
+    # (first element is the json, 2nd the expectation for each combination)
+    ab = [({**r[0][0], **r[1][0]}, r[0][1] + r[1][1]) for r in itertools.product(a, b)]
+
+    cases = a + ab
+    # id is the beautified expectation, prefixed with a number
+    ids = [f'{i}: ' + ','.join(map(lambda x: x.replace('.', ''), x[1])) for i, x in enumerate(cases)]
+
+    return cases, ids
+
+
+@pytest.mark.parametrize('testcase', generate_series_data()[0], ids=generate_series_data()[1])
+def test_get_series(testcase):
+    """Verify that the get_series function works as expected."""
+    data = {**testcase[0], 'source': {'id': '1'}}
+    m = Measurement.from_json(data)
+    # expected = [*xs for xs in testcase[1]]
+    assert testcase[1] == m.get_series()
 
 
 @pytest.fixture(name='sample_series')

@@ -156,7 +156,7 @@ class TenantOptions(CumulocityResource):
         Returns:
             Generator for TenantObject instances
         """
-        base_query = self._build_base_query(category=category, page_size=page_size)
+        base_query = self._prepare_query(category=category, page_size=page_size)
         return super()._iterate(base_query, page_number, limit, TenantOption.from_json)
 
     def get_all(self, category: str = None, limit: int = None,

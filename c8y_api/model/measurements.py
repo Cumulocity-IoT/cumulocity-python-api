@@ -9,7 +9,7 @@ from __future__ import annotations
 import dataclasses
 from datetime import datetime, timedelta
 from typing import Type, List, Generator, Sequence
-from urllib.parse import urlencode
+from urllib.parse import urlencode, quote_plus
 
 from c8y_api._base_api import CumulocityRestApi
 
@@ -37,71 +37,84 @@ class Units(object):
 
 class Value(dict):
     """Generic datapoint."""
+
     def __init__(self, value, unit):
         super().__init__(value=value, unit=unit)
 
 
 class Grams(Value):
     """Weight datapoint (Grams)."""
+
     def __init__(self, value):
         super().__init__(value, Units.Grams)
 
 
 class Kilograms(Value):
     """Weight datapoint (Kilograms)."""
+
     def __init__(self, value):
         super().__init__(value, Units.Kilograms)
 
 
 class Kelvin(Value):
     """Temperature datapoint (Kelvin)."""
+
     def __init__(self, value):
         super().__init__(value, Units.Kelvin)
 
 
 class Celsius(Value):
     """Temperature datapoint (Celsius)."""
+
     def __init__(self, value):
         super().__init__(value, Units.Celsius)
 
 
 class Meters(Value):
     """Length datapoint (Meters)."""
+
     def __init__(self, value):
         super().__init__(value, Units.Meters)
 
 
 class Centimeters(Value):
     """Length datapoint (Centimeters)."""
+
     def __init__(self, value):
         super().__init__(value, Units.Centimeters)
 
 
 class Millimeters(Value):
     """Length datapoint (Millimeters)."""
+
     def __init__(self, value):
         super().__init__(value, Units.Millimeters)
 
 
 class Liters(Value):
     """Volume datapoint (Liters)."""
+
     def __init__(self, value):
         super().__init__(value, Units.Liters)
 
 
 class CubicMeters(Value):
     """Volume datapoint (Cubic Meters)."""
+
     def __init__(self, value):
         super().__init__(value, Units.CubicMeters)
 
 
 class Count(Value):
     """Discrete number datapoint (number/count)."""
+
     def __init__(self, value):
         super().__init__(value, Units.Count)
 
+
 class Percentage(Value):
     """Percent value datapoint."""
+
     def __init__(self, value):
         super().__init__(value, Units.Percent)
 
@@ -119,10 +132,11 @@ class Measurement(ComplexObject):
     # these need to be defined like this for the abstract super functions
     _resource = '/measurement/measurements'
     _parser = ComplexObjectParser({'type': 'type', 'time': 'time'}, ['source'])
+
     # _accept
     # _not_updatable
 
-    def __init__(self, c8y=None, type=None, source=None, time: str|datetime = None, **kwargs):  # noqa (type)
+    def __init__(self, c8y=None, type=None, source=None, time: str | datetime = None, **kwargs):  # noqa (type)
         """ Create a new Measurement object.
 
         Args:
@@ -194,6 +208,28 @@ class Measurement(ComplexObject):
     # (because Measurements are not updated, can only be created from scratch)
     def __getitem__(self, item):
         return _DictWrapper(self.fragments[item], on_update=None)
+
+    def get_series(self) -> list[str]:
+        """Collect series names.
+
+        Collect series names defined in this measurement. Any top level fragment having a nested element
+        featuring a _value_ field is considered a series. Multiple such series could be defined.
+
+        ```json
+        {
+            "c8y_Temperature": {
+                "T": {
+                    "unit": "C",
+                    "value": 12.8
+                }
+            }
+        }
+        ```
+
+        Returns:
+            A list of series names (e.g. `c8y_Temperature.T`) defined in this measurement.
+        """
+        return [f'{k1}.{k2}' for k1, v1 in self.fragments.items() for k2, v2 in v1.items() if 'value' in v2]
 
     @property
     def datetime(self) -> Type[datetime] | None:
@@ -276,6 +312,7 @@ class Series(dict):
             A simple list or list of tuples (potentially nested) depending on the
             parameter combination.
         """
+
         # we want explicit else's to make the logic easier to understand
         # pylint: disable=no-else-return, too-many-return-statements, too-many-branches, line-too-long
 
@@ -309,7 +346,8 @@ class Series(dict):
                     return [v[i][value] for v in self['values'].values() if (len(v) > i and v[i])]
                 else:
                     # like above, but include timestamps
-                    return [(parse_timestamp(k), v[i][value]) for k, v in self['values'].items() if (len(v) > i and v[i])]
+                    return [(parse_timestamp(k), v[i][value]) for k, v in self['values'].items() if
+                            (len(v) > i and v[i])]
 
             # all values
             else:
@@ -320,7 +358,8 @@ class Series(dict):
                     return [(v[i]['min'], v[i]['max']) for v in self['values'].values() if (len(v) > i and v[i])]
                 else:
                     # like above, but include timestamps
-                    return [(parse_timestamp(k), v[i]['min'], v[i]['max']) for k, v in self['values'].items() if (len(v) > i and v[i])]
+                    return [(parse_timestamp(k), v[i]['min'], v[i]['max']) for k, v in self['values'].items() if
+                            (len(v) > i and v[i])]
 
         # multiple series
         if isinstance(series, Sequence):
@@ -360,7 +399,8 @@ class Series(dict):
                 else:
                     # like above, but prepend with timestamps
                     return [
-                        (parse_timestamp(k), *((v[i]['min'], v[i]['max']) if (len(v) > i and v[i]) else None for i in ii))
+                        (parse_timestamp(k),
+                         *((v[i]['min'], v[i]['max']) if (len(v) > i and v[i]) else None for i in ii))
                         for k, v in self['values'].items()
                     ]
 
@@ -401,21 +441,70 @@ class Measurements(CumulocityResource):
         measurement.c8y = self.c8y  # inject c8y connection into instance
         return measurement
 
-    def select(
+    @staticmethod
+    def _collate_select_params(
+            series: str = None,
+            value_fragment_type: str = None,
+            value_fragment_series: str = None,
+    ) -> (str, str):
+        if series and (value_fragment_type or value_fragment_series):
+            raise ValueError(
+                "Series parameter must not be combined with 'value_fragment_type' or 'value_fragment_series'.")
+        if series:
+            parts = series.split('.', 1)
+            return parts[0], (parts[1] if len(parts) == 2 else None)
+        return value_fragment_type, value_fragment_series
+
+    def _prepare_measurement_query(
             self,
+            expression: str = None,
             type: str = None,
             source: str | int = None,
-            fragment: str = None,
-            value: str = None,
+            value_fragment_type: str = None,
+            value_fragment_series: str = None,
             series: str = None,
             before: str | datetime = None,
             after: str | datetime = None,
             min_age: timedelta = None,
             max_age: timedelta = None,
             reverse: bool = None,
+            page_size: int = 1000,
+            **kwargs
+    ):
+        series_type, series_value = self._collate_select_params(
+            series=series,
+            value_fragment_type=value_fragment_type,
+            value_fragment_series=value_fragment_series,
+        )
+        return self._prepare_query(
+            expression=expression,
+            type=type, source=source,
+            valueFragmentType=series_type,
+            valueFragmentSeries=series_value,
+            before=before, after=after, min_age=min_age, max_age=max_age,
+            reverse=reverse, page_size=page_size,
+            **kwargs
+        )
+
+    def select(
+            self,
+            expression: str = None,
+            type: str = None,
+            source: str | int = None,
+            value_fragment_type: str = None,
+            value_fragment_series: str = None,
+            series: str = None,
+            before: str | datetime = None,
+            after: str | datetime = None,
+            date_from: str | datetime = None,
+            date_to: str | datetime = None,
+            min_age: timedelta = None,
+            max_age: timedelta = None,
+            reverse: bool = None,
             limit: int = None,
             page_size: int = 1000,
-            page_number: int = None
+            page_number: int = None,
+            **kwargs
     ) -> Generator[Measurement]:
         """ Query the database for measurements and iterate over the results.
 
@@ -427,17 +516,25 @@ class Measurements(CumulocityResource):
         combined (within reason).
 
         Args:
+            expression (str):  Arbitrary filter expression which will be
+                passed to Cumulocity without change; all other filters
+                are ignored if this is provided
             type (str):  Alarm type
             source (str|int):  Database ID of a source device
-            fragment (str):  Name of a present custom/standard fragment
-            value (str):  Type/Name of a present value fragment
-            series (str):  Name of a present series within a value fragment
+            value_fragment_type (str):  The series' value fragment name
+                (e.g. c8y_Environment)
+            value_fragment_series (str):  The series' name (within the
+                value fragment, e.g. Temperature)
+            series (str):  Full name of a present series within a value
+                fragment e.g. "c8y_Environment.Temperature"
             before (datetime|str):  Datetime object or ISO date/time string.
                 Only measurements assigned to a time before this date are
                 returned.
             after (datetime|str):  Datetime object or ISO date/time string.
                 Only measurements assigned to a time after this date are
                 returned.
+            date_from (str|datetime): Same as `after`
+            date_to (str|datetime): Same as `before`
             min_age (timedelta):  Timedelta object. Only measurements of
                 at least this age are returned.
             max_age (timedelta):  Timedelta object. Only measurements with
@@ -454,27 +551,44 @@ class Measurements(CumulocityResource):
         Returns:
             Generator[Measurement]: Iterable of matching Measurement objects
         """
-        base_query = self._build_base_query(type=type, source=source, fragment=fragment,
-                                            valueFragmentType=value, valueFragmentSeries=series,
-                                            before=before, after=after, min_age=min_age, max_age=max_age,
-                                            reverse=reverse, page_size=page_size)
+        base_query = self._prepare_measurement_query(
+            expression=expression,
+            type=type,
+            source=source,
+            value_fragment_type=value_fragment_type,
+            value_fragment_series=value_fragment_series,
+            series=series,
+            before=before,
+            after=after,
+            date_from=date_from,
+            date_to=date_to,
+            min_age=min_age,
+            max_age=max_age,
+            reverse=reverse,
+            page_size=page_size,
+            **kwargs
+        )
         return super()._iterate(base_query, page_number, limit, Measurement.from_json)
 
     def get_all(
             self,
+            expression: str = None,
             type: str = None,
             source: str | int = None,
-            fragment: str = None,
-            value: str = None,
+            value_fragment_type: str = None,
+            value_fragment_series: str = None,
             series: str = None,
             before: str | datetime = None,
             after: str | datetime = None,
+            date_from: str | datetime = None,
+            date_to: str | datetime = None,
             min_age: timedelta = None,
             max_age: timedelta = None,
             reverse: bool = None,
             limit: int = None,
             page_size: int = 1000,
-            page_number: int = None
+            page_number: int = None,
+            **kwargs
     ) -> List[Measurement]:
         """ Query the database for measurements and return the results
         as list.
@@ -486,34 +600,60 @@ class Measurements(CumulocityResource):
             List of matching Measurement objects
         """
         return list(self.select(
+            expression=expression,
             type=type,
             source=source,
-            fragment=fragment,
-            value=value,
+            value_fragment_type=value_fragment_type,
+            value_fragment_series=value_fragment_series,
             series=series,
             before=before,
             after=after,
+            date_from=date_from,
+            date_to=date_to,
             min_age=min_age,
             max_age=max_age,
             reverse=reverse,
             limit=limit,
             page_size=page_size,
-            page_number=page_number))
+            page_number=page_number,
+            **kwargs))
 
     def get_last(
             self,
+            expression: str = None,
             type: str = None,
             source: str | int = None,
-            fragment: str = None,
-            value: str = None,
+            value_fragment_type: str = None,
+            value_fragment_series: str = None,
             series: str = None,
+            date_to: str | datetime = None,
             before: str | datetime = None,
-            min_age: timedelta = None
-    ) -> Measurement:
+            min_age: timedelta = None,
+            **kwargs
+    ) -> Measurement | None:
         """ Query the database and return the last matching measurement.
 
         This function is a special variant of the select function. Only
         the last matching result is returned.
+
+        Args:
+            expression (str):  Arbitrary filter expression which will be
+                passed to Cumulocity without change; all other filters
+                are ignored if this is provided
+            type (str):  Alarm type
+            source (str|int):  Database ID of a source device
+            value_fragment_type (str):  The series' value fragment name
+                (e.g. c8y_Environment)
+            value_fragment_series (str):  The series' name (within the
+                value fragment, e.g. Temperature)
+            series (str):  Full name of a present series within a value
+                fragment e.g. "c8y_Environment.Temperature"
+            before (datetime|str):  Datetime object or ISO date/time string.
+                Only measurements assigned to a time before this date are
+                returned.
+            date_to (str|datetime): Same as `before`
+            min_age (timedelta):  Timedelta object. Only measurements of
+                at least this age are returned.
 
         Returns:
             Last matching Measurement object
@@ -521,25 +661,32 @@ class Measurements(CumulocityResource):
         # at least one date qualifier is required for this query to function,
         # so we enforce the 'after' filter if nothing else is specified
         after = None
-        if not before and not min_age:
+        if all(x is None for x in [date_to, before, min_age]):
             after = '1970-01-01'
-        base_query = self._build_base_query(
+        base_query = self._prepare_measurement_query(
+            expression=expression,
             type=type,
             source=source,
-            fragment=fragment,
-            value=value,
+            value_fragment_type=value_fragment_type,
+            value_fragment_series=value_fragment_series,
             series=series,
             after=after,
+            date_to=date_to,
             before=before,
             min_age=min_age,
             reverse=True,
-            page_size=1)
-        m = Measurement.from_json(self._get_page(base_query, page_number=1)[0])
+            page_size=1,
+            **kwargs)
+        results = self._get_page(base_query, page_number=1)
+        if not results:
+            return None
+        m = Measurement.from_json(results[0])
         m.c8y = self.c8y  # inject c8y connection into instance
         return m
 
     def get_series(
             self,
+            expression: str = None,
             source: str = None,
             aggregation: str = None,
             series: str | Sequence[str] = None,
@@ -547,10 +694,15 @@ class Measurements(CumulocityResource):
             after: str | datetime = None,
             min_age: timedelta = None,
             max_age: timedelta = None,
-            reverse=False) -> Series:
+            reverse: bool = None,
+            **kwargs
+    ) -> Series:
         """Query the database for a list of series and their values.
 
         Args:
+            expression (str):  Arbitrary filter expression which will be
+                passed to Cumulocity without change; all other filters
+                are ignored if this is provided
             source (str):  Database ID of a source device
             aggregation (str):  Aggregation type
             series (str|Sequence[str]):  Series' to query
@@ -573,56 +725,85 @@ class Measurements(CumulocityResource):
 
         See also: https://cumulocity.com/api/core/#operation/getMeasurementSeriesResource
         """
-        params = self._prepare_query_params(
+        # The 'series' parameter has to be added through a hack; it
+        # may be a list and because 'series' is by default converted to
+        # the 'valueFragmentSeries' parameter
+
+        if series:
+            series = series if isinstance(series, str) else ','.join(series)
+
+        base_query = self._prepare_query(
+            resource=f'{self.resource}/series',
+            expression=expression,
             source=source,
             # this is a non-mapped parameter
             aggregationType=aggregation,
+            series=series,
             before=before,
             after=after,
             min_age=min_age,
             max_age=max_age,
-            reverse=reverse)
-        # The 'series' parameter has to be added manually; because it
-        # may be a list and because 'series' is by default converted to
-        # the 'valueFragmentSeries' parameter
-        if series:
-            params['series'] = series
-        # Build the URL, ensuring that the 'series' parameter is properly
-        # expanded in case it is a list.
-        url = self.resource + '/series?' + urlencode(params, doseq=True)
-        series_json = self.c8y.get(url)
-        return Series(series_json)
+            reverse=reverse,
+            **kwargs)
+        return Series(self.c8y.get(base_query))
 
     def delete_by(
             self,
+            expression: str = None,
             type: str = None,
             source: str | int = None,
-            fragment: str = None,
-            value: str = None,
-            series: str = None,
+            # value_fragment_type: str = None,
+            # value_fragment_series: str = None,
+            # series: str = None,
+            date_from: str | datetime = None,
+            date_to: str | datetime = None,
             before: str | datetime = None,
             after: str | datetime = None,
             min_age: timedelta = None,
             max_age: timedelta = None,
-        ):
+            **kwargs
+    ):
         """ Query the database and delete matching measurements.
 
         All parameters are considered to be filters, limiting the result set
         to objects which meet the filters specification.  Filters can be
         combined (within reason).
 
-        Args: See 'select' function
+        Note: In Cumulocity, measurements are deleted asynchronously by design.
+
+        Args:
+            expression (str):  Arbitrary filter expression which will be
+                passed to Cumulocity without change; all other filters
+                are ignored if this is provided
+            type (str):  Alarm type
+            source (str|int):  Database ID of a source device
+            before (datetime|str):  Datetime object or ISO date/time string.
+                Only measurements assigned to a time before this date are
+                returned.
+            after (datetime|str):  Datetime object or ISO date/time string.
+                Only measurements assigned to a time after this date are
+                returned.
+            date_from (str|datetime): Same as `after`
+            date_to (str|datetime): Same as `before`
+            min_age (timedelta):  Timedelta object. Only measurements of
+                at least this age are returned.
+            max_age (timedelta):  Timedelta object. Only measurements with
+                at most this age are returned.
         """
-        base_query = self._build_base_query(
+        base_query = self._prepare_measurement_query(
+            expression=expression,
             type=type,
             source=source,
-            fragment=fragment,
-            value=value,
-            series=series,
+            # value_fragment_type=value_fragment_type,
+            # value_fragment_series=value_fragment_series,
+            # series=series,
+            date_from=date_from,
+            date_to=date_to,
             before=before,
             after=after,
             min_age=min_age,
-            ax_age=max_age)
+            max_age=max_age,
+            **kwargs)
         self.c8y.delete(base_query)
 
     # delete function is defined in super class

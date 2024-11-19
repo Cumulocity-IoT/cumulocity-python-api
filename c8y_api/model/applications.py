@@ -276,9 +276,15 @@ class Applications(CumulocityResource):
         result = self.c8y.get('/application/currentApplication/subscriptions')
         return [ApplicationSubscription.from_json(x) for x in result['users']]
 
-    def select(self, name: str = None, type: str = None, owner: str = None, user: str = None,
-               tenant: str = None, subscriber: str = None, provided_for: str = None,
-               limit: int = None, page_size: int = 100, page_number: int = None) -> Generator[Application]:
+    def select(
+            self,
+            expression: str = None,
+            name: str = None, type: str = None, owner: str = None, user: str = None,
+            tenant: str = None, subscriber: str = None, provided_for: str = None,
+            has_versions: bool = None,
+            limit: int = None, page_size: int = 100, page_number: int = None,
+            **kwargs
+    ) -> Generator[Application]:
         """Query the database for applications and iterate over the results.
 
         This function is implemented in a lazy fashion - results will only be
@@ -289,6 +295,9 @@ class Applications(CumulocityResource):
         combined (within reason).
 
         Args:
+            expression (str):  Arbitrary filter expression which will be
+                passed to Cumulocity without change; all other filters
+                are ignored if this is provided
             name (str):  Name of an application (no wildcards allowed)
             type (str):  Application type (e.g. HOSTED)
             owner (str):  ID of a Cumulocity user which owns the application
@@ -299,6 +308,8 @@ class Applications(CumulocityResource):
                 to the application (and may own it)
             provided_for (str):  ID of a Cumulocity tenant which is subscribed
                 to the application but does not own it
+            has_versions (bool): Whether to filter for applications with a
+                defined applicationVersions field
             limit (int): Limit the number of results to this number.
             page_size (int): Define the number of events which are read (and
                 parsed in one chunk). This is a performance related setting.
@@ -308,14 +319,25 @@ class Applications(CumulocityResource):
         Returns:
             A Generator for Application objects.
         """
-        base_query = self._build_base_query(name=name, type=type, owner=owner, tenant=tenant,
-                                            user=user, subscriber=subscriber, providedFor=provided_for,
-                                            page_size=page_size)
+        base_query = self._prepare_query(
+            expression=expression,
+            name=name, type=type, owner=owner, tenant=tenant,
+            user=user, subscriber=subscriber, providedFor=provided_for,
+            has_versions=has_versions,
+            page_size=page_size,
+            **kwargs
+        )
         return super()._iterate(base_query, page_number, limit, Application.from_json)
 
-    def get_all(self, name: str = None, type: str = None, owner: str = None, user: str = None,
-                tenant: str = None, subscriber: str = None, provided_for: str = None,
-                limit: int = None, page_size: int = 100, page_number: int = None) -> List[Application]:
+    def get_all(
+            self,
+            expression: str = None,
+            name: str = None, type: str = None, owner: str = None, user: str = None,
+            tenant: str = None, subscriber: str = None, provided_for: str = None,
+            has_versions: bool = None,
+            limit: int = None, page_size: int = 100, page_number: int = None,
+            **kwargs
+    ) -> List[Application]:
         """Query the database for applications and return the results as list.
 
         This function is a greedy version of the `select` function. All
@@ -326,9 +348,13 @@ class Applications(CumulocityResource):
         Returns:
             List of Application objects
         """
-        return list(self.select(name=name, type=type, owner=owner, user=user,
-                                tenant=tenant, subscriber=subscriber, provided_for=provided_for,
-                                limit=limit, page_size=page_size, page_number=page_number))
+        return list(self.select(
+            expression=expression,
+            name=name, type=type, owner=owner, user=user,
+            tenant=tenant, subscriber=subscriber, provided_for=provided_for,
+            has_versions=has_versions,
+            limit=limit, page_size=page_size, page_number=page_number,
+            **kwargs))
 
     def upload_attachment(self, application_id: str, file: str | BinaryIO):
         """Upload application binary for a registered application.

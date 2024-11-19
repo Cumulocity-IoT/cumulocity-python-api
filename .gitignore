@@ -4,9 +4,8 @@
 __pycache__
 dist*
 build*
-.venv*
-venv*
+*venv*
 *.egg-info
-*.env*
+.env*
 _version.py
 wordlist.txt

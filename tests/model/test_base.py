@@ -8,8 +8,12 @@
 
 from __future__ import annotations
 
+from unittest.mock import Mock
+
+import pytest
+
 from c8y_api import CumulocityRestApi
-from c8y_api.model._base import SimpleObject, ComplexObject
+from c8y_api.model._base import SimpleObject, ComplexObject, CumulocityResource, CumulocityObject
 from c8y_api.model._parser import SimpleObjectParser, ComplexObjectParser
 
 
@@ -226,3 +230,42 @@ def test_complexobject_instantiation_and_formatting():
         'additionalFragment': {'value1': 'AA', 'value2': 'BB'}
     }
     assert obj._to_json(only_updated=True) == expected_diff_json
+
+
+@pytest.mark.parametrize('page_size, num_all, limit, expected', [
+    (10, 100, 100, 100),  # exact
+    (10, 200, 100, 100),  # limit hit
+    (10, 99, 100, 99),    # all
+    (10, 1, 100, 1),      # just one
+    (10, 9, 100, 9),      # first page
+    (10, 11, 100, 11),    # second page
+    (1, 10, 100, 10),     # min page size
+    (1, 0, 100, 0),       # no results
+])
+def test_iteration(page_size, num_all, limit, expected):
+    """Verify that iteration works as expected."""
+    all_items = [{'i': i} for i in range(num_all)]
+
+    # returns a 'page' from all items
+    def get_page(_, page):
+        nonlocal all_items
+        s = page_size * (page - 1)
+        e = page_size * page
+        return [i for i in all_items[s:e]]
+
+    # parses an item as CumulocityObject
+    def parse_fun(item):
+        obj = CumulocityObject(None)
+        obj.id = item['i']
+        return obj
+
+    # create class under test
+    res = CumulocityResource(Mock(CumulocityRestApi), '')
+    res._get_page = get_page
+
+    # iterate oder results
+    result = list(res._iterate(base_query="q", page_number=None, limit=limit, parse_fun=parse_fun))
+    result_ids = [x.id for x in result]
+
+    # check expectation
+    assert result_ids == list(range(expected))

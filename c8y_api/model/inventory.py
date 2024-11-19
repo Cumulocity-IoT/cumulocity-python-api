@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 from typing import Any, Generator, List
+from urllib.parse import urlencode, quote_plus
 
 from c8y_api.model._base import CumulocityResource
 from c8y_api.model._util import _QueryUtil
@@ -45,16 +46,27 @@ class Inventory(CumulocityResource):
     def get_all(
             self,
             expression: str = None,
+            query: str = None,
+            ids: list[str | int] = None,
+            order_by: str = None,
             type: str = None,
+            parent: str = None,
             fragment: str = None,
+            fragments: list[str] = None,
             name: str = None,
             owner: str = None,
-            query: str = None,
             text: str = None,
-            ids: List[str | int] = None,
+            only_roots: str = None,
+            with_children: bool = None,
+            with_children_count: bool = None,
+            skip_children_names: bool = None,
+            with_groups: bool = None,
+            with_parents: bool = None,
+            with_latest_values: bool = None,
+            reverse: bool = None,
             limit: int = None,
-            page_size: int = 1000
-    ) -> List[ManagedObject]:
+            page_size: int = 1000,
+            **kwargs) -> List[ManagedObject]:
         """ Query the database for managed objects and return the results
         as list.
 
@@ -66,27 +78,41 @@ class Inventory(CumulocityResource):
         """
         return list(self.select(
             expression=expression,
+            query=query,
+            ids=ids,
+            order_by=order_by,
             type=type,
+            parent=parent,
             fragment=fragment,
+            fragments=fragments,
             name=name,
             owner=owner,
-            query=query,
             text=text,
-            ids=ids,
+            only_roots=only_roots,
+            with_children=with_children,
+            with_children_count=with_children_count,
+            skip_children_names=skip_children_names,
+            with_groups=with_groups,
+            with_parents=with_parents,
+            with_latest_values=with_latest_values,
+            reverse=reverse,
             limit=limit,
-            page_size=page_size))
+            page_size=page_size,
+            **kwargs))
 
     def get_count(
             self,
             expression: str = None,
+            query: str = None,
+            ids: List[str | int] = None,
             type: str = None,
+            parent: str = None,
             fragment: str = None,
+            fragments: list[str] = None,
             name: str = None,
             owner: str = None,
-            query: str = None,
             text: str = None,
-            ids: List[str | int] = None
-    ) -> int:
+            **kwargs) -> int:
         """Calculate the number of potential results of a database query.
 
         This function uses the same parameters as the `select` function.
@@ -94,32 +120,46 @@ class Inventory(CumulocityResource):
         Returns:
             Number of potential results
         """
-        base_query = self._prepare_query(
+        base_query = self._prepare_inventory_query(
+            device_mode=False,
             expression=expression,
             type=type,
-            fragment=fragment,
+            parent=parent,
             name=name,
             owner=owner,
-            query=query,
             text=text,
+            fragment=fragment,
+            fragments=fragments,
+            query=query,
             ids=ids,
-            page_size=1)
+            page_size=1,
+            **kwargs)
         return self._get_count(base_query)
 
     def select(
             self,
             expression: str = None,
+            query: str = None,
+            ids: list[str | int] = None,
+            order_by: str = None,
             type: str = None,
+            parent: str = None,
             fragment: str = None,
+            fragments: list[str] = None,
             name: str = None,
             owner: str = None,
-            query: str = None,
             text: str = None,
-            ids: List[str|int] = None,
+            only_roots: str = None,
+            with_children: bool = None,
+            with_children_count: bool = None,
+            skip_children_names: bool = None,
+            with_groups: bool = None,
+            with_parents: bool = None,
+            with_latest_values: bool = None,
             limit: int = None,
             page_size: int = 1000,
-            page_number: int = None
-    ) -> Generator[ManagedObject]:
+            page_number: int = None,
+            **kwargs) -> Generator[ManagedObject]:
         """ Query the database for managed objects and iterate over the
         results.
 
@@ -134,17 +174,37 @@ class Inventory(CumulocityResource):
             expression (str):  Arbitrary filter expression which will be
                 passed to Cumulocity without change; all other filters
                 are ignored if this is provided
+            query (str):  Complex query to execute; all other filters are
+                ignored if such a custom query is provided
+            ids (List[str|int]): Specific object ID to select.
+            order_by (str):  Field/expression to sort the results.
             type (str):  Managed object type
+            parent (str):  Parent object in the asset hierarchy (ID).
             fragment (str):  Name of a present custom/standard fragment
+            fragments (list[str]): Additional fragments present within objects
             name (str):  Name of the managed object
                 Note: The Cumulocity REST API does not support filtering for
                 names directly; this is a convenience parameter which will
                 translate all filters into a query string.
             owner (str):  Username of the object owner
-            query (str):  Complex query to execute; all other filters are
-                ignored if such a custom query is provided
             text (str): Text value of any object property.
-            ids (List[str|int]): Specific object ID to select.
+            only_roots (bool): Whether to include only objects that don't have
+                any parent
+            with_children (bool):  Whether children with ID and name should be
+                included with each returned object
+            with_children_count (bool): When set to true, the returned result
+                will contain the total number of children in the respective
+                child additions, assets and devices sub fragments.
+            skip_children_names (bool):  If true, returned references of child
+                devices won't contain their names.
+            with_groups (bool): Whether to include additional information about
+                the groups to which the searched managed object belongs to.
+                This results in setting the assetParents property with
+                additional information about the groups.
+            with_parents (bool): Whether to include a device's parents.
+            with_latest_values (bool):  If true the platform includes the
+                fragment `c8y_LatestMeasurements, which contains the latest
+                measurement values reported by the device to the platform.
             limit (int): Limit the number of results to this number.
             page_size (int): Define the number of events which are read (and
                 parsed in one chunk). This is a performance related setting.
@@ -154,74 +214,129 @@ class Inventory(CumulocityResource):
         Returns:
             Generator for ManagedObject instances
         """
+
         return self._select(
             ManagedObject.from_json,
+            device_mode=False,
             expression=expression,
+            query=query,
+            ids=ids,
+            order_by=order_by,
             type=type,
+            parent=parent,
             fragment=fragment,
+            fragments=fragments,
             name=name,
             owner=owner,
-            query=query,
             text=text,
-            ids=ids,
+            only_roots=only_roots,
+            with_children=with_children,
+            with_children_count=with_children_count,
+            skip_children_names=skip_children_names,
+            with_groups=with_groups,
+            with_parents=with_parents,
+            with_latest_values=with_latest_values,
             limit=limit,
             page_size=page_size,
-            page_number=page_number)
+            page_number=page_number,
+            **kwargs)
 
-    @classmethod
-    def _prepare_query_param(cls, query, filters):
-        """Potentially extend a query parameter with additional filters.
-
-        If there are no additional filters, the query parameter is not
-        touched. Otherwise, a complete query is prepared which consists of
-        the original query plus all additional filters.
-        """
-        if not filters:
-            return query
-        add_filters = ' and '.join(filters)
-        if not query:
-            return add_filters
-        return query + ' $filter=(' + add_filters + ')'
-
-    def _prepare_query(
+    def _prepare_inventory_query(
             self,
+            device_mode: bool,
             expression: str = None,
+            query: str = None,
+            ids: list[str | int] = None,
+            filters: list[str] = None,
+            order_by: str = None,
             type: str = None,
+            parent: str = None,
             fragment: str = None,
+            fragments: str | list[str] = None,
             name: str = None,
             owner: str = None,
-            query: str = None,
-            **kwargs
+            text: str = None,
+            **kwargs,
     ) -> str:
-        """The inventory API features a query API that needs some additional
-        preparations before we can actually invoke the queries."""
         if expression:
-            return self._build_base_query(expression=expression)
-        # if there is no custom query, we check whether standard filters need to
-        # be translated into a query
-        if not query and name:
-            # A name filter can only be expressed as a query, which then
-            # triggers "query mode" (all filters are translated into a query)
-            query_filters = [f"name eq '{_QueryUtil.encode_odata_query_value(name)}'"]
+            return self._prepare_query(expression=expression)
+        params = self._collate_filter_params(
+            device_mode,
+            query=query,
+            ids=ids,
+            filters=filters,
+            order_by=order_by,
+            type=type,
+            parent=parent,
+            fragment=fragment,
+            fragments=fragments,
+            name=name,
+            owner=owner,
+            text=text,
+            **kwargs)
+        return self._prepare_query(**params)
 
-            if type:
-                query_filters.append(f"type eq '{type}'")
-            if owner:
-                query_filters.append(f"owner eq '{owner}'")
-            if fragment:
-                query_filters.append(f"has({fragment})")
-            query = ' and '.join(query_filters)
-
+    @staticmethod
+    def _collate_filter_params(
+            only_devices: bool,
+            # expression: str = None,
+            query: str = None,
+            ids: list[str | int] = None,
+            filters: list[str] = None,
+            order_by: str = None,
+            type: str = None,
+            parent: str = None,
+            fragment: str = None,
+            fragments: list[str] = None,
+            name: str = None,
+            owner: str = None,
+            text: str = None,
+            **kwargs,
+    ) -> dict:
+        # if expression
+        query_key = 'q' if only_devices else 'query'
+        # if query is directly specified -> use it and ignore everything else
         if query:
-            # all parameters except page_size (which is not a filter) are ignored
-            return self._build_base_query(query=query, page_size=kwargs.get('page_size', None))
-        return self._build_base_query(type=type, fragment=fragment, owner=owner, **kwargs)
+            return {query_key: query, **kwargs}
 
-    def _select(self, jsonify_func, **kwargs) -> Generator[Any]:
+        if ids:
+            return {'ids': ids, **kwargs}
+
+        def filter_none(**xs):
+            return {k: v for k, v in xs.items() if v is not None}
+
+        use_query = parent or filters or order_by or name or fragments
+        if not use_query:
+            return filter_none(type=type, owner=owner, text=text, fragment=fragment, **kwargs)
+
+        # if any of the given filter is 'special' we have to convert to a query
+        filters = filters or []
+
+        # add fragment filters
+        fragments = fragments or ([fragment] if fragment else [])
+        if fragments:
+            filters.extend([f'has({x})' for x in fragments])
+        if parent:
+            filters.append(f'bygroupid({parent})')
+        if name:
+            filters.append(f"name eq '{_QueryUtil.encode_odata_query_value(name)}'")
+        if type:
+            filters.append(f"type eq {type}")
+        if owner:
+            filters.append(f"owner eq {owner}")
+        if text:
+            filters.append(f"text eq '{_QueryUtil.encode_odata_query_value(text)}'")
+
+        # convert to single query parameter
+        order_by = f'+$orderby={order_by}' if order_by else ''
+        query = f'$filter=({" and ".join(filters)}){order_by}'
+
+        return {query_key: query, **kwargs}
+
+    def _select(self, parse_fun, device_mode: bool, page_number, limit, **kwargs) -> Generator[Any]:
         """Generic select function to be used by derived classes as well."""
-        page_number = kwargs.pop('page_number', None)
-        limit = kwargs.pop('limit', None)
-        return super()._iterate(self._prepare_query(**kwargs), page_number, limit, jsonify_func)
+        base_query = self._prepare_inventory_query(device_mode, **kwargs)
+        return super()._iterate(base_query, page_number, limit, parse_fun)
 
     def create(self, *objects: ManagedObject):
         """Create managed objects within the database.
@@ -351,16 +466,27 @@ class DeviceInventory(Inventory):
     def select(  # noqa (order)
             self,
             expression: str = None,
+            query: str = None,
+            ids: list[str | int] = None,
+            order_by: str = None,
             type: str = None,
+            parent: str = None,
+            fragment: str = None,
+            fragments: list[str] = None,
             name: str = None,
             owner: str = None,
-            query: str = None,
             text: str = None,
-            ids: List[str | int] = None,
+            only_roots: str = None,
+            with_children: bool = None,
+            with_children_count: bool = None,
+            skip_children_names: bool = None,
+            with_groups: bool = None,
+            with_parents: bool = None,
+            with_latest_values: bool = None,
             limit: int = None,
             page_size: int = 100,
-            page_number: int = None
-    ) -> Generator[Device]:
+            page_number: int = None,
+            **kwargs,) -> Generator[Device]:
         # pylint: disable=arguments-differ, arguments-renamed
         """ Query the database for devices and iterate over the results.
 
@@ -378,16 +504,37 @@ class DeviceInventory(Inventory):
             expression (str):  Arbitrary filter expression which will be
                 passed to Cumulocity without change; all other filters
                 are ignored if this is provided
+            query (str):  Complex query to execute; all other filters are
+                ignored if such a custom query is provided
+            ids (List[str|int]): Specific object ID to select.
             type (str):  Device type
+            parent (str):  Parent object in the asset hierarchy (ID).
+            order_by (str):  Field/expression to sort the results.
+            fragment (str):  Name of a present custom/standard fragment
+            fragments (list[str]): Additional fragments present within objects
             name (str):  Name of the device
                 Note: The Cumulocity REST API does not support filtering for
                 names directly; this is a convenience parameter which will
                 translate all filters into a query string.
             owner (str):  Username of the object owner
-            query (str):  Complex query to execute; all other filters are
-                ignored if such a custom query is provided
             text (str): Text value of any object property.
-            ids (List[str|int]): Specific object ID to select.
+            only_roots (bool): Whether to include only objects that don't have
+                any parent
+            with_children (bool):  Whether children with ID and name should be
+                included with each returned object
+            with_children_count (bool): When set to true, the returned result
+                will contain the total number of children in the respective
+                child additions, assets and devices sub fragments.
+            skip_children_names (bool):  If true, returned references of child
+                devices won't contain their names.
+            with_groups (bool): Whether to include additional information about
+                the groups to which the searched managed object belongs to.
+                This results in setting the assetParents property with
+                additional information about the groups.
+            with_parents (bool): Whether to include a device's parents.
+            with_latest_values (bool):  If true the platform includes the
+                fragment `c8y_LatestMeasurements, which contains the latest
+                measurement values reported by the device to the platform.
             limit (int): Limit the number of results to this number.
             page_size (int): Define the number of events which are read (and
                 parsed in one chunk). This is a performance related setting.
@@ -399,30 +546,54 @@ class DeviceInventory(Inventory):
         """
         return super()._select(
             Device.from_json,
+            device_mode=True,
+            expression=expression,
+            query=query,
+            ids=ids,
+            order_by=order_by,
             type=type,
-            fragment='c8y_IsDevice',
+            parent=parent,
+            fragment=fragment,
+            fragments=fragments,
             name=name,
             owner=owner,
-            query=self._prepare_device_query_param(query),
             text=text,
-            ids=ids,
+            only_roots=only_roots,
+            with_children=with_children,
+            with_children_count=with_children_count,
+            skip_children_names=skip_children_names,
+            with_groups=with_groups,
+            with_parents=with_parents,
+            with_latest_values=with_latest_values,
             limit=limit,
             page_size=page_size,
-            page_number=page_number)
+            page_number=page_number,
+            **kwargs)
 
     def get_all(  # noqa (changed signature)
             self,
             expression: str = None,
+            query: str = None,
+            ids: list[str | int] = None,
+            order_by: str = None,
             type: str = None,
+            parent: str = None,
+            fragment: str = None,
+            fragments: list[str] = None,
             name: str = None,
             owner: str = None,
-            query: str = None,
             text: str = None,
-            ids: List[str | int] = None,
+            only_roots: str = None,
+            with_children: bool = None,
+            with_children_count: bool = None,
+            skip_children_names: bool = None,
+            with_groups: bool = None,
+            with_parents: bool = None,
+            with_latest_values: bool = None,
             limit: int = None,
             page_size: int = 100,
-            page_number: int = None
-    ) -> List[Device]:
+            page_number: int = None,
+            **kwargs) -> List[Device]:
         # pylint: disable=arguments-differ, arguments-renamed
         """ Query the database for devices and return the results as list.
 
@@ -434,25 +605,41 @@ class DeviceInventory(Inventory):
         """
         return list(self.select(
             expression=expression,
+            query=query,
+            ids=ids,
+            order_by=order_by,
             type=type,
+            parent=parent,
+            fragment=fragment,
+            fragments=fragments,
             name=name,
             owner=owner,
-            query=self._prepare_device_query_param(query),
             text=text,
-            ids=ids,
+            only_roots=only_roots,
+            with_children=with_children,
+            with_children_count=with_children_count,
+            skip_children_names=skip_children_names,
+            with_groups=with_groups,
+            with_parents=with_parents,
+            with_latest_values=with_latest_values,
             limit=limit,
             page_size=page_size,
-            page_number=page_number))
+            page_number=page_number,
+            **kwargs))
 
     def get_count(  # noqa (changed signature)
             self,
+            expression: str = None,
+            query: str = None,
+            ids: list[str | int] = None,
             type: str = None,
+            parent: str = None,
+            fragment: str = None,
+            fragments: list[str] = None,
             name: str = None,
             owner: str = None,
-            query: str = None,
             text: str = None,
-            ids: List[str | int] = None
-    ) -> int:
+            **kwargs) -> int:
         # pylint: disable=arguments-differ, arguments-renamed
         """Calculate the number of potential results of a database query.
 
@@ -461,15 +648,20 @@ class DeviceInventory(Inventory):
         Returns:
             Number of potential results
         """
-        return self._get_count(super()._prepare_query(
+        return self._get_count(self._prepare_inventory_query(
+            device_mode=True,
+            expression=expression,
+            query=query,
+            ids=ids,
             type=type,
-            fragment='c8y_IsDevice',
+            parent=parent,
+            fragment=fragment,
+            fragments=fragments,
             name=name,
             owner=owner,
-            query=self._prepare_device_query_param(query),
             text=text,
-            ids=ids,
-            page_size=1))
+            page_size=1,
+            **kwargs))
 
     def delete(self, *devices: Device):
         """ Delete one or more devices and the corresponding within the database.
@@ -516,93 +708,81 @@ class DeviceGroupInventory(Inventory):
         group.c8y = self.c8y
         return group
 
-    def _prepare_device_group_query(
-            self,
-            type: str,
-            parent: str | int = None,
-            fragment: str = None,
-            name: str = None,
-            owner: str = None,
-            query: str = None,
-            **kwargs
-    ) -> str:
-        # pylint: disable=arguments-differ, arguments-renamed
-
-        query_filters = []
-        # Both name and parent filters can only be expressed as a query,
-        # which then triggers "query mode"
-        if name:
-            query_filters.append(f"name eq '{_QueryUtil.encode_odata_query_value(name)}'")
-        if parent:
-            query_filters.append(f"bygroupid({parent})")
-            type = DeviceGroup.CHILD_TYPE  # noqa
-
-        # if any query was defined, all filters must be put into the query
-        if query_filters:
-            if type:
-                query_filters.append(f"type eq '{type}'")
-            if owner:
-                query_filters.append(f"owner eq '{owner}'")
-            if fragment:
-                query_filters.append(f"has({fragment}")
-
-        if query_filters:
-            query = self._prepare_query_param(query, query_filters)
-
-        if query:
-            page_size = kwargs.get('page_size', None)
-            return self._build_base_query(query=query, page_size=page_size)
-
-        return self._build_base_query(type=type, fragment=fragment, owner=owner, **kwargs)
-
     def select(  # noqa (changed signature)
             self,
             expression: str = None,
-            type: str = DeviceGroup.ROOT_TYPE,
-            parent: str|int = None,
+            query: str = None,
+            ids: List[str | int] = None,
+            order_by: str = None,
+            type: str = None,
+            parent: str | int = None,
             fragment: str = None,
+            fragments: list[str] = None,
             name: str = None,
             owner: str = None,
-            query: str = None,
             text: str = None,
-            ids: List[str|int] = None,
+            only_roots: str = None,
+            with_children: bool = None,
+            with_children_count: bool = None,
+            skip_children_names: bool = None,
+            with_groups: bool = None,
+            with_parents: bool = None,
+            with_latest_values: bool = None,
             limit: int = None,
             page_size: int = 100,
-            page_number: int = None
-    ) -> Generator[DeviceGroup]:
+            page_number: int = None,
+            **kwargs) -> Generator[DeviceGroup]:
         # pylint: disable=arguments-differ, arguments-renamed
         """ Select device groups by various parameters.
 
         This is a lazy implementation; results are fetched in pages but
         parsed and returned one by one.
 
-        The type of all DeviceGroup objects is fixed 'c8y_DeviceGroup',
-        'c8y_DeviceSubGroup' if searching by `parent` respectively. Hence,
-        manual filtering by type is not supported.
-
         Args:
             expression (str):  Arbitrary filter expression which will be
                 passed to Cumulocity without change; all other filters
                 are ignored if this is provided
+            query (str):  Complex query to execute; all other filters are
+                ignored if such a custom query is provided
+            ids (List[str|int]): Specific object ID to select
+            order_by (str):  Field/expression to sort the results.
+            fragment (str):  Name of a present custom/standard fragment
+            fragments (list[str]): Additional fragments present within objects
             type (bool):  Filter for root or child groups respectively.
                 Note: If set to None, no type filter will be applied which
                 will match all kinds of managed objects. If you want to
                 match device groups only you need to use the fragment filter.
-            parent (str): ID of the parent device group
-                Note: this forces the `type` filter to be c8y_DeviceSubGroup
-                Like the `name` parameter, this is a convenience parameter
-                which will translate all filters into a query string.
+            parent (str):  Parent object in the asset hierarchy (ID).
+                Note: this sets the `type` filter to be c8y_DeviceSubGroup
+                if not defined; Like the `name` parameter, this is a
+                convenience parameter which will translate all filters into
+                a query string.
             fragment (str): Additional fragment present within the objects
+            fragments (list[str]): Additional fragments present within the objects
             name (str): Name string of the groups to select
                 Note:  he Cumulocity REST API does not support filtering for
                 names directly; this is a convenience parameter which will
                 translate all filters into a query string.
                 No partial matching/patterns are supported
             owner (str): Username of the group owner
-            query (str):  Complex query to execute; all other filters are
-                ignored if such a custom query is provided
             text (str): Text value of any object property.
-            ids (List[str|int]): Specific object ID to select
+            only_roots (bool): Whether to include only objects that don't have
+                any parent
+            with_children (bool):  Whether children with ID and name should be
+                included with each returned object
+            with_children_count (bool): When set to true, the returned result
+                will contain the total number of children in the respective
+                child additions, assets and devices sub fragments.
+            skip_children_names (bool):  If true, returned references of child
+                devices won't contain their names.
+            with_groups (bool): Whether to include additional information about
+                the groups to which the searched managed object belongs to.
+                This results in setting the assetParents property with
+                additional information about the groups.
+            with_parents (bool): Whether to include a device's parents.
+            with_latest_values (bool):  If true the platform includes the
+                fragment `c8y_LatestMeasurements, which contains the latest
+                measurement values reported by the device to the platform.
             limit (int): Limit the number of results to this number.
             page_size (int): Define the number of events which are read (and
                 parsed in one chunk). This is a performance related setting.
@@ -612,31 +792,47 @@ class DeviceGroupInventory(Inventory):
         Returns:
             Generator of DeviceGroup instances
         """
-        base_query = self._prepare_device_group_query(
+        type = type or (DeviceGroup.CHILD_TYPE if parent else None)
+
+        return super()._select(
+            parse_fun=DeviceGroup.from_json,
+            device_mode=False,
             expression=expression,
+            query=query,
+            ids=ids,
+            order_by=order_by,
             type=type,
             parent=parent,
             fragment=fragment,
+            fragments=fragments,
             name=name,
             owner=owner,
-            query=query,
             text=text,
-            ids=ids,
-            page_size=page_size)
-        return super()._iterate(base_query, page_number, limit=limit, parse_func=DeviceGroup.from_json)
+            only_roots=only_roots,
+            with_children=with_children,
+            with_children_count=with_children_count,
+            skip_children_names=skip_children_names,
+            with_groups=with_groups,
+            with_parents=with_parents,
+            with_latest_values=with_latest_values,
+            limit=limit,
+            page_size=page_size,
+            page_number=page_number,
+            **kwargs)
 
     def get_count(  # noqa (changed signature)
             self,
             expression: str = None,
-            type: str = DeviceGroup.ROOT_TYPE,
-            parent: str|int = None,
+            query: str = None,
+            ids: list[str | int] = None,
+            parent: str | int = None,
+            type: str = None,
             fragment: str = None,
+            fragments: list[str] = None,
             name: str = None,
             owner: str = None,
-            query: str = None,
             text: str = None,
-            ids: List[str|int] = None,
-    ) -> int:
+            **kwargs) -> int:
         # pylint: disable=arguments-differ, arguments-renamed
         """Calculate the number of potential results of a database query.
 
@@ -645,33 +841,46 @@ class DeviceGroupInventory(Inventory):
         Returns:
             Number of potential results
         """
-        base_query = self._prepare_device_group_query(
+        type = type or (DeviceGroup.CHILD_TYPE if parent else None)
+        base_query = self._prepare_inventory_query(
+            device_mode=False,
             expression=expression,
+            query=query,
+            ids=ids,
             type=type,
             parent=parent,
             fragment=fragment,
+            fragments=fragments,
             name=name,
             owner=owner,
-            query=query,
             text=text,
-            ids=ids,
-            page_size=1)
+            page_size=1,
+            **kwargs)
         return self._get_count(base_query)
 
     def get_all(  # noqa (changed signature)
             self,
             expression: str = None,
-            type: str = DeviceGroup.ROOT_TYPE,
+            query: str = None,
+            ids: list[str | int] = None,
+            type: str = None,
             parent: str | int = None,
             fragment: str = None,
+            fragments: list[str] = None,
             name: str = None,
             owner: str = None,
-            query: str = None,
             text: str = None,
-            ids: List[str|int] = None,
+            only_roots: str = None,
+            with_children: bool = None,
+            with_children_count: bool = None,
+            skip_children_names: bool = None,
+            with_groups: bool = None,
+            with_parents: bool = None,
+            with_latest_values: bool = None,
+            limit: int = None,
             page_size: int = 100,
-            page_number: int = None
-    ) -> List[DeviceGroup]:
+            page_number: int = None,
+            **kwargs) -> List[DeviceGroup]:
         # pylint: disable=arguments-differ, arguments-renamed
         """ Select managed objects by various parameters.
 
@@ -684,15 +893,25 @@ class DeviceGroupInventory(Inventory):
         return list(self.select(
             expression=expression,
             type=type,
+            query=query,
+            ids=ids,
             parent=parent,
             fragment=fragment,
+            fragments=fragments,
             name=name,
             owner=owner,
-            query=query,
             text=text,
-            ids=ids,
+            only_roots=only_roots,
+            with_children=with_children,
+            with_children_count=with_children_count,
+            skip_children_names=skip_children_names,
+            with_groups=with_groups,
+            with_parents=with_parents,
+            with_latest_values=with_latest_values,
+            limit=limit,
             page_size=page_size,
-            page_number=page_number))
+            page_number=page_number,
+            **kwargs))
 
     def create(self, *groups):
         """Batch create a collection of groups and entire group trees.

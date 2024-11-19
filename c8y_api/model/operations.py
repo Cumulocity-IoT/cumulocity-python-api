@@ -153,12 +153,17 @@ class Operations(CumulocityResource):
         operation.c8y = self.c8y  # inject c8y connection into instance
         return operation
 
-    def select(self, agent_id: str = None, device_id: str = None, status: str = None,
-               bulk_id: str = None, fragment: str = None,
-               before: str | datetime = None, after: str | datetime = None,
-               min_age: timedelta = None, max_age: timedelta = None,
-               reverse: bool = False, limit: int = None,
-               page_size: int = 1000, page_number: int = None) -> Generator[Operation]:
+    def select(
+            self,
+            expression: str = None,
+            agent_id: str = None, device_id: str = None, status: str = None,
+            bulk_id: str = None, fragment: str = None,
+            before: str | datetime = None, after: str | datetime = None,
+            min_age: timedelta = None, max_age: timedelta = None,
+            reverse: bool = False, limit: int = None,
+            page_size: int = 1000, page_number: int = None,
+            **kwargs
+    ) -> Generator[Operation]:
         """ Query the database for operations and iterate over the results.
 
         This function is implemented in a lazy fashion - results will only be
@@ -169,6 +174,9 @@ class Operations(CumulocityResource):
         combined (within reason).
 
         Args:
+            expression (str):  Arbitrary filter expression which will be
+                passed to Cumulocity without change; all other filters
+                are ignored if this is provided
             agent_id (str): Database ID of agent
             device_id (str):  Database ID of device
             status (str): Status of operation
@@ -196,18 +204,27 @@ class Operations(CumulocityResource):
         Returns:
             Generator[Operation]: Iterable of matching Operation objects
         """
-        base_query = self._build_base_query(agent_id=agent_id, device_id=device_id, status=status, bulk_id=bulk_id,
-                                            fragment=fragment,
-                                            before=before, after=after, min_age=min_age, max_age=max_age,
-                                            reverse=reverse, page_size=page_size)
+        base_query = self._prepare_query(
+            expression=expression,
+            agent_id=agent_id, device_id=device_id, status=status, bulk_id=bulk_id,
+            fragment=fragment,
+            before=before, after=after, min_age=min_age, max_age=max_age,
+            reverse=reverse, page_size=page_size,
+            **kwargs
+        )
         return super()._iterate(base_query, page_number, limit, Operation.from_json)
 
-    def get_all(self, agent_id: str = None, device_id: str = None, status: str = None,
-                bulk_id: str = None, fragment: str = None,
-                before: str | datetime = None, after: str | datetime = None,
-                min_age: timedelta = None, max_age: timedelta = None,
-                reverse: bool = False, limit: int = None,
-                page_size: int = 1000, page_number: int = None) -> List[Operation]:
+    def get_all(
+            self,
+            expression: str = None,
+            agent_id: str = None, device_id: str = None, status: str = None,
+            bulk_id: str = None, fragment: str = None,
+            before: str | datetime = None, after: str | datetime = None,
+            min_age: timedelta = None, max_age: timedelta = None,
+            reverse: bool = False, limit: int = None,
+            page_size: int = 1000, page_number: int = None,
+            **kwargs
+    ) -> List[Operation]:
         """ Query the database for operations and return the results
         as list.
 
@@ -217,13 +234,24 @@ class Operations(CumulocityResource):
         Returns:
             List of matching Operation objects
         """
-        return list(self.select(agent_id=agent_id, device_id=device_id, status=status, bulk_id=bulk_id,
-                                fragment=fragment, before=before, after=after, min_age=min_age, max_age=max_age,
-                                reverse=reverse, limit=limit, page_size=page_size, page_number=page_number))
+        return list(self.select(
+            expression=expression,
+            agent_id=agent_id, device_id=device_id, status=status, bulk_id=bulk_id,
+            fragment=fragment, before=before, after=after, min_age=min_age, max_age=max_age,
+            reverse=reverse, limit=limit, page_size=page_size, page_number=page_number,
+            **kwargs
+        ))
 
-    def get_last(self, agent_id: str = None, device_id: str = None, status: str = None,
-                 bulk_id: str = None, fragment: str = None,
-                 before: str | datetime = None, min_age: timedelta = None) -> Operation:
+    def get_last(
+            self,
+            expression: str = None,
+            agent_id: str = None, device_id: str = None, status: str = None,
+            bulk_id: str = None, fragment: str = None,
+            date_to: str | datetime = None,
+            before: str | datetime = None,
+            min_age: timedelta = None,
+            **kwargs
+    ) -> Operation:
         """ Query the database and return the last matching operation.
 
         This function is a special variant of the select function. Only
@@ -237,17 +265,27 @@ class Operations(CumulocityResource):
         after = None
         if not before and not min_age:
             after = '1970-01-01'
-        base_query = self._build_base_query(agent_id=agent_id, device_id=device_id, status=status,
-                                            bulk_id=bulk_id, fragment=fragment, after=after,
-                                            before=before, min_age=min_age, reverse=True, page_size=1)
+        base_query = self._prepare_query(
+            expression=expression,
+            agent_id=agent_id, device_id=device_id, status=status,
+            bulk_id=bulk_id, fragment=fragment, after=after,
+            date_to=date_to, before=before, min_age=min_age,
+            reverse=True, page_size=1,
+            **kwargs
+        )
         m = Operation.from_json(self._get_page(base_query, 1)[0])
         m.c8y = self.c8y  # inject c8y connection into instance
         return m
 
-    def delete_by(self, agent_id: str = None, device_id: str = None, status: str = None,
-                  bulk_id: str = None, fragment: str = None,
-                  before: str | datetime = None, after: str | datetime = None,
-                  min_age: timedelta = None, max_age: timedelta = None):
+    def delete_by(
+            self,
+            expression: str = None,
+            agent_id: str = None, device_id: str = None, status: str = None,
+            bulk_id: str = None, fragment: str = None,
+            before: str | datetime = None, after: str | datetime = None,
+            min_age: timedelta = None, max_age: timedelta = None,
+            **kwargs
+    ):
         """Query the database and delete matching operations.
 
         All parameters are considered to be filters, limiting the result set
@@ -255,6 +293,9 @@ class Operations(CumulocityResource):
         combined (as defined in the Cumulocity REST API).
 
         Args:
+            expression (str):  Arbitrary filter expression which will be
+                passed to Cumulocity without change; all other filters
+                are ignored if this is provided
             agent_id (str): Database ID of agent
             device_id (str):  Database ID of device
             status (str): Status of operation
@@ -272,9 +313,13 @@ class Operations(CumulocityResource):
                 at most this age are returned.
                 # build a base query
         """
-        base_query = self._build_base_query(agent_id=agent_id, device_id=device_id, status=status,
-                                            bulk_id=bulk_id, fragment=fragment,
-                                            before=before, after=after, min_age=min_age, max_age=max_age)
+        base_query = self._prepare_query(
+            expression=expression,
+            agent_id=agent_id, device_id=device_id, status=status,
+            bulk_id=bulk_id, fragment=fragment,
+            before=before, after=after, min_age=min_age, max_age=max_age,
+            **kwargs
+        )
         self.c8y.delete(base_query)
 
 
@@ -448,7 +493,7 @@ class BulkOperations(CumulocityResource):
         Returns:
             Generator[BulkOperation]: Iterable of matching BulkOperation objects
         """
-        base_query = self._build_base_query(page_size=page_size)
+        base_query = self._prepare_query(page_size=page_size)
         return super()._iterate(base_query, page_number, limit, BulkOperation.from_json)
 
     def get_all(self, limit: int = None, page_size: int = 1000, page_number: int = None) -> List[BulkOperation]:

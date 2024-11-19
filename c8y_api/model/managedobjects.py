@@ -679,13 +679,9 @@ class DeviceGroup(ManagedObject):
         """
         self._assert_c8y()
         self._assert_id()
-        child_json = DeviceGroup(name=name, owner=owner if owner else self.owner, **kwargs).to_json()
-
-        response_json = self.c8y.post(self._build_object_path() + '/childAssets', json=child_json,
-                                      accept=CumulocityRestApi.ACCEPT_MANAGED_OBJECT)
-        result = self.from_json(response_json)
-        result.c8y = self.c8y
-        return result
+        child = DeviceGroup(c8y=self.c8y, name=name, owner=owner if owner else self.owner, **kwargs).create()
+        self.c8y.post(self._build_object_path() + '/childAssets', json={'managedObject': {'id': child.id}})
+        return child
 
     def create(self) -> DeviceGroup:
         """ Create a new representation of this object within the database.

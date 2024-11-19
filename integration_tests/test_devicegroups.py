@@ -95,7 +95,7 @@ def test_CRUD2(live_c8y, safe_executor):
         # 1) assign children
         live_c8y.group_inventory.assign_children(root.id, child1.id, child2.id)
         # -> all child groups are nested now
-        child_names = [x.name for x in live_c8y.group_inventory.get_all(parent=root.id)]
+        child_names = [x.name for x in live_c8y.group_inventory.get_all(parent=root.id, type=DeviceGroup.CHILD_TYPE)]
         assert len(child_names) == 2
         assert all(x.startswith('Child') for x in child_names)
         assert all(x.endswith(name) for x in child_names)

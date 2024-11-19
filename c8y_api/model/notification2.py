@@ -43,10 +43,10 @@ class Subscription(SimpleObject):
 
     _resource = '/notification2/subscriptions'
     _parser = SimpleObjectParser({
-            'name': 'subscription',
-            'context': 'context',
-            'non_persistent': 'nonPersistent',
-            'fragments': 'fragmentsToCopy'})
+        'name': 'subscription',
+        'context': 'context',
+        'non_persistent': 'nonPersistent',
+        'fragments': 'fragmentsToCopy'})
     _accept = 'application/vnd.com.nsn.cumulocity.subscription+json'
 
     def __init__(self, c8y: CumulocityRestApi = None, name: str = None, context: str = None, source_id: str = None,
@@ -146,12 +146,14 @@ class Subscriptions(CumulocityResource):
         subscription.c8y = self.c8y  # inject c8y connection into instance
         return subscription
 
-    def count(
+    def get_count(
             self,
+            expression: str = None,
             context: str = None,
             source: str = None,
             subscription: str = None,
             type_filter: str = None,
+            **kwargs
     ) -> int:
         """Calculate the number of potential results of a database query.
 
@@ -160,24 +162,28 @@ class Subscriptions(CumulocityResource):
         Returns:
             Number of potential results
         """
-        base_query = self._build_base_query(
+        base_query = self._prepare_query(
+            expression=expression,
             context=context,
             source=source,
             subscription=subscription,
             typeFilter=type_filter,
-            page_size=1
+            page_size=1,
+            **kwargs
         )
         return self._get_count(base_query)
 
     def select(
             self,
+            expression: str = None,
             context: str = None,
             source: str = None,
             subscription: str = None,
             type_filter: str = None,
             limit: int = None,
             page_size: int = 1000,
-            page_number: int = None
+            page_number: int = None,
+            **kwargs
     ) -> Generator[Subscription]:
         """ Query the database for subscriptions and iterate over the
         results.
@@ -190,6 +196,9 @@ class Subscriptions(CumulocityResource):
         combined (within reason).
 
         Args:
+            expression (str):  Arbitrary filter expression which will be
+                passed to Cumulocity without change; all other filters
+                are ignored if this is provided
             context (str):  Subscription context.
             source (str):  Managed object ID the subscription is for.
             subscription (str): The subscription name.
@@ -203,23 +212,27 @@ class Subscriptions(CumulocityResource):
         Returns:
             Generator for Subscription instances
         """
-        base_query = self._build_base_query(
+        base_query = self._prepare_query(
+            expression=expression,
             context=context,
             source=source,
             subscription=subscription,
             typeFilter=type_filter,
-            page_size=page_size)
+            page_size=page_size,
+            **kwargs)
         return super()._iterate(base_query, page_number, limit, Subscription.from_json)
 
     def get_all(
             self,
+            expression: str = None,
             context: str = None,
             source: str = None,
             subscription: str = None,
             type_filter: str = None,
             limit: int = None,
             page_size: int = 1000,
-            page_number: int = None
+            page_number: int = None,
+            **kwargs
     ) -> List[Subscription]:
         """ Query the database for subscriptions and return the results
         as list.
@@ -230,8 +243,11 @@ class Subscriptions(CumulocityResource):
         Returns:
             List of Subscription instances.
         """
-        return list(self.select(context=context, source=source, subscription=subscription, type_filter=type_filter,
-                                limit=limit, page_size=page_size, page_number=page_number))
+        return list(self.select(
+            expression=expression,
+            context=context, source=source, subscription=subscription, type_filter=type_filter,
+            limit=limit, page_size=page_size, page_number=page_number,
+            **kwargs))
 
     def create(self, *subscriptions: Subscription) -> None:
         """ Create subscriptions within the database.
@@ -248,10 +264,7 @@ class Subscriptions(CumulocityResource):
             context (str):  Subscription context
             source (str):  Managed object ID the subscription is for.
         """
-        base_query = self._build_base_query(context=context, source=source)
-        # remove &page_number= from the end
-        query = base_query[:base_query.rindex('&')]
-        self.c8y.delete(query)
+        self.c8y.delete(self._prepare_query(context=context, source=source))
 
 
 class Tokens(CumulocityResource):
@@ -322,11 +335,11 @@ class Tokens(CumulocityResource):
         return f'{protocol}://{self.host}/notification2/consumer/?token={token}{consumer_param}'
 
     def _build_token_definition(self, subscription: str, expires: int, subscriber: str = None,
-                                signed = None, shared = None, non_persistent = None):
-        json =  {
+                                signed=None, shared=None, non_persistent=None):
+        json = {
             'subscriber': subscriber or self._default_subscriber,
-            'subscription' : subscription,
-            'expiresInMinutes' : expires,
+            'subscription': subscription,
+            'expiresInMinutes': expires,
         }
         if signed is not None:
             json['signed'] = signed

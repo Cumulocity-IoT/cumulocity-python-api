@@ -4,7 +4,8 @@
 # Use, reproduction, transfer, publication or disclosure is prohibited except
 # as specifically provided for in your License Agreement with Software AG.
 
-from datetime import datetime, timedelta
+import random
+from datetime import datetime, timedelta, timezone
 from dateutil import tz
 import logging
 import time
@@ -13,7 +14,7 @@ from typing import List
 import pytest
 
 from c8y_api import CumulocityApi
-from c8y_api.model import Device, Measurement, Measurements, Series, Count, Kelvin
+from c8y_api.model import Device, Measurement, Measurements, Series, Value, Kelvin, Count
 
 from util.testing_util import RandomNameGenerator
 
@@ -30,25 +31,27 @@ def fix_measurement_factory(live_c8y: CumulocityApi):
 
     created_devices = []
 
-    def factory_fun(n: int) -> List[Measurement]:
-        typename = RandomNameGenerator.random_name(2)
-        fragment = f'{typename}_metric'
-        series = f'{typename}_series'
+    def factory_fun(n: int, device=None, type=None, series=None) -> List[Measurement]:
+        type = type or RandomNameGenerator.random_name(2)
+        series = series or type
 
         # 1) create device
-        device = Device(c8y=live_c8y, type=f'{typename}_device', name=typename, test_marker={'name': typename}).create()
-        created_devices.append(device)
-        logging.info('Created device #{}', device.id)
+        if not device:
+            device = Device(c8y=live_c8y, type=f'{type}_device', name=type, test_marker={'name': type}).create()
+            created_devices.append(device)
+            logging.info(f'Created device #{device.id}')
 
         # 2) create measurements
         ms = []
         now = time.time()
         for i in range(0, n):
             measurement_time = datetime.fromtimestamp(now - i*60, tz.tzutc())
-            m = Measurement(c8y=live_c8y, type=typename, source=device.id, time=measurement_time)
-            m[fragment] = {series: Count(i+1)}
+            m = Measurement(c8y=live_c8y, type=type, source=device.id, time=measurement_time)
+            # m[series] = {series: Value(random.randint(1000, 9999), '#')}
+            m[series] = {'series': Value(random.randint(1000, 9999), '#')}
+            m['marker'] = {'id': f'{device.id}_{type}_{series}_{i}'}
             m = m.create()
-            logging.info('Created measurement #{}: {}', m.id, m.to_json())
+            logging.info(f'Created measurement #{m.id}: {m.to_json()}')
             ms.append(m)
         return ms
 
@@ -63,19 +66,109 @@ def fix_measurement_factory(live_c8y: CumulocityApi):
 
 def test_select(live_c8y: CumulocityApi, measurement_factory):
     """Verify that selection works as expected."""
-    # create a couple of measurements
-    created_ms = measurement_factory(100)
-    created_ids = [m.id for m in created_ms]
+    logging.basicConfig()
+    logging.getLogger().setLevel(logging.DEBUG)
+    requests_log = logging.getLogger("requests.packages.urllib3")
+    requests_log.setLevel(logging.DEBUG)
+    requests_log.propagate = True
+
+    name = RandomNameGenerator.random_name(2)
+    other_name = f'other_{name}'
+
+    # create a couple of measurements (at a new device)
+    created_ms = measurement_factory(10, type=name, series=name)
+    created_values = [m[name]['series'].value for m in created_ms]
+
+    # create a couple of measurements with different source
+    source_ms = measurement_factory(10, type=name, series=name)
+    source_values = [m[name]['series'].value for m in source_ms]
+
+    # create a couple of measurements with different type name
     device_id = created_ms[0].source
+    device = live_c8y.device_inventory.get(created_ms[0].source)
+    type_ms = measurement_factory(10, device=device, type=other_name, series=name)
+    type_values = [m[name]['series'].value for m in type_ms]
 
-    # select all measurements using different page sizes
-    selected_ids_1 = [m.id for m in live_c8y.measurements.select(source=device_id, page_size=1000)]
-    selected_ids_2 = [m.id for m in live_c8y.measurements.select(source=device_id, page_size=10)]
+    # create a couple of measurements with different series name
+    series_ms = measurement_factory(10, device=device, type=name, series=other_name)
+    series_values = [m[other_name]['series'].value for m in series_ms]
 
-    # -> all created measurements should be in the selection
-    assert set(created_ids) == set(selected_ids_1)
-    # -> the page size should not affect the selection result
-    assert selected_ids_1 == selected_ids_2
+    # (1) all measurement collections can be selected separately
+
+    # select by source
+    same_source_ms = live_c8y.measurements.get_all(source=device_id)
+    assert len({x.source for x in same_source_ms}) == 1
+    assert len({x.type for x in same_source_ms}) == 2
+    assert len({x.get_series()[0] for x in same_source_ms}) == 2
+    assert len(same_source_ms) == len(created_ms) + len(type_ms) + len(series_ms)
+
+    # select by type
+    same_type_ms = live_c8y.measurements.get_all(type=name)
+    assert len({x.source for x in same_type_ms}) == 2
+    assert len({x.type for x in same_type_ms}) == 1
+    assert len({x.get_series()[0] for x in same_type_ms}) == 2
+    assert len(same_type_ms) == len(created_ms) + len(source_ms) + len(series_ms)
+
+    # select by series
+    same_series_ms = live_c8y.measurements.get_all(value_fragment_type=name)
+    assert len({x.source for x in same_series_ms}) == 2
+    assert len({x.type for x in same_series_ms}) == 2
+    assert len({x.get_series()[0] for x in same_series_ms}) == 1
+    assert len(same_series_ms) == len(created_ms) + len(source_ms) + len(type_ms)
+
+    # (2) Testing deletion
+
+    # Delete all with same source and type (fragment is not supported)
+    # This would also include the ones having a different series name
+    live_c8y.measurements.delete_by(source=device_id, type=name)
+    # wait for the deletion to be executed
+    n = 10
+    while True:
+        if not live_c8y.measurements.get_last(source=device_id, type=name):
+            break
+        n = n-1
+        time.sleep(1 * (10-n))
+    assert not live_c8y.measurements.get_last(source=device_id, type=name)
+
+    # -> there should still be similar measurements at a different device
+    other_source_ms = live_c8y.measurements.get_all(type=name, value_fragment_type=name)
+    assert len(other_source_ms) == len(source_ms)
+    # -> there should still be differently typed measurements for the same source
+    other_type_ms = live_c8y.measurements.get_all(source=device_id, type=other_name)
+    assert len(other_type_ms) == len(type_ms)
+
+    # Delete by type (don't care about the source)
+    now = datetime.now(timezone.utc)
+    now_truncated = now.replace(hour=now.hour+1, minute=0, second=0, microsecond=0)
+    live_c8y.measurements.delete_by(type=name, date_to=now_truncated)
+    # wait for the deletion to be executed
+    n = 10
+    while True:
+        if not live_c8y.measurements.get_last(type=name):
+            break
+        n = n-1
+        time.sleep(1 * (10-n))
+    assert not live_c8y.measurements.get_last(type=name)
+
+    # -> we should still see some with the other type
+    other_type_ms = live_c8y.measurements.get_all(type=other_name, before=now_truncated)
+    assert len(other_type_ms) == len(type_ms)
+
+    # Delete remaining measurements
+    live_c8y.measurements.delete_by(type=other_name, date_to=now_truncated)
+    # wait for the deletion to be executed
+    n = 10
+    while True:
+        if not live_c8y.measurements.get_last(type=other_name):
+            break
+        n = n-1
+        time.sleep(1 * (10-n))
+    assert not live_c8y.measurements.get_last(type=other_name)
+
+    # -> no measurements should be left
+    sources = [created_ms[0].source, source_ms[1].source]
+    for source in sources:
+        assert not live_c8y.measurements.get_all(source=source)
 
 
 def test_single_page_select(live_c8y: CumulocityApi, measurement_factory):
@@ -91,96 +184,6 @@ def test_single_page_select(live_c8y: CumulocityApi, measurement_factory):
     # -> all created measurements should be in the selection
     assert len(selected_ids) == 10
     assert all(i in set(created_ids) for i in selected_ids)
-
-
-def clone_measurement(m:Measurement, key) -> Measurement:
-    """Clone a Measurement object."""
-    m2 = Measurement(m.c8y, type=m.type, source=m.source, time=m.time)
-    if key == 'type':
-        m2.type = m2.type + '2'
-    for fragment, series in m.fragments.items():
-        for name, value in series.items():
-            if key in ('fragment', 'value'):
-                fragment = fragment + '2'
-            if key == 'series':
-                name = name + '2'
-            m2[fragment] = {name: value}
-    return m2.create()
-
-
-@pytest.mark.parametrize('key, key_lambda', [
-    ('type', lambda m: m.type),
-    ('source', lambda m: m.source),
-    ('series', lambda m: f'{m.type}_series'),
-    ('value', lambda m: f'{m.type}_metric'),
-])
-def test_select_by(live_c8y: CumulocityApi, measurement_factory, key, key_lambda):
-    """Verify that get and delete by type works as expected."""
-    measurements_for_deletion = measurement_factory(10)
-    kwargs = {key: key_lambda(measurements_for_deletion[0])}
-
-    # add some 'similar' measurements to verify the query doesn't affect
-    # these; doesn't make sense for 'source', there already are many
-    if key != 'source':
-        for m in measurements_for_deletion:
-            clone_measurement(m, key)
-
-    # 1_ get_all
-    ms = live_c8y.measurements.get_all(**kwargs)
-    assert len(ms) == len(measurements_for_deletion)
-    assert set(get_ids(ms)) == set(get_ids(measurements_for_deletion))
-
-    # 2_ get_last
-    ms = sorted(measurements_for_deletion, key=lambda x: x.datetime)
-    datetimes = [m.datetime for m in ms]
-
-    # a) getting the last
-    last = live_c8y.measurements.get_last(**kwargs)
-    assert last.datetime == datetimes[-1]
-
-    # b) getting the last before a certain time
-    idx = 3
-    last = live_c8y.measurements.get_last(before=datetimes[idx], **kwargs)
-    assert last.datetime == datetimes[idx-1]
-
-    # c) getting the last of a min age
-    age = timedelta(minutes=3)
-    last = live_c8y.measurements.get_last(min_age=age)
-    # the 3rd entry would have the exact date if no time had passed
-    # -> hence, the 3rd should just be right
-    assert last.datetime == datetimes[-4]
-
-
-@pytest.mark.parametrize('key, key_lambda', [
-    ('type', lambda m: m.type),
-    ('source', lambda m: m.source),
-    ('fragment', lambda m: f'{m.type}_metric'),
-])
-def test_delete_by(live_c8y: CumulocityApi, measurement_factory, key, key_lambda):
-    """Verify that get and delete by type works as expected."""
-    measurements_for_deletion = measurement_factory(10)
-    kwargs = {
-        key: key_lambda(measurements_for_deletion[0]),
-        # a date or source is required as a minimum
-        'after': '1970-01-01T00:00:00Z'
-    }
-
-    # 0 add some 'similar' measurements
-    additional_measurements = []
-    if key != 'source':
-        additional_measurements = [clone_measurement(m, key) for m in measurements_for_deletion]
-
-    # delete_by kwargs
-    live_c8y.measurements.delete_by(**kwargs)
-    # -> wait a bit to avoid caching issues
-    time.sleep(5)
-    # -> verify that they are all gone
-    ms = live_c8y.measurements.get_all(**kwargs)
-    assert not ms
-
-    # delete additional measurements if there are any
-    # this also ensures that they haven't been deleted beforehand
-    live_c8y.measurements.delete(*additional_measurements)
 
 
 @pytest.fixture(scope='session', name='sample_series_device')
