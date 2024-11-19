@@ -111,44 +111,47 @@ def gen_common_select_cases():
     return [
         # expression has the highest priority
         ({'expression': 'EX', 'query': 'QUERY'}, ['?EX'], ['query=', 'QUERY']),
-        # ({'expression': 'EX', 'ids': [1, 2, 3]}, ['?EX'], ['ids=']),
-        # ({'expression': 'EX', 'name': 'NAME'}, ['?EX'], ['name=', 'NAME']),
+        ({'expression': 'EX', 'ids': [1, 2, 3]}, ['?EX'], ['ids=']),
+        ({'expression': 'EX', 'name': 'NAME'}, ['?EX'], ['name=', 'NAME']),
         # query has 2nd highest priority
-        # ({'query': 'QUERY', 'ids': [1, 2, 3]}, ['=QUERY'], ['ids=']),
-        # # ids has 3rd highest priority
-        # ({'ids': [1, 2, 3], 'name': 'NAME'}, ['ids=1,2,3'], ['name=', 'NAME']),
-        # # any of name, order_by, and fragments triggers "query mode"
-        # ({'name': "it's name"},
-        #  ['$filter=', "name eq 'it''s name'"],
-        #  ['name=']),
-        # ({'name': 'N', 'fragment': 'F'},
-        #  ['$filter=', "name eq 'N'", 'has(F)'],
-        #  ['fragment=', 'name=']),
-        # ({'order_by': 'a asc', 'type': 'T'},
-        #  ['$filter=', "type eq T", '$orderby=a asc'],
-        #  ['order_by', 'orderBy', 'type=']),
-        # ({'fragments': ['a', 'b'], 'owner': 'O', 'text': "it's text"},
-        #  ['$filter=', 'has(a)', 'has(b)', 'owner eq O', "text eq 'it''s text'"],
-        #  ['fragment=', 'owner=']),
-        # # otherwise, simple filters should be used as such
-        # ({'fragment': 'F'}, ['fragmentType=F'], ['$', 'has']),
-        # ({'owner': 'O'}, ['owner=O'], ['$', ' eq ']),
-        # ({'type': 'T'}, ['type=T'], ['$', ' eq ']),
-        # ({'text': "it's text"}, ["text='it''s text'"], ['$', ' eq ']),
-        # # other flags don't change the query mode
-        # ({'fragment': 'F', 'only_roots': True}, ['fragmentType=F', 'onlyRoots=True'], ['$', 'has']),
-        # ({'type': 'T', 'with_children': False}, ['type=T', 'withChildren=False'], ['$', 'has']),
-        # ({'owner': 'O', 'skip_children_names': False}, ['owner=O', 'skipChildrenNames=False'], ['$', 'has']),
-        # ({'text': "it's text", 'with_latest_values': True}, ["text='it''s text'", 'withLatestValues=T'], ['$', ' eq ']),
-        # ({'name': "it's name", 'with_groups': False}, ["name eq 'it''s name'", 'withGroups=False'], ['name=']),
-        # # test all kinds of known parameters
-        # ({'with_children_count': False}, ['withChildrenCount=False'], ['with_children_count']),
-        # ({'skip_children_names': False}, ['skipChildrenNames=False'], ['skip_children_names']),
-        # ({'with_groups': False}, ['withGroups=False'], ['with_groups']),
-        # ({'with_parents': False}, ['withParents=False'], ['with_parents']),
-        # ({'with_latest_values': False}, ['withLatestValues=False'], ['with_latest_values']),
-        # ({'any_other_param': False}, ['anyOtherParam=False'], ['any_other_param']),
-        # ({'pascalCaseParam': 12}, ['pascalCaseParam=12'], []),
+        ({'query': 'QUERY', 'ids': [1, 2, 3]}, ['=QUERY'], ['ids=']),
+        # ids has 3rd highest priority
+        ({'ids': [1, 2, 3], 'name': 'NAME'}, ['ids=1,2,3'], ['name=', 'NAME']),
+        # any of parent, name, order_by, and fragments triggers "query mode"
+        ({'name': "it's name"},
+         ['$filter=', "name eq 'it''s name'"],
+         ['name=']),
+        ({'name': 'N', 'fragment': 'F'},
+         ['$filter=', "name eq 'N'", 'has(F)'],
+         ['fragment=', 'name=']),
+        ({'parent': 'P', 'fragment': 'F'},
+         ['$filter=', "bygroupid(P)", 'has(F)'],
+         ['fragment=', 'name=', 'parent=']),
+        ({'order_by': 'a asc', 'type': 'T'},
+         ['$filter=', "type eq T", '$orderby=a asc'],
+         ['order_by', 'orderBy', 'type=']),
+        ({'fragments': ['a', 'b'], 'owner': 'O', 'text': "it's text"},
+         ['$filter=', 'has(a)', 'has(b)', 'owner eq O', "text eq 'it''s text'"],
+         ['fragment=', 'owner=']),
+        # otherwise, simple filters should be used as such
+        ({'fragment': 'F'}, ['fragmentType=F'], ['$', 'has']),
+        ({'owner': 'O'}, ['owner=O'], ['$', ' eq ']),
+        ({'type': 'T'}, ['type=T'], ['$', ' eq ']),
+        ({'text': "it's text"}, ["text='it''s text'"], ['$', ' eq ']),
+        # other flags don't change the query mode
+        ({'fragment': 'F', 'only_roots': True}, ['fragmentType=F', 'onlyRoots=True'], ['$', 'has']),
+        ({'type': 'T', 'with_children': False}, ['type=T', 'withChildren=False'], ['$', 'has']),
+        ({'owner': 'O', 'skip_children_names': False}, ['owner=O', 'skipChildrenNames=False'], ['$', 'has']),
+        ({'text': "it's text", 'with_latest_values': True}, ["text='it''s text'", 'withLatestValues=T'], ['$', ' eq ']),
+        ({'name': "it's name", 'with_groups': False}, ["name eq 'it''s name'", 'withGroups=False'], ['name=']),
+        # test all kinds of known parameters
+        ({'with_children_count': False}, ['withChildrenCount=False'], ['with_children_count']),
+        ({'skip_children_names': False}, ['skipChildrenNames=False'], ['skip_children_names']),
+        ({'with_groups': False}, ['withGroups=False'], ['with_groups']),
+        ({'with_parents': False}, ['withParents=False'], ['with_parents']),
+        ({'with_latest_values': False}, ['withLatestValues=False'], ['with_latest_values']),
+        ({'any_other_param': False}, ['anyOtherParam=False'], ['any_other_param']),
+        ({'pascalCaseParam': 12}, ['pascalCaseParam=12'], []),
     ]
 
 
@@ -200,15 +203,15 @@ def test_device_inventory_filters(fun, params, expected, not_expected):
     ])
 @pytest.mark.parametrize('params, expected, not_expected', [
     ({'parent': 'PARENT'},
-     ['query=', 'bygroupid(PARENT)', 'type eq c8y_DeviceGroup'],
+     ['query=', 'bygroupid(PARENT)', 'type eq c8y_DeviceSubGroup'],
      []),
     ({'parent': 'PARENT', 'name': "it's name"},
-     ['query=', "name eq 'it''s name'", 'bygroupid(PARENT)', 'type eq c8y_DeviceGroup'],
+     ['query=', "name eq 'it''s name'", 'bygroupid(PARENT)', 'type eq c8y_DeviceSubGroup'],
      []),
     # query invalidates all other parameters
     ({'parent': 'PARENT', 'name': "it's name", 'query': 'QUERY'},
      ['query=QUERY'],
-     ['name eq ', 'bygroupid', 'PARENT', 'c8y_DeviceGroup']),
+     ['name eq ', 'bygroupid', 'PARENT', 'c8y_DeviceSubGroup']),
 ], ids=[
     'parent',
     'name+parent',

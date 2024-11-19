@@ -50,6 +50,7 @@ class Inventory(CumulocityResource):
             ids: list[str | int] = None,
             order_by: str = None,
             type: str = None,
+            parent: str = None,
             fragment: str = None,
             fragments: list[str] = None,
             name: str = None,
@@ -81,6 +82,7 @@ class Inventory(CumulocityResource):
             ids=ids,
             order_by=order_by,
             type=type,
+            parent=parent,
             fragment=fragment,
             fragments=fragments,
             name=name,
@@ -104,6 +106,7 @@ class Inventory(CumulocityResource):
             query: str = None,
             ids: List[str | int] = None,
             type: str = None,
+            parent: str = None,
             fragment: str = None,
             fragments: list[str] = None,
             name: str = None,
@@ -121,6 +124,7 @@ class Inventory(CumulocityResource):
             device_mode=False,
             expression=expression,
             type=type,
+            parent=parent,
             name=name,
             owner=owner,
             text=text,
@@ -139,6 +143,7 @@ class Inventory(CumulocityResource):
             ids: list[str | int] = None,
             order_by: str = None,
             type: str = None,
+            parent: str = None,
             fragment: str = None,
             fragments: list[str] = None,
             name: str = None,
@@ -174,6 +179,7 @@ class Inventory(CumulocityResource):
             ids (List[str|int]): Specific object ID to select.
             order_by (str):  Field/expression to sort the results.
             type (str):  Managed object type
+            parent (str):  Parent object in the asset hierarchy (ID).
             fragment (str):  Name of a present custom/standard fragment
             fragments (list[str]): Additional fragments present within objects
             name (str):  Name of the managed object
@@ -217,6 +223,7 @@ class Inventory(CumulocityResource):
             ids=ids,
             order_by=order_by,
             type=type,
+            parent=parent,
             fragment=fragment,
             fragments=fragments,
             name=name,
@@ -243,6 +250,7 @@ class Inventory(CumulocityResource):
             filters: list[str] = None,
             order_by: str = None,
             type: str = None,
+            parent: str = None,
             fragment: str = None,
             fragments: str | list[str] = None,
             name: str = None,
@@ -259,6 +267,7 @@ class Inventory(CumulocityResource):
             filters=filters,
             order_by=order_by,
             type=type,
+            parent=parent,
             fragment=fragment,
             fragments=fragments,
             name=name,
@@ -276,6 +285,7 @@ class Inventory(CumulocityResource):
             filters: list[str] = None,
             order_by: str = None,
             type: str = None,
+            parent: str = None,
             fragment: str = None,
             fragments: list[str] = None,
             name: str = None,
@@ -295,7 +305,7 @@ class Inventory(CumulocityResource):
         def filter_none(**xs):
             return {k: v for k, v in xs.items() if v is not None}
 
-        use_query = filters or order_by or name or fragments
+        use_query = parent or filters or order_by or name or fragments
         if not use_query:
             return filter_none(type=type, owner=owner, text=text, fragment=fragment, **kwargs)
 
@@ -306,7 +316,8 @@ class Inventory(CumulocityResource):
         fragments = fragments or ([fragment] if fragment else [])
         if fragments:
             filters.extend([f'has({x})' for x in fragments])
-
+        if parent:
+            filters.append(f'bygroupid({parent})')
         if name:
             filters.append(f"name eq '{_QueryUtil.encode_odata_query_value(name)}'")
         if type:
@@ -459,6 +470,7 @@ class DeviceInventory(Inventory):
             ids: list[str | int] = None,
             order_by: str = None,
             type: str = None,
+            parent: str = None,
             fragment: str = None,
             fragments: list[str] = None,
             name: str = None,
@@ -496,6 +508,7 @@ class DeviceInventory(Inventory):
                 ignored if such a custom query is provided
             ids (List[str|int]): Specific object ID to select.
             type (str):  Device type
+            parent (str):  Parent object in the asset hierarchy (ID).
             order_by (str):  Field/expression to sort the results.
             fragment (str):  Name of a present custom/standard fragment
             fragments (list[str]): Additional fragments present within objects
@@ -539,6 +552,7 @@ class DeviceInventory(Inventory):
             ids=ids,
             order_by=order_by,
             type=type,
+            parent=parent,
             fragment=fragment,
             fragments=fragments,
             name=name,
@@ -563,6 +577,7 @@ class DeviceInventory(Inventory):
             ids: list[str | int] = None,
             order_by: str = None,
             type: str = None,
+            parent: str = None,
             fragment: str = None,
             fragments: list[str] = None,
             name: str = None,
@@ -594,6 +609,7 @@ class DeviceInventory(Inventory):
             ids=ids,
             order_by=order_by,
             type=type,
+            parent=parent,
             fragment=fragment,
             fragments=fragments,
             name=name,
@@ -617,6 +633,7 @@ class DeviceInventory(Inventory):
             query: str = None,
             ids: list[str | int] = None,
             type: str = None,
+            parent: str = None,
             fragment: str = None,
             fragments: list[str] = None,
             name: str = None,
@@ -637,6 +654,7 @@ class DeviceInventory(Inventory):
             query=query,
             ids=ids,
             type=type,
+            parent=parent,
             fragment=fragment,
             fragments=fragments,
             name=name,
@@ -690,53 +708,14 @@ class DeviceGroupInventory(Inventory):
         group.c8y = self.c8y
         return group
 
-    def _prepare_device_group_query(
-            self,
-            type: str,
-            parent: str | int = None,
-            fragment: str = None,
-            name: str = None,
-            owner: str = None,
-            query: str = None,
-            **kwargs
-    ) -> str:
-        # pylint: disable=arguments-differ, arguments-renamed
-
-        query_filters = []
-        # Both name and parent filters can only be expressed as a query,
-        # which then triggers "query mode"
-        if name:
-            query_filters.append(f"name eq '{_QueryUtil.encode_odata_query_value(name)}'")
-        if parent:
-            query_filters.append(f"bygroupid({parent})")
-            type = DeviceGroup.CHILD_TYPE  # noqa
-
-        # if any query was defined, all filters must be put into the query
-        if query_filters:
-            if type:
-                query_filters.append(f"type eq '{type}'")
-            if owner:
-                query_filters.append(f"owner eq '{owner}'")
-            if fragment:
-                query_filters.append(f"has({fragment}")
-
-        if query_filters:
-            query = self._prepare_query_param(query, query_filters)
-
-        if query:
-            page_size = kwargs.get('page_size', None)
-            return self._prepare_inventory_query(query=query, page_size=page_size)
-
-        return self._prepare_inventory_query(type=type, fragment=fragment, owner=owner, **kwargs)
-
     def select(  # noqa (changed signature)
             self,
             expression: str = None,
             query: str = None,
             ids: List[str | int] = None,
             order_by: str = None,
+            type: str = None,
             parent: str | int = None,
-            type: str = DeviceGroup.ROOT_TYPE,
             fragment: str = None,
             fragments: list[str] = None,
             name: str = None,
@@ -759,10 +738,6 @@ class DeviceGroupInventory(Inventory):
         This is a lazy implementation; results are fetched in pages but
         parsed and returned one by one.
 
-        The type of all DeviceGroup objects is fixed 'c8y_DeviceGroup',
-        'c8y_DeviceSubGroup' if searching by `parent` respectively. Hence,
-        manual filtering by type is not supported.
-
         Args:
             expression (str):  Arbitrary filter expression which will be
                 passed to Cumulocity without change; all other filters
@@ -777,10 +752,11 @@ class DeviceGroupInventory(Inventory):
                 Note: If set to None, no type filter will be applied which
                 will match all kinds of managed objects. If you want to
                 match device groups only you need to use the fragment filter.
-            parent (str): ID of the parent device group
-                Note: this forces the `type` filter to be c8y_DeviceSubGroup
-                Like the `name` parameter, this is a convenience parameter
-                which will translate all filters into a query string.
+            parent (str):  Parent object in the asset hierarchy (ID).
+                Note: this sets the `type` filter to be c8y_DeviceSubGroup
+                if not defined; Like the `name` parameter, this is a
+                convenience parameter which will translate all filters into
+                a query string.
             fragment (str): Additional fragment present within the objects
             fragments (list[str]): Additional fragments present within the objects
             name (str): Name string of the groups to select
@@ -816,15 +792,17 @@ class DeviceGroupInventory(Inventory):
         Returns:
             Generator of DeviceGroup instances
         """
+        type = type or (DeviceGroup.CHILD_TYPE if parent else None)
+
         return super()._select(
             parse_fun=DeviceGroup.from_json,
             device_mode=False,
             expression=expression,
             query=query,
             ids=ids,
-            filters=[f"bygroupid({parent})"] if parent else None,
             order_by=order_by,
             type=type,
+            parent=parent,
             fragment=fragment,
             fragments=fragments,
             name=name,
@@ -848,7 +826,7 @@ class DeviceGroupInventory(Inventory):
             query: str = None,
             ids: list[str | int] = None,
             parent: str | int = None,
-            type: str = DeviceGroup.ROOT_TYPE,
+            type: str = None,
             fragment: str = None,
             fragments: list[str] = None,
             name: str = None,
@@ -863,13 +841,14 @@ class DeviceGroupInventory(Inventory):
         Returns:
             Number of potential results
         """
+        type = type or (DeviceGroup.CHILD_TYPE if parent else None)
         base_query = self._prepare_inventory_query(
             device_mode=False,
             expression=expression,
             query=query,
             ids=ids,
-            filters=[f"bygroupid({parent})"] if parent else None,
             type=type,
+            parent=parent,
             fragment=fragment,
             fragments=fragments,
             name=name,
@@ -884,7 +863,7 @@ class DeviceGroupInventory(Inventory):
             expression: str = None,
             query: str = None,
             ids: list[str | int] = None,
-            type: str = DeviceGroup.ROOT_TYPE,
+            type: str = None,
             parent: str | int = None,
             fragment: str = None,
             fragments: list[str] = None,
