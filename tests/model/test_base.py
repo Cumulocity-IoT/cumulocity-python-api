@@ -247,11 +247,11 @@ def test_iteration(page_size, num_all, limit, expected):
     all_items = [{'i': i} for i in range(num_all)]
 
     # returns a 'page' from all items
-    def get_page(_, page):
+    def get_page(_, p):
         nonlocal all_items
-        s = page_size * (page - 1)
-        e = page_size * page
-        return [i for i in all_items[s:e]]
+        s = page_size * (p - 1)
+        e = page_size * p
+        return all_items[s:e]
 
     # parses an item as CumulocityObject
     def parse_fun(item):
@@ -261,7 +261,7 @@ def test_iteration(page_size, num_all, limit, expected):
 
     # create class under test
     res = CumulocityResource(Mock(CumulocityRestApi), '')
-    res._get_page = get_page
+    res._get_page = Mock(side_effect=get_page)
 
     # iterate oder results
     result = list(res._iterate(base_query="q", page_number=None, limit=limit, parse_fun=parse_fun))

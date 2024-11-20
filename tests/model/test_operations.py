@@ -5,14 +5,13 @@
 # as specifically provided for in your License Agreement with Software AG.
 
 from datetime import timedelta
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 from urllib.parse import unquote_plus
 
 import pytest
 
 from c8y_api import CumulocityApi
 from c8y_api.model import Operations
-from model import BulkOperations
 
 from tests.utils import isolate_last_call_arg
 

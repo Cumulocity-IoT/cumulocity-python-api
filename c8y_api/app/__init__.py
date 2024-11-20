@@ -343,3 +343,6 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
 
     def __enter__(self) -> MultiTenantCumulocityApp:
         return self
+
+    def __exit__(self, __exc_type, __exc_value, __traceback):
+        pass

@@ -103,4 +103,4 @@ def test_context_manager(test_environment):
         assert c8y.username
 
     with MultiTenantCumulocityApp() as c8y:
-        assert c8y.username
+        assert c8y.bootstrap_instance.username

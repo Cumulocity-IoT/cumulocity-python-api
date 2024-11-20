@@ -8,7 +8,6 @@
 from __future__ import annotations
 
 from typing import Any, Generator, List
-from urllib.parse import urlencode, quote_plus
 
 from c8y_api.model._base import CumulocityResource
 from c8y_api.model._util import _QueryUtil

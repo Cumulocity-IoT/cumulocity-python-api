@@ -66,6 +66,7 @@ def fix_measurement_factory(live_c8y: CumulocityApi):
 
 def test_select(live_c8y: CumulocityApi, measurement_factory):
     """Verify that selection works as expected."""
+    # pylint: disable=too-many-statements)
     logging.basicConfig()
     logging.getLogger().setLevel(logging.DEBUG)
     requests_log = logging.getLogger("requests.packages.urllib3")
@@ -77,21 +78,17 @@ def test_select(live_c8y: CumulocityApi, measurement_factory):
 
     # create a couple of measurements (at a new device)
     created_ms = measurement_factory(10, type=name, series=name)
-    created_values = [m[name]['series'].value for m in created_ms]
 
     # create a couple of measurements with different source
     source_ms = measurement_factory(10, type=name, series=name)
-    source_values = [m[name]['series'].value for m in source_ms]
 
     # create a couple of measurements with different type name
     device_id = created_ms[0].source
     device = live_c8y.device_inventory.get(created_ms[0].source)
     type_ms = measurement_factory(10, device=device, type=other_name, series=name)
-    type_values = [m[name]['series'].value for m in type_ms]
 
     # create a couple of measurements with different series name
     series_ms = measurement_factory(10, device=device, type=name, series=other_name)
-    series_values = [m[other_name]['series'].value for m in series_ms]
 
     # (1) all measurement collections can be selected separately
 

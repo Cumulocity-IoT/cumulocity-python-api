@@ -7,15 +7,13 @@
 from __future__ import annotations
 
 import logging
-from urllib.parse import quote_plus
 from typing import Any, Iterable, Set
+from urllib.parse import quote_plus, urlencode
 
 from collections.abc import MutableMapping
 from deprecated import deprecated
-from urllib.parse import urlencode
 
 from c8y_api._base_api import CumulocityRestApi
-
 from c8y_api.model._util import _DateUtil, _StringUtil, _QueryUtil
 
 

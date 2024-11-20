@@ -4,7 +4,7 @@
 # Use, reproduction, transfer, publication or disclosure is prohibited except
 # as specifically provided for in your License Agreement with Software AG.
 # pylint: disable=protected-access
-import itertools
+
 from unittest.mock import Mock
 
 import pytest
@@ -108,6 +108,7 @@ def _invoke_target_and_isolate_url(target, kwargs):
 
 
 def gen_common_select_cases():
+    """Generate test case data for common select cases."""
     return [
         # expression has the highest priority
         ({'expression': 'EX', 'query': 'QUERY'}, ['?EX'], ['query=', 'QUERY']),
@@ -156,6 +157,7 @@ def gen_common_select_cases():
 
 
 def gen_common_select_cases_ids():
+    """Generate test case ID for common select cases."""
     return ['+'.join(x[0].keys()) for x in gen_common_select_cases()]
 
 
@@ -171,6 +173,7 @@ def gen_common_select_cases_ids():
         'group_inventory.get_count',
 ])
 def test_common_select_params(fun, params, expected, not_expected):
+    """Verify that common select parameters are handled correctly."""
     url = _invoke_target_and_isolate_url(fun, params)
     for e in expected:
         assert e in url
