@@ -130,7 +130,7 @@ class AsyncListener(object):
                 c = await self._get_connection()
                 payload = await c.recv()
                 self._log.debug("Received message: {}.", payload)
-                asyncio.create_task(_callback(AsyncListener.Message(listener=self, payload=payload)))
+                await asyncio.create_task(_callback(AsyncListener.Message(listener=self, payload=payload)))
             except ws.ConnectionClosed as e:
                 self._log.info("Websocket connection closed: {}", e)
 

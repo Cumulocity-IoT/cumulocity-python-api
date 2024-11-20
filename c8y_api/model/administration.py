@@ -54,9 +54,9 @@ class Permission(SimpleObject):
         OPERATION = 'OPERATION'
 
     _parser = SimpleObjectParser({
-            'level': 'permission',
-            'type': 'type',
-            'scope': 'scope'})
+        'level': 'permission',
+        'type': 'type',
+        'scope': 'scope'})
 
     def __init__(self, level: str = Level.ANY, scope: str = Scope.ANY, type: str = '*'):
         """Create a new Permission instance.
@@ -90,6 +90,7 @@ class Permission(SimpleObject):
 
 class ReadPermission(Permission):
     """Represents a read permission within Cumulocity."""
+
     # pylint: disable=abstract-method
     def __init__(self, scope=Permission.Scope.ANY, type='*'):  # noqa
         super().__init__(level=Permission.Level.READ, scope=scope, type=type)
@@ -97,6 +98,7 @@ class ReadPermission(Permission):
 
 class WritePermission(Permission):
     """Represents a write permission within Cumulocity."""
+
     # pylint: disable=abstract-method
     def __init__(self, scope=Permission.Scope.ANY, type='*'):  # noqa
         super().__init__(level=Permission.Level.WRITE, scope=scope, type=type)
@@ -104,6 +106,7 @@ class WritePermission(Permission):
 
 class AnyPermission(Permission):
     """Represents a read/write permission within Cumulocity."""
+
     # pylint: disable=abstract-method
     def __init__(self, scope=Permission.Scope.ANY, type='*'):  # noqa
         super().__init__(level=Permission.Level.ANY, scope=scope, type=type)
@@ -120,8 +123,8 @@ class InventoryRole(SimpleObject):
     """
 
     _parser = SimpleObjectParser({
-            '_u_name': 'name',
-            '_u_description': 'description'})
+        '_u_name': 'name',
+        '_u_description': 'description'})
     _resource = '/user/inventoryroles'
 
     def __init__(self, c8y: CumulocityRestApi = None, name: str = None, description: str = None,
@@ -191,7 +194,7 @@ class InventoryRoleAssignment(SimpleObject):
     See also: https://cumulocity.com/api/#tag/Inventory-Roles
     """
     _parser = SimpleObjectParser({
-            'managed_object': 'managedObject'})
+        'managed_object': 'managedObject'})
 
     def __init__(self, c8y: CumulocityRestApi = None, managed_object: str = None,
                  roles: List[InventoryRole] = None):
@@ -237,9 +240,9 @@ class GlobalRole(SimpleObject):
     """
 
     _parser = SimpleObjectParser({
-            'id': 'id',
-            '_u_name': 'name',
-            '_u_description': 'description'})
+        'id': 'id',
+        '_u_name': 'name',
+        '_u_description': 'description'})
     _resource = 'INVALID'  # needs to be dynamically generated. see _build_resource_path
     _accept = CumulocityRestApi.ACCEPT_GLOBAL_ROLE
     _custom_properties_parser = ComplexObjectParser({}, [])
@@ -378,10 +381,10 @@ class TfaSettings:
     """TFA settings representation within Cumulocity."""
 
     _parser = SimpleObjectParser(
-            enabled='tfaEnabled',
-            enforced='tfaEnforced',
-            strategy='strategy',
-            last_request_time='lastTfaRequestTime')
+        enabled='tfaEnabled',
+        enforced='tfaEnforced',
+        strategy='strategy',
+        last_request_time='lastTfaRequestTime')
 
     def __init__(self,
                  enabled: bool = None,
@@ -441,27 +444,26 @@ class TfaSettings:
 
 class _BaseUser(SimpleObject):
     _parser = SimpleObjectParser({
-            'username': 'userName',
-            'password_strength': 'passwordStrength',
-            'owner': 'owner',
-            'delegated_by': 'delegatedBy',
-            '_u_email': 'email',
-            '_u_enabled': 'enabled',
-            '_u_display_name': 'displayName',
-            '_u_password': 'password',
-            '_u_first_name': 'firstName',
-            '_u_last_name': 'lastName',
-            '_u_tfa_enabled': 'twoFactorAuthenticationEnabled',
-            '_u_require_password_reset': 'shouldResetPassword',
-            '_password_reset_mail': 'sendPasswordResetEmail',
-            '_last_password_change': 'lastPasswordChange'})
+        'username': 'userName',
+        'password_strength': 'passwordStrength',
+        'owner': 'owner',
+        'delegated_by': 'delegatedBy',
+        '_u_email': 'email',
+        '_u_enabled': 'enabled',
+        '_u_display_name': 'displayName',
+        '_u_password': 'password',
+        '_u_first_name': 'firstName',
+        '_u_last_name': 'lastName',
+        '_u_tfa_enabled': 'twoFactorAuthenticationEnabled',
+        '_u_require_password_reset': 'shouldResetPassword',
+        '_password_reset_mail': 'sendPasswordResetEmail',
+        '_last_password_change': 'lastPasswordChange'})
     _resource = 'INVALID'  # needs to be dynamically generated. see _build_resource_path
 
     def __init__(self, c8y: CumulocityRestApi = None, username: str = None, email: str = None,
                  enabled: bool = True, display_name: str = None, password: str = None,
                  first_name: str = None, last_name: str = None, phone: str = None,
                  tfa_enabled: bool = None, require_password_reset: bool = None):
-
         super().__init__(c8y)
         self.username = username
         self.password_strength = None
@@ -547,7 +549,6 @@ class User(_BaseUser):
         self.application_ids = set()
         # self.effective_permission_ids = set()
         # self.custom_properties = WithUpdatableFragments()
-
 
     @classmethod
     def from_json(cls, json: dict) -> User:
@@ -733,6 +734,7 @@ class CurrentUser(_BaseUser):
 
     class TotpActivity:
         """User's TOTP activity information."""
+
         def __init__(self, is_active: bool = None):
             self.is_active = is_active
 
@@ -769,13 +771,13 @@ class CurrentUser(_BaseUser):
     _resource = '/user/currentUser'
     _accept = CumulocityRestApi.ACCEPT_CURRENT_USER
 
-    def __init__(self, c8y:CumulocityRestApi = None):
+    def __init__(self, c8y: CumulocityRestApi = None):
         super().__init__(c8y)
         self.effective_permission_ids = {}
 
     @classmethod
     def from_json(cls, json: dict) -> CurrentUser:
-        user:CurrentUser = cls._from_json(json, CurrentUser())
+        user: CurrentUser = cls._from_json(json, CurrentUser())
         if 'effectiveRoles' in json:
             user.effective_permission_ids = {ref['id'] for ref in json['effectiveRoles']}
         return user
@@ -1057,23 +1059,44 @@ class Users(CumulocityResource):
         user.c8y = self.c8y
         return user
 
-    def select(self,
-               username: str = None,
-               groups: str | int | GlobalRole | List[str] | List[int] | List[GlobalRole] = None,
-               page_size: int = 5):
+    def select(
+            self,
+            expression: str = None,
+            username: str = None,
+            groups: str | int | GlobalRole | List[str] | List[int] | List[GlobalRole] = None,
+            owner: str = None,
+            only_devices: bool = None,
+            with_subusers_count: bool = None,
+            limit: int = None,
+            page_size: int = 5,
+            page_number: int = None,
+            **kwargs
+    ) -> Generator[User]:
         """Lazily select and yield User instances.
 
         The result can be limited by username (prefix) and/or group membership.
 
         Args:
+            expression (str):  Arbitrary filter expression which will be
+                passed to Cumulocity without change; all other filters
+                are ignored if this is provided
             username (str): A user's username or a prefix thereof
             groups (int, [int], str, [str], GlobalRole, [GlobalRole]): a scalar
                 or list of int (actual group ID), string (group names), or actual
                 Group instances
-            page_size (int):  Number of results fetched per request
+            owner (str):  Username of the owner of the user
+            only_devices (bool):  Only return device users (starting with `device_`)
+                If absent or False, the users will be excluded.
+            with_subusers_count (bool):  Whether to include an additional field
+             `subusersCount` which holds the number of direct sub users.
+            limit (int): Limit the number of results to this number.
+            page_size (int): Define the number of events which are read (and
+                parsed in one chunk). This is a performance related setting.
+            page_number (int): Pull a specific page; this effectively disables
+                automatic follow-up page retrieval.
 
         Returns:
-            Generator of Group instances
+            Generator of User instances
         """
         # group_list can be ints, strings (names) or Group objects
         # it needs to become a comma-separated string
@@ -1092,36 +1115,46 @@ class Users(CumulocityResource):
                 raise ValueError("Unable to identify type of given group identifiers.")
             groups_string = ','.join(groups_string)
         # lazily yield parsed objects page by page
-        base_query = super()._build_base_query(username=username, groups=groups_string, page_size=page_size)
-        page_number = 1
-        while True:
-            page_results = [User.from_json(x) for x in self._get_page(base_query, page_number)]
-            if not page_results:
-                break
-            for user in page_results:
-                user.c8y = self.c8y  # inject c8y connection into instance
-                yield user
-            page_number = page_number + 1
+        base_query = super()._prepare_query(
+            expression=expression,
+            username=username,
+            groups=groups_string,
+            owner=owner,
+            only_devices=only_devices,
+            with_subusers_count=with_subusers_count,
+            page_size=page_size,
 
-    def get_all(self,
-                username: str = None,
-                groups: str | int | GlobalRole | List[str] | List[int] | List[GlobalRole] = None,
-                page_size: int = 1000):
+            **kwargs
+        )
+        return super()._iterate(base_query, page_number, limit, User.from_json)
+
+    def get_all(
+            self,
+            username: str = None,
+            groups: str | int | GlobalRole | List[str] | List[int] | List[GlobalRole] = None,
+            owner: str = None,
+            only_devices: bool = None,
+            with_subusers_count: bool = None,
+            page_size: int = 1000,
+            **kwargs
+    ) -> list[User]:
         """Select and retrieve User instances as list.
 
         The result can be limited by username (prefix) and/or group membership.
 
-        Args:
-            username (str): A user's username or a prefix thereof
-            groups: a scalar or list of int (actual group ID), string (group names),
-                or actual Group instances
-            page_size (int):  Maximum number of entries fetched per requests;
-            this is a performance setting
+        See `select` for a documentation of arguments.
 
         Returns:
-            List of User
+            List of User instances
         """
-        return list(self.select(username, groups, page_size))
+        return list(self.select(
+            username=username,
+            groups=groups,
+            owner=owner,
+            only_devices=only_devices,
+            with_subusers_count=with_subusers_count,
+            page_size=page_size,
+            **kwargs))
 
     def create(self, *users):
         """Create users within the database.
@@ -1257,6 +1290,8 @@ class GlobalRoles(CumulocityResource):
         Return:
             Generator of GlobalRole instances
         """
+        # unfortunately, as selecting by username can't be implemented using the
+        # generic _iterate method, we have to do everything manually.
         if username:
             # select by username
             query = f'/user/{self.c8y.tenant_id}/users/{username}/groups?pageSize={page_size}&currentPage='
@@ -1273,17 +1308,8 @@ class GlobalRoles(CumulocityResource):
                 page_number = page_number + 1
         else:
             # select all
-            query = self._prepare_query(page_size=page_size)
-            page_number = 1
-            while True:
-                role_jsons = self._get_page(query, page_number)
-                if not role_jsons:
-                    break
-                for role_json in role_jsons:
-                    result = GlobalRole.from_json(role_json)
-                    result.c8y = self.c8y
-                    yield result
-                page_number = page_number + 1
+            base_query = self._prepare_query(page_size=page_size)
+            yield from super()._iterate(base_query, page_number=None, limit=None, parse_fun=GlobalRole.from_json)
 
     def get_all(self, username: str = None, page_size: int = 1000) -> List[GlobalRole]:
         """Retrieve global roles.
@@ -1297,7 +1323,7 @@ class GlobalRoles(CumulocityResource):
         Return:
             List of GlobalRole instances
         """
-        return list(self.select(username, page_size))
+        return list(self.select(username=username, page_size=page_size))
 
     def assign_users(self, role_id: int | str, *usernames: str):
         """Add users to a global role.
