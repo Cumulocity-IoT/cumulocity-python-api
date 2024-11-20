@@ -63,7 +63,7 @@ def test_select_by_name(live_c8y: CumulocityApi):
     prefix = RandomNameGenerator.random_name(1)
     users = []
     try:
-        for i in range(0, 5):
+        for _ in range(0, 5):
             username = f'{prefix}-{RandomNameGenerator.random_name(1)}'
             email = f'{username}@c8y.com'
 
