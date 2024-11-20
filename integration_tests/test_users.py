@@ -9,6 +9,7 @@
 import secrets
 import string
 import time
+from contextlib import suppress
 from typing import Union
 
 import pytest
@@ -24,6 +25,7 @@ def generate_password():
     """Generate a strong password meeting Cumulocity requirements."""
     alphabet = string.ascii_letters + string.digits + '_-.#&$'
     return 'Aa0.' + ''.join(secrets.choice(alphabet) for _ in range(12))
+
 
 def test_CRUD(live_c8y: CumulocityApi):  # noqa (case)
     """Verify that basic CRUD functionality works."""
@@ -54,6 +56,26 @@ def test_CRUD(live_c8y: CumulocityApi):  # noqa (case)
     with pytest.raises(KeyError) as e:
         live_c8y.users.get(user.username)
         assert user.username in str(e)
+
+
+def test_select_by_name(live_c8y: CumulocityApi):
+    """Verify that user selection by name works as expected."""
+    prefix = RandomNameGenerator.random_name(1)
+    users = []
+    try:
+        for i in range(0, 5):
+            username = f'{prefix}-{RandomNameGenerator.random_name(1)}'
+            email = f'{username}@c8y.com'
+
+            user = User(live_c8y, username=username, email=email, enabled=True).create()
+            users.append(user)
+
+        selected = live_c8y.users.get_all(username=prefix)
+        assert {x.id for x in selected} == {x.id for x in users}
+    finally:
+        for u in users:
+            with suppress(Exception):
+                u.delete()
 
 
 def test_get_current(live_c8y: CumulocityApi):

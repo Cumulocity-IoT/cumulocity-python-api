@@ -6,6 +6,7 @@
 
 import pytest
 
+from c8y_api import CumulocityApi
 from c8y_api.model import User, InventoryRole, Permission, ReadPermission, WritePermission, AnyPermission
 
 from util.testing_util import RandomNameGenerator
@@ -77,6 +78,12 @@ def test_CRUD2(live_c8y):
     # (this used to throw a SyntaxError, KeyError since 10.20)
     with pytest.raises(KeyError):
         live_c8y.inventory_roles.get(created_role.id)
+
+
+def test_select_inventory_roles(live_c8y: CumulocityApi):
+    """Verify that selection works as expected."""
+    # (1) get all defined inventory roles
+    assert live_c8y.inventory_roles.get_all()
 
 
 def test_assignments(live_c8y, sample_device, factory):

@@ -6,10 +6,12 @@
 
 from __future__ import annotations
 
+import random
+
 import pytest
 
 from c8y_api import CumulocityApi
-from c8y_api.model import GlobalRole
+from c8y_api.model import GlobalRole, User
 
 from util.testing_util import RandomNameGenerator
 
@@ -43,6 +45,24 @@ def test_CRUD(live_c8y: CumulocityApi):  # noqa (case)
     with pytest.raises(KeyError) as e:
         live_c8y.global_roles.get(rolename)
         assert rolename in str(e)
+
+
+def test_select(live_c8y: CumulocityApi):
+    """Verify that selection works as expected."""
+    # (1) get all defined global roles
+    all_roles = live_c8y.global_roles.get_all()
+
+    # (2) create a user and assign roles
+    username = RandomNameGenerator.random_name(2)
+    email = f'{username}@c8y.com'
+    user = User(live_c8y, username=username, email=email, enabled=True).create()
+    selected_roles = random.sample(all_roles, k=5)
+    for role in selected_roles:
+        user.assign_global_role(role.id)
+
+    # (3) select by user
+    for role in live_c8y.global_roles.get_all(username=username):
+        assert role.id in [x.id for x in selected_roles]
 
 
 def test_updating_users(live_c8y: CumulocityApi, factory):

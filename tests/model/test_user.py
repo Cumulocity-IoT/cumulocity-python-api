@@ -3,9 +3,9 @@
 # and/or its subsidiaries and/or its affiliates and/or their licensors.
 # Use, reproduction, transfer, publication or disclosure is prohibited except
 # as specifically provided for in your License Agreement with Software AG.
-import datetime
 # pylint: disable=redefined-outer-name
 
+import datetime
 import json
 import os
 
