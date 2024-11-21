@@ -156,8 +156,17 @@ class TenantOptions(CumulocityResource):
         Returns:
             Generator for TenantObject instances
         """
-        base_query = self._prepare_query(category=category, page_size=page_size)
-        return super()._iterate(base_query, page_number, limit, TenantOption.from_json)
+        if not category:
+            # select all
+            base_query = self._prepare_query(page_size=page_size)
+            yield from super()._iterate(base_query, page_number, limit, TenantOption.from_json)
+        else:
+            # select by category, this is just a single request
+            options_json = self.c8y.get(f'{self.resource}/{category}')
+            for key, value in options_json.items():
+                result = TenantOption(category=category, key=key, value=value)
+                result.c8y = self.c8y  # inject c8y connection into instance
+                yield result
 
     def get_all(self, category: str = None, limit: int = None,
                 page_size: int = 1000, page_number: int = None) -> List[TenantOption]:
@@ -260,7 +269,7 @@ class TenantOptions(CumulocityResource):
             category (str):  Option category
             options (dict):  A dictionary of option keys and values
         """
-        self.c8y.put(resource=self.resource + '/' + category, json=options, accept=None)
+        self.c8y.put(resource=f'{self.resource}/{category}', json=options, accept=None)
 
     def delete(self, *options: TenantOption) -> None:
         """ Delete options within the database.

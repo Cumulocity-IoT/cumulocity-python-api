@@ -88,6 +88,21 @@ def test_crud_2(live_c8y: CumulocityApi):
             live_c8y.tenant_options.delete(option)
 
 
+def test_select_by(live_c8y: CumulocityApi):
+    """Verify that selecting tenant options work as expected."""
+    all_options = live_c8y.tenant_options.get_all()
+
+    categories = {x.category for x in all_options}
+    by_category = {c: [x for x in all_options if x.category == c] for c in categories}
+    for category, xs in by_category.items():
+        options = live_c8y.tenant_options.get_all(category=category)
+        options_mapped = live_c8y.tenant_options.get_all_mapped(category=category)
+        assert len(options) == len(by_category[category])
+        assert len(options_mapped) == len(by_category[category])
+        assert {x.key for x in options} == {x.key for x in xs}
+        assert {x for x, _ in options_mapped.items()} == {x.key for x in xs}
+
+
 def test_set_value_and_update_and_delete_by(live_c8y: CumulocityApi):
     """Verify that functions set_value, update_by and delete_by work
     as expected."""

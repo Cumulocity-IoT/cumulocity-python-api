@@ -8,6 +8,7 @@
 * Incorporated pull request to remove dependency on deprecated pkg_resources package (thanks @reubenmiller).
 * Incorporated pull request to support context handlers.
 * Many additional unit tests and integration tests.
+* Fixed issue [#63](https://github.com/Cumulocity-IoT/cumulocity-python-api/issues/63) (tenant option select function did not filter categories correctly).
 
 
 ## Version 2.1
