@@ -1,5 +1,15 @@
 # Changelog
 
+## Version 3
+
+* Unified query behaviour of all API classes (introducing potentially breaking changes as the order of parameters needed to change).
+* Added support for arbitrary expressions and kwargs on almost all select functions defined at the API classes, e.g. for Measurements, Events, Alarms, Inventory, etc. Using the expression parameter (always the first in all select-like functions that support it), an arbitrary query expression can be defined which will be forwarded to the REST API as-is. Using kwargs, additional maybe undocumented or deprecated parameters can be defined.
+* Additional, undocumented select parameters will automatically be converted to Pascal case (e.g. my_undocumented_arg will be translated to myUndocumentedArg).
+* Incorporated pull request to remove dependency on deprecated pkg_resources package (thanks @reubenmiller).
+* Incorporated pull request to support context handlers.
+* Many additional unit tests and integration tests.
+
+
 ## Version 2.1
 
 * Added support for processing mode on all API base classes
