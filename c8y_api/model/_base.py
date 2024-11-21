@@ -420,8 +420,7 @@ class ComplexObject(SimpleObject):
                 continue
             if hasattr(value, segment):
                 return value.__getattribute__(segment)
-            else:
-                return default
+            return default
         return value
 
     @deprecated
@@ -496,7 +495,6 @@ class CumulocityResource:
             The relative path to the object within Cumulocity.
         """
         return self.resource + '/' + str(object_id)
-
 
     @staticmethod
     def _map_params(

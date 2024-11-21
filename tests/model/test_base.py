@@ -233,6 +233,7 @@ def test_complexobject_instantiation_and_formatting():
 
 
 def test_complexobject_get():
+    """Verify that get by path works as expected."""
 
     obj = ComplexTestObject(
         field='field value',
@@ -247,6 +248,8 @@ def test_complexobject_get():
     assert obj.get('c8y_complex.a') == obj.c8y_complex.a
     assert obj.get('not') is None
     assert obj.get('not', 'default') == 'default'
+    assert obj.get('c8y_complex.not') is None
+    assert obj.get('c8y_complex.not', 'default') == 'default'
 
 
 @pytest.mark.parametrize('page_size, num_all, limit, expected', [
