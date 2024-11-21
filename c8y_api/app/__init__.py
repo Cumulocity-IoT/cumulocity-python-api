@@ -179,6 +179,9 @@ class SimpleCumulocityApp(_CumulocityAppBase, CumulocityApi):
         return CumulocityApi(base_url=self.base_url, tenant_id=self.tenant_id, auth=auth,
                              application_key=self.application_key, processing_mode=self.processing_mode)
 
+    def __enter__(self) -> SimpleCumulocityApp:
+        return self
+
 
 class MultiTenantCumulocityApp(_CumulocityAppBase):
     """Multi-tenant enabled Cumulocity application wrapper.
@@ -337,3 +340,9 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
             instance = self._create_tenant_instance(tenant_id)
             self._tenant_instances[tenant_id] = instance
             return instance
+
+    def __enter__(self) -> MultiTenantCumulocityApp:
+        return self
+
+    def __exit__(self, __exc_type, __exc_value, __traceback):
+        pass

@@ -9,3 +9,4 @@ build*
 .env*
 _version.py
 wordlist.txt
+.ipynb_checkpoints

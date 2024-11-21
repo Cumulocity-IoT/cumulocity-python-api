@@ -9,7 +9,6 @@ from __future__ import annotations
 import dataclasses
 from datetime import datetime, timedelta
 from typing import Type, List, Generator, Sequence
-from urllib.parse import urlencode, quote_plus
 
 from c8y_api._base_api import CumulocityRestApi
 

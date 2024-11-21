@@ -8,7 +8,7 @@ import pytest
 import requests
 
 from c8y_api import CumulocityRestApi, HTTPBearerAuth
-from c8y_api.app import SimpleCumulocityApp
+from c8y_api.app import SimpleCumulocityApp, MultiTenantCumulocityApp
 from c8y_api.model import ManagedObject
 
 from tests.utils import build_auth_string, b64encode
@@ -94,3 +94,13 @@ def test_oai_secure_login():
     assert c8y_user.username == c8y.username
     assert isinstance(c8y_user.auth, HTTPBearerAuth)
     assert c8y_user.auth.token == response.cookies['authorization']
+
+
+def test_context_manager(test_environment):
+    """Verify that the Apps can be used as context managers."""
+
+    with SimpleCumulocityApp() as c8y:
+        assert c8y.username
+
+    with MultiTenantCumulocityApp() as c8y:
+        assert c8y.bootstrap_instance.username

@@ -7,15 +7,13 @@
 from __future__ import annotations
 
 import logging
-from urllib.parse import quote_plus
 from typing import Any, Iterable, Set
+from urllib.parse import quote_plus, urlencode
 
 from collections.abc import MutableMapping
 from deprecated import deprecated
-from urllib.parse import urlencode
 
 from c8y_api._base_api import CumulocityRestApi
-
 from c8y_api.model._util import _DateUtil, _StringUtil, _QueryUtil
 
 
@@ -402,6 +400,29 @@ class ComplexObject(SimpleObject):
     def __contains__(self, name):
         return name in self.fragments
 
+    def get(self, path: str, default=None):
+        """Get a fragment/value by path.
+
+        Args:
+            path (str): A fragment/value path in dot notation, e.g.
+                "c8y_Firmware.version"
+            default: Sensible default if the path is not defined.
+
+        Returns:
+            The fragment/value specified via the path or the default value
+            if the path is not defined.
+        """
+        segments = path.split('.')
+        value = self
+        for segment in segments:
+            if segment in value:
+                value = value[segment]
+                continue
+            if hasattr(value, segment):
+                return value.__getattribute__(segment)
+            return default
+        return value
+
     @deprecated
     def set_attribute(self, name, value):
         # pylint: disable=missing-function-docstring
@@ -474,7 +495,6 @@ class CumulocityResource:
             The relative path to the object within Cumulocity.
         """
         return self.resource + '/' + str(object_id)
-
 
     @staticmethod
     def _map_params(

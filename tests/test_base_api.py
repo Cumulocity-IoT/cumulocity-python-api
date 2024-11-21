@@ -283,7 +283,6 @@ def test_get_404():
             c8y.get('some/key')
         assert 'some/key' in str(error)
 
-
 @pytest.mark.parametrize(
     'name, code, ex',
     [

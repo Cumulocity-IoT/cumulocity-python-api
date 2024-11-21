@@ -232,6 +232,26 @@ def test_complexobject_instantiation_and_formatting():
     assert obj._to_json(only_updated=True) == expected_diff_json
 
 
+def test_complexobject_get():
+    """Verify that get by path works as expected."""
+
+    obj = ComplexTestObject(
+        field='field value',
+        fixed_field=123,
+        c8y_simple=True,
+        c8y_complex={'a': 'valueA', 'b': 'valueB'},
+        additionalField=True,
+        additionalFragment={'value1': "A", 'value2': "B"}
+    )
+
+    assert obj.get('field') == obj.field
+    assert obj.get('c8y_complex.a') == obj.c8y_complex.a
+    assert obj.get('not') is None
+    assert obj.get('not', 'default') == 'default'
+    assert obj.get('c8y_complex.not') is None
+    assert obj.get('c8y_complex.not', 'default') == 'default'
+
+
 @pytest.mark.parametrize('page_size, num_all, limit, expected', [
     (10, 100, 100, 100),  # exact
     (10, 200, 100, 100),  # limit hit
@@ -247,11 +267,11 @@ def test_iteration(page_size, num_all, limit, expected):
     all_items = [{'i': i} for i in range(num_all)]
 
     # returns a 'page' from all items
-    def get_page(_, page):
+    def get_page(_, p):
         nonlocal all_items
-        s = page_size * (page - 1)
-        e = page_size * page
-        return [i for i in all_items[s:e]]
+        s = page_size * (p - 1)
+        e = page_size * p
+        return all_items[s:e]
 
     # parses an item as CumulocityObject
     def parse_fun(item):
@@ -261,7 +281,7 @@ def test_iteration(page_size, num_all, limit, expected):
 
     # create class under test
     res = CumulocityResource(Mock(CumulocityRestApi), '')
-    res._get_page = get_page
+    res._get_page = Mock(side_effect=get_page)
 
     # iterate oder results
     result = list(res._iterate(base_query="q", page_number=None, limit=limit, parse_fun=parse_fun))
