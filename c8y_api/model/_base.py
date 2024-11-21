@@ -400,6 +400,30 @@ class ComplexObject(SimpleObject):
     def __contains__(self, name):
         return name in self.fragments
 
+    def get(self, path: str, default=None):
+        """Get a fragment/value by path.
+
+        Args:
+            path (str): A fragment/value path in dot notation, e.g.
+                "c8y_Firmware.version"
+            default: Sensible default if the path is not defined.
+
+        Returns:
+            The fragment/value specified via the path or the default value
+            if the path is not defined.
+        """
+        segments = path.split('.')
+        value = self
+        for segment in segments:
+            if segment in value:
+                value = value[segment]
+                continue
+            if hasattr(value, segment):
+                return value.__getattribute__(segment)
+            else:
+                return default
+        return value
+
     @deprecated
     def set_attribute(self, name, value):
         # pylint: disable=missing-function-docstring

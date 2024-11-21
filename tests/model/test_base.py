@@ -232,6 +232,23 @@ def test_complexobject_instantiation_and_formatting():
     assert obj._to_json(only_updated=True) == expected_diff_json
 
 
+def test_complexobject_get():
+
+    obj = ComplexTestObject(
+        field='field value',
+        fixed_field=123,
+        c8y_simple=True,
+        c8y_complex={'a': 'valueA', 'b': 'valueB'},
+        additionalField=True,
+        additionalFragment={'value1': "A", 'value2': "B"}
+    )
+
+    assert obj.get('field') == obj.field
+    assert obj.get('c8y_complex.a') == obj.c8y_complex.a
+    assert obj.get('not') is None
+    assert obj.get('not', 'default') == 'default'
+
+
 @pytest.mark.parametrize('page_size, num_all, limit, expected', [
     (10, 100, 100, 100),  # exact
     (10, 200, 100, 100),  # limit hit
