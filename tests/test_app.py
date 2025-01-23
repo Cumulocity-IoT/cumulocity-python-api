@@ -326,6 +326,27 @@ def test_get_tenant_instance_from_headers(auth_value, tenant_id):
     # -> the get function is called with the tenant ID
     c8y_factory._get_tenant_instance.assert_called_once_with(tenant_id)
 
+@mock.patch.dict(os.environ, env_multi_tenant, clear=True)
+def test_get_tenant_instance_missing_auth_info():
+    """Verify that missing auth information from headers or cookies is
+    reported correctly."""
+    c8y_factory = MultiTenantCumulocityApp()
+
+    # missing auth information in headers
+    with pytest.raises(KeyError) as e:
+        c8y_factory.get_tenant_instance(headers={'random': 'header'})
+    assert 'random' in str(e)
+
+    # missing auth information in cookies
+    with pytest.raises(KeyError) as e:
+        c8y_factory.get_tenant_instance(cookies={'random': 'cookie'})
+    assert 'random' in str(e)
+
+    # missing auth information in headers and cookies
+    with pytest.raises(KeyError) as e:
+        c8y_factory.get_tenant_instance(headers={'header': '1'}, cookies={'cookie': '2'})
+    assert 'header' in str(e) and 'cookie' in str(e)
+
 
 @pytest.mark.parametrize('auth_value, username', [
     (b64encode('t12345/some@domain.com:password'), 't12345/some@domain.com'),
