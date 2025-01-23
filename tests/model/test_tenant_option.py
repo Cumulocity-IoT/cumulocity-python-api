@@ -141,21 +141,23 @@ def test_select_by_category(sample_json: dict):
     the result should be parsed properly.
     """
     c8y: CumulocityRestApi = Mock()
-    c8y.get = Mock(side_effect=[{'options': [sample_json]}, {'options': []}])
+    c8y.get = Mock(return_value={'key1': 'value1', 'key2': 'value2'})
 
     tos = TenantOptions(c8y)
     result = tos.get_all(category='some.category')
 
-    # the get function should have been called 2 times
-    # (1st for the result, 2nd for the empty result)
-    assert c8y.get.call_count == 2
+    # the get function should have been called 1 time as
+    # select by category does not iterate
+    assert c8y.get.call_count == 1
     url = isolate_last_call_arg(c8y.get, 'resource', 0)
-    assert 'category=some.category' in url
+    assert '/tenant/options/some.category' in url
     # the result should have been parsed
-    assert len(result) == 1
-    assert result[0].category == sample_json['category']
-    assert result[0].key == sample_json['key']
-    assert result[0].value == sample_json['value']
+    assert len(result) == 2
+    assert result[0].category == 'some.category'
+    assert result[0].key == 'key1'
+    assert result[0].value == 'value1'
+    assert result[1].key == 'key2'
+    assert result[1].value == 'value2'
 
 
 def test_update_by_category():
