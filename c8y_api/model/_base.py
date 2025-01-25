@@ -10,14 +10,14 @@ import logging
 from typing import Any, Iterable, Set
 from urllib.parse import quote_plus, urlencode
 
-from collections.abc import MutableMapping
+from collections.abc import MutableMapping, MutableSequence
 from deprecated import deprecated
 
 from c8y_api._base_api import CumulocityRestApi
 from c8y_api.model._util import _DateUtil, _StringUtil, _QueryUtil
 
 
-class _DictWrapper(MutableMapping):
+class _DictWrapper(MutableMapping, dict):
 
     def __init__(self, dictionary: dict, on_update=None):
         self.__dict__['_property_items'] = dictionary
@@ -29,10 +29,16 @@ class _DictWrapper(MutableMapping):
 
     def __getitem__(self, name):
         item = self.__dict__['_property_items'][name]
-        return item if not isinstance(item, dict) else _DictWrapper(item, self.__dict__['_property_on_update'])
+        if isinstance(item, dict):
+            return _DictWrapper(item, self.__dict__['_property_on_update'])
+        if isinstance(item, list):
+            return _ListWrapper(item, self.__dict__['_property_on_update'])
+        return item
 
     def __setitem__(self, name, value):
         self.__dict__['_property_items'][name] = value
+        if self.__dict__['_property_on_update']:
+            self.__dict__['_property_on_update']()
 
     def __delitem__(self, _):
         raise NotImplementedError
@@ -52,12 +58,52 @@ class _DictWrapper(MutableMapping):
             ) from None
 
     def __setattr__(self, name, value):
-        if self.__dict__['_property_on_update']:
-            self.__dict__['_property_on_update']()
         self[name] = value
 
     def __str__(self):
         return self.__dict__['_property_items'].__str__()
+
+class _ListWrapper(MutableSequence, list):
+
+    def __init__(self, values: list, on_update=None):
+        self.__dict__['_property_items'] = values
+        self.__dict__['_property_on_update'] = on_update
+
+    def __getitem__(self, i):
+        item = self.__dict__['_property_items'][i]
+        if isinstance(item, dict):
+            return _DictWrapper(item, self.__dict__['_property_on_update'])
+        if isinstance(item, list):
+            return _ListWrapper(item, self.__dict__['_property_on_update'])
+        return item
+
+    def __setitem__(self, i, value):
+        self.__dict__['_property_items'][i] = value
+        if self.__dict__['_property_on_update']:
+            self.__dict__['_property_on_update']()
+
+    def __delitem__(self, i):
+        del self.__dict__['_property_items'][i]
+        if self.__dict__['_property_on_update']:
+            self.__dict__['_property_on_update']()
+
+    def __len__(self):
+        return len(self.__dict__['_property_items'])
+
+    # def append(self, value):
+    #     self.__dict__['_property_items'].append(value)
+    #     if self.__dict__['_property_on_update']:
+    #         self.__dict__['_property_on_update']()
+
+    def insert(self, i, value):
+        self.__dict__['_property_items'].insert(i, value)
+        if self.__dict__['_property_on_update']:
+            self.__dict__['_property_on_update']()
+
+    # def extend(self, other):
+    #     self.__dict__['_property_items'].extend(other)
+    #     if self.__dict__['_property_on_update']:
+    #         self.__dict__['_property_on_update']()
 
 
 class CumulocityObject:
@@ -355,10 +401,13 @@ class ComplexObject(SimpleObject):
         # it is ensured that the same access behaviour is ensured on all levels.
         # All updated anywhere within the dictionary tree will be reported as an update
         # to this instance.
-        # If the element is not a dictionary, it can be returned directly
+        # If the element is not a dictionary or a list, it can be returned directly
         item = self.fragments[name]
-        return item if not isinstance(item, dict) else \
-            _DictWrapper(self.fragments[name], lambda: self._signal_updated_fragment(name))
+        if isinstance(item, dict):
+            return _DictWrapper(self.fragments[name], lambda: self._signal_updated_fragment(name))
+        if isinstance(item, list):
+            return _ListWrapper(self.fragments[name], lambda: self._signal_updated_fragment(name))
+        return item
 
     def __getattr__(self, name: str):
         """ Get the value of a custom fragment.
@@ -372,10 +421,12 @@ class ComplexObject(SimpleObject):
         if name in self:
             return self[name]
         pascal_name = _StringUtil.to_pascal_case(name)
+        if pascal_name == name:
+            raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'.") from None
         if pascal_name in self:
             return self[pascal_name]
         raise AttributeError(
-            f"'{type(self).__name__}' object has no attribute '{name}' or '{pascal_name}'"
+            f"'{type(self).__name__}' object has no attribute '{name}' or '{pascal_name}'."
         ) from None
 
     def _setattr_(self, name, value):
@@ -574,14 +625,14 @@ class CumulocityResource:
             'q': q,
             'query': query,
             'type': type,
-            'name': f"'{_QueryUtil.encode_odata_query_value(name)}'" if name else None,
+            'name': _QueryUtil.encode_odata_text_value(name)if name else None,
             'owner': owner,
             'source': source,
             'fragmentType': fragment,
             'deviceId': device_id,
             'agentId': agent_id,
             'bulkId': bulk_id,
-            'text': f"'{_QueryUtil.encode_odata_query_value(text)}'" if text else None,
+            'text': _QueryUtil.encode_odata_text_value(text) if text else None,
             'ids': ','.join(str(i) for i in ids) if ids else None,
             'bulkOperationId': bulk_id,
             'dateFrom': date_from,

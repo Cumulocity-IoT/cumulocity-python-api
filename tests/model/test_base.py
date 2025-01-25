@@ -51,10 +51,10 @@ def test_simpleobject_instantiation_and_formatting():
     # no change will be recorded.
 
     obj = SimpleTestObject(field='field data')
-    obj.id = 12
+    obj.id = '12'
 
     #  -> the properties are set
-    assert obj.id == 12
+    assert obj.id == '12'
     assert obj.field == 'field data'
     #  -> the change set is undefined/empty
     assert not obj._updated_fields
@@ -232,7 +232,96 @@ def test_complexobject_instantiation_and_formatting():
     assert obj._to_json(only_updated=True) == expected_diff_json
 
 
-def test_complexobject_get():
+class ComplexObjectUpdates:
+
+    @staticmethod
+    def field(obj):
+        obj.fragment.field = 'new value'
+        assert obj.fragment.field == 'new value'
+
+    @staticmethod
+    def field2(obj):
+        obj['fragment']['field'] = 'new value'
+        assert obj.fragment.field == 'new value'
+
+    @staticmethod
+    def array(obj):
+        obj.fragment.array = ['a', 'b']
+        assert list(obj.fragment.array) == ['a', 'b']
+
+    @staticmethod
+    def array2(obj):
+        obj['fragment']['array'] = ['a', 'b']
+        assert list(obj.fragment.array) == ['a', 'b']
+
+    @staticmethod
+    def array_index(obj):
+        obj.fragment.array[0] = 'c'
+        assert list(obj.fragment.array) == ['c', 'b']
+
+    @staticmethod
+    def array_index2(obj):
+        obj['fragment']['array'][0] = 'c'
+        assert list(obj.fragment.array) == ['c', 'b']
+
+    @staticmethod
+    def array_append(obj):
+        obj.fragment.array.append('x')
+        assert list(obj.fragment.array) == ['a', 'b', 'x']
+
+    @staticmethod
+    def array_append2(obj):
+        obj['fragment']['array'].append('x')
+        assert list(obj.fragment.array) == ['a', 'b', 'x']
+
+    @staticmethod
+    def array_insert(obj):
+        obj.fragment.array.insert(0, 'y')
+        assert list(obj.fragment.array) == ['y', 'a', 'b']
+
+    @staticmethod
+    def array_insert2(obj):
+        obj['fragment']['array'].insert(0, 'y')
+        assert list(obj.fragment.array) == ['y', 'a', 'b']
+
+    @staticmethod
+    def array_extend(obj):
+        obj.fragment.array.extend(['a'])
+        assert list(obj.fragment.array) == ['a', 'b', 'a']
+
+    @staticmethod
+    def array_extend2(obj):
+        obj['fragment']['array'].extend(['a'])
+        assert list(obj.fragment.array) == ['a', 'b', 'a']
+
+
+@pytest.mark.parametrize('fun', [
+    ComplexObjectUpdates.field,
+    ComplexObjectUpdates.field2,
+    ComplexObjectUpdates.array,
+    ComplexObjectUpdates.array2,
+    ComplexObjectUpdates.array_index,
+    ComplexObjectUpdates.array_index2,
+    ComplexObjectUpdates.array_append,
+    ComplexObjectUpdates.array_append2,
+    ComplexObjectUpdates.array_extend,
+    ComplexObjectUpdates.array_extend2,
+])
+def test_complex_object_updating(fun):
+    """Verify that updating a complex object works as expected."""
+    obj = ComplexObject(
+        c8y=Mock(),
+        fragment={
+            'field': 'value',
+            'array': ['a', 'b'],
+        }
+    )
+    obj._signal_updated_fragment = Mock()
+    fun(obj)
+    obj._signal_updated_fragment.assert_called_with('fragment')
+
+
+def test_complex_object_get():
     """Verify that get by path works as expected."""
 
     obj = ComplexTestObject(
@@ -250,6 +339,38 @@ def test_complexobject_get():
     assert obj.get('not', 'default') == 'default'
     assert obj.get('c8y_complex.not') is None
     assert obj.get('c8y_complex.not', 'default') == 'default'
+
+
+def test_dot_notation():
+    obj = ComplexTestObject(
+        field='field value',
+        array=['a', 'b'],
+        nested={
+            'as': ['a1', 'a2'],
+            'bs': [
+                {'n': 1,
+                 'v': 'b1'},
+                {'n': 2,
+                 'v': 'b2'},
+            ]},
+        mixed=[
+            'a',
+            1,
+            {'inner': 'field'},
+        ]
+    )
+
+    assert obj.array[0] == 'a'
+    assert obj.array[1] == 'b'
+    assert obj.nested['as'][0] == 'a1'
+    assert obj.nested['as'][1] == 'a2'
+    assert obj.nested.bs[0].n == 1
+    assert obj.nested.bs[0].v == 'b1'
+    assert obj.nested.bs[1].n == 2
+    assert obj.nested.bs[1].v == 'b2'
+    assert obj.mixed[0] == 'a'
+    assert obj.mixed[1] == 1
+    assert obj.mixed[2].inner == 'field'
 
 
 @pytest.mark.parametrize('page_size, num_all, limit, expected', [
