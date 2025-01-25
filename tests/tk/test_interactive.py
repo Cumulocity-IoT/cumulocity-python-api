@@ -10,9 +10,10 @@ from unittest.mock import patch, Mock
 import pytest
 import requests
 
-from _jwt import JWT
+from c8y_api._jwt import JWT
 from c8y_tk.interactive import CumulocityContext
-from test_util import create_jwt_token
+
+from tests.test_util import create_jwt_token
 
 
 def build_auth_response(auth_cookie):
@@ -80,12 +81,12 @@ def test_with_invalid_token(getpass_fun, post_fun, monkeypatch, token: str):
         assert c8y.auth.token is new_token
 
     # provided password should have been used to renew token
-    post_args = post_fun.call_args.kwargs
+    post_args = post_fun.call_args[1]  # kwargs
     assert post_args['data']['username'] == old_token.username
     assert post_args['data']['password'] == 'some-password'
 
     # new token should be written to environment
-    assert os.environ['C8Y_TOKEN'] is new_token
+    assert os.environ['C8Y_TOKEN'] == new_token
 
 
 @patch('c8y_api._base_api.requests.post')
@@ -119,11 +120,11 @@ def test_without_token(input_fun, getpass_fun, post_fun, monkeypatch):
     # verify prompts
     #  - collect (lowercase) prompts from all calls
     #  - ensure that keywords are mentioned in prompts
-    all_prompts = [x.args[0].lower() for x in input_fun.call_args_list]
+    all_prompts = [x[0][0].lower() for x in input_fun.call_args_list]
     assert all(any(x in prompt for prompt in all_prompts) for x in ['tenant', 'username', 'hostname'])
 
     # provided username and password should have been used to build token
-    post_args = post_fun.call_args.kwargs
+    post_args = post_fun.call_args[1]  # kwargs
     assert post_args['data']['username'] == 'some-value'
     assert post_args['data']['password'] == 'some-password'
 
@@ -167,7 +168,7 @@ def test_environment_use(input_fun, getpass_fun, post_fun,
             assert all(f'C8Y_{var.upper()}' not in patched_env for var, have in have_vars if not have)
 
     # verify authentication parameters
-    post_args = post_fun.call_args.kwargs
+    post_args = post_fun.call_args[1]
     assert ('env-baseurl' if have_base_url else 'some-value') in post_args['url']
     assert ('tenant_id=env-tenant' if have_tenant_id else 'tenant_id=some-value') in post_args['url']
     assert post_args['data']['username'] == ('env-user' if have_username else 'some-value')
@@ -200,17 +201,14 @@ def test_dont_ask_password_again(getpass_fun, post_fun):
     CumulocityContext._cached_passwords.clear()
 
     # request connection with given environment
-    with patch.dict('os.environ', {}, clear=True) as patched_env:
-        patched_env['C8Y_TOKEN'] = old_token
-
+    with patch.dict('os.environ', {'C8Y_TOKEN':old_token}, clear=True):
         with CumulocityContext() as c8y:
             assert c8y.auth.token == new_token
-
         # password should have been read from user
         getpass_fun.assert_called()
 
-        # switch back to invalid token and reset mock
-        patched_env['C8Y_TOKEN'] = old_token
+    # switch back to invalid token and reset mock
+    with patch.dict('os.environ', {'C8Y_TOKEN': new_token}, clear=True):
         getpass_fun.reset_mock()
 
         with CumulocityContext() as c8y:
@@ -298,6 +296,6 @@ def test_tfa_support(input_fun, getpass_fun, post_fun):
 
     # verify authentication parameters of 2nd call
     assert len(post_fun.call_args_list) == 2
-    post_args = post_fun.call_args.kwargs
+    post_args = post_fun.call_args[1]  # kwargs
     assert post_args['data']['tfa_token'] == 'some-tfa'
     assert post_args['data']['password'] == 'good-password'

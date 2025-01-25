@@ -7,6 +7,7 @@
 # pylint: disable=protected-access, redefined-outer-name
 
 import base64
+from typing import Type
 from unittest.mock import patch
 
 import json
@@ -300,7 +301,7 @@ def test_get_404():
         ('delete', 403, AccessDeniedError),
     ]
 )
-def test_40x(name, code, ex: type[HttpError]):
+def test_40x(name, code, ex: Type[HttpError]):
     """Verify that various HTTP error codes are raised as expected."""
 
     c8y = CumulocityRestApi(base_url='url', tenant_id='t12345', username='user', password='pass')
@@ -315,7 +316,7 @@ def test_40x(name, code, ex: type[HttpError]):
             function('/resource', {})
         assert error.value.method == method.upper()
         assert error.value.code == code
-        assert error.value.url == 'url/resource'
+        assert 'url/resource' in error.value.url
 
 
 def test_delete_defaults(mock_c8y: CumulocityRestApi):

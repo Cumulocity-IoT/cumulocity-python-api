@@ -12,7 +12,7 @@ from c8y_api import CumulocityRestApi
 from c8y_api.model.notification2 import Tokens
 
 from util.testing_util import RandomNameGenerator
-from utils import isolate_last_call_arg
+from tests.utils import isolate_last_call_arg
 
 
 @pytest.mark.parametrize(
