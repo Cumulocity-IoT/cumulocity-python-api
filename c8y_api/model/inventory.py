@@ -7,10 +7,12 @@
 
 from __future__ import annotations
 
+from deprecated import deprecated
 from typing import Any, Generator, List
 
 from c8y_api.model._base import CumulocityResource
 from c8y_api.model._util import _QueryUtil
+from c8y_api.model.device_requests import DeviceRequests
 from c8y_api.model.managedobjects import ManagedObjectUtil, ManagedObject, Device, Availability, DeviceGroup
 
 
@@ -420,6 +422,7 @@ class DeviceInventory(Inventory):
     See also: https://cumulocity.com/api/#tag/Inventory-API
     """
 
+    @deprecated(reason="Please use the DeviceRequests class instead.", version='#TODO')
     def request(self, id: str):  # noqa (id)
         """ Create a device request.
 
@@ -427,8 +430,9 @@ class DeviceInventory(Inventory):
             id (str): Unique ID of the device (e.g. Serial, IMEI); this is
             _not_ the database ID.
         """
-        self.c8y.post('/devicecontrol/newDeviceRequests', {'id': id})
+        DeviceRequests(self.c8y).request(id)
 
+    @deprecated(reason="Please use the DeviceRequests class instead.", version='#TODO')
     def accept(self, id: str):  # noqa (id)
         """ Accept a device request.
 
@@ -436,7 +440,7 @@ class DeviceInventory(Inventory):
             id (str): Unique ID of the device (e.g. Serial, IMEI); this is
             _not_ the database ID.
         """
-        self.c8y.put('/devicecontrol/newDeviceRequests/' + str(id), {'status': 'ACCEPTED'})
+        DeviceRequests(self.c8y).accept(id)
 
     def get(self, id: str) -> Device:  # noqa (id)
         """ Retrieve a specific device object.
@@ -535,7 +539,7 @@ class DeviceInventory(Inventory):
                 fragment `c8y_LatestMeasurements, which contains the latest
                 measurement values reported by the device to the platform.
             limit (int): Limit the number of results to this number.
-            page_size (int): Define the number of events which are read (and
+            page_size (int): Define the number of objects that are read (and
                 parsed in one chunk). This is a performance related setting.
             page_number (int): Pull a specific page; this effectively disables
                 automatic follow-up page retrieval.

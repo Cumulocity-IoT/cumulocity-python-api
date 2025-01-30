@@ -5,6 +5,7 @@
 # as specifically provided for in your License Agreement with Software AG.
 import contextlib
 
+from deprecated import deprecated
 from requests.auth import AuthBase
 
 from c8y_api._base_api import CumulocityRestApi
@@ -12,6 +13,7 @@ from c8y_api._base_api import CumulocityRestApi
 from c8y_api.model.administration import Users, GlobalRoles, InventoryRoles
 from c8y_api.model.alarms import Alarms
 from c8y_api.model.applications import Applications
+from c8y_api.model.device_requests import DeviceRequests
 from c8y_api.model.events import Events
 from c8y_api.model.identity import Identity
 from c8y_api.model.binaries import Binaries
@@ -29,6 +31,7 @@ class CumulocityApi(CumulocityRestApi, contextlib.AbstractContextManager):
 
     Provides usage centric access to a Cumulocity instance.
     """
+    # pylint: disable=too-many-public-methods
 
     def __init__(
             self,
@@ -52,6 +55,7 @@ class CumulocityApi(CumulocityRestApi, contextlib.AbstractContextManager):
         self.__measurements = Measurements(self)
         self.__inventory = Inventory(self)
         self.__binaries = Binaries(self)
+        self.__devices_requests = DeviceRequests(self)
         self.__group_inventory = DeviceGroupInventory(self)
         self.__device_inventory = DeviceInventory(self)
         self.__identity = Identity(self)
@@ -85,7 +89,18 @@ class CumulocityApi(CumulocityRestApi, contextlib.AbstractContextManager):
         return self.__group_inventory
 
     @property
+    def device_requests(self) -> DeviceRequests:
+        """Provide access to the Device Requests API."""
+        return self.__devices_requests
+
+    @property
+    @deprecated(reason="Please use the device_groups property instead.", version='#TODO')
     def devicegroups(self) -> DeviceGroupInventory:
+        """Provide access to the Device Group Inventory API."""
+        return self.__group_inventory
+
+    @property
+    def device_groups(self) -> DeviceGroupInventory:
         """Provide access to the Device Group Inventory API."""
         return self.__group_inventory
 

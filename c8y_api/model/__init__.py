@@ -9,6 +9,7 @@ from c8y_api.model.alarms import *
 from c8y_api.model.applications import *
 from c8y_api.model.audit import *
 from c8y_api.model.binaries import *
+from c8y_api.model.device_requests import *
 from c8y_api.model.events import *
 from c8y_api.model.identity import *
 from c8y_api.model.inventory import *
@@ -25,6 +26,7 @@ __all__ = [
     'Inventory',
     'DeviceInventory',
     'DeviceGroupInventory',
+    'DeviceRequests',
     'Binaries',
     'Identity',
     'Measurements',

@@ -51,7 +51,13 @@ class CumulocityDeviceRegistry(CumulocityRestApi):
             cls._default_instance = cls._build_default()
         return cls._default_instance
 
-    def await_credentials(self, device_id: str, timeout: str = '60m', pause: str = '1s') -> Credentials:
+    def await_credentials(
+            self,
+            device_id: str,
+            security_token: str = None,
+            timeout: str = '60m',
+            pause: str = '1s',
+    ) -> Credentials:
         """Wait for device credentials.
 
         The device must have requested credentials already. This function
@@ -61,6 +67,8 @@ class CumulocityDeviceRegistry(CumulocityRestApi):
         Args:
             device_id (str):  The external ID of the device
                 (i.e. IMEI - NOT the Cumulocity ID)
+            security_token (str):  Shared secret that is used to authorize
+                the credentials request.
             timeout (str):  How long to wait for the request to be confirmed.
                 This is a formatted string in the form <int><unit>, accepted
                 units are 'h' (hours), 'm' (minutes), 's' (seconds) and
@@ -82,6 +90,8 @@ class CumulocityDeviceRegistry(CumulocityRestApi):
         assert pause_s, f"Unable to parse pause string: {pause}"
         assert timeout_s, f"Unable to parse timeout string: {timeout}"
         request_json = {'id': device_id}
+        if security_token:
+            request_json['securityToken'] = security_token
         request = self.prepare_request(method='post', resource='/devicecontrol/deviceCredentials', json=request_json)
         session = requests.Session()
         timeout_time = time.time() + timeout_s
@@ -103,7 +113,13 @@ class CumulocityDeviceRegistry(CumulocityRestApi):
             else:
                 raise RuntimeError(f"Unexpected response code: {response.status_code}")
 
-    def await_connection(self, device_id: str, timeout: str = '60m', pause: str = '1s') -> CumulocityApi:
+    def await_connection(
+            self,
+            device_id: str,
+            security_token: str = None,
+            timeout: str = '60m',
+            pause: str = '1s',
+    ) -> CumulocityApi:
         """Wait for device credentials and build corresponding API connection.
 
         The device must have requested credentials already. This function
@@ -113,6 +129,8 @@ class CumulocityDeviceRegistry(CumulocityRestApi):
         Args:
             device_id (str):  The external ID of the device
                 (i.e. IMEI - NOT the Cumulocity ID)
+            security_token (str):  Shared secret that is used to authorize
+                the credentials request.
             timeout (str):  How long to wait for the request to be confirmed.
                 This is a formatted string in the form <int><unit>, accepted
                 units are 'h' (hours), 'm' (minutes), 's' (seconds) and
@@ -129,7 +147,7 @@ class CumulocityDeviceRegistry(CumulocityRestApi):
 
         See also: https://cumulocity.com/guides/users-guide/device-management/#connecting-devices
         """
-        credentials = self.await_credentials(device_id, timeout, pause)
+        credentials = self.await_credentials(device_id, security_token, timeout, pause)
         return CumulocityApi(self.base_url, credentials.tenant_id, credentials.username, credentials.password)
 
     @staticmethod
