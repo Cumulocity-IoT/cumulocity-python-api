@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 3.1.1
+
+* Fixing project dependencies for older Python versions.
+
 ## Version 3.1
 
 * Adding support for Python 3.7 as this is still widely used in the industry. New code can now safely used with
