@@ -8,6 +8,7 @@
 import getpass
 import os
 import time
+from typing import Dict
 from urllib.parse import urlparse
 
 from c8y_api import CumulocityApi, UnauthorizedError, MissingTfaError, HTTPBearerAuth, CumulocityRestApi, HttpError
@@ -30,7 +31,7 @@ class CumulocityContext(CumulocityApi):
     ```
     """
 
-    _cached_passwords: dict[str, str] = {}
+    _cached_passwords: Dict[str, str] = {}
 
     @staticmethod
     def _read_variable(env_name: str, prompt: str = None, secret: bool = False):

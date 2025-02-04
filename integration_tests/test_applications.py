@@ -29,7 +29,7 @@ def test_select_owner(live_c8y: CumulocityApi):
 
 @pytest.mark.parametrize('param, param_func', [
     ('type', lambda x: 'HOSTED'),
-    ('user', lambda x: x.username),
+    ('user', lambda x: 'service_sms-gateway'),
     ('tenant', lambda x: x.tenant_id),
     ('subscriber', lambda x: x.tenant_id),
     ('provided_for', lambda x: x.tenant_id),

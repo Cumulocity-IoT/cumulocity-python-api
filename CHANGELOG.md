@@ -1,5 +1,14 @@
 # Changelog
 
+## Version 3.1
+
+* Adding support for Python 3.7 as this is still widely used in the industry. New code can now safely used with
+  Python 3.7 throughout Python 3.13. Added `invoke` task for docker-based tests with different Python versions.
+* Greatly improved _dot notation_ access to all complex Cumulocity objects (Managed Objects, Events, Alarms,
+  Operations, etc.) This now also supports mixed access, e.g. `obj.fragment[3].sub["name"]`.
+* Publicly releasing a generic `get` function to complex objects which allows accessing a nested value without
+  the need to check for null values, e.g. `obj.get('fragment.sub.name', default='N/A')`.
+
 ## Version 3
 
 * Unified query behaviour of all API classes (introducing potentially breaking changes as the order of parameters needed to change).

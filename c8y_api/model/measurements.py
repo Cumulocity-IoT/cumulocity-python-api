@@ -322,9 +322,9 @@ class Series(dict):
         def parse_timestamp(t):
             """Parse timestamps."""
             if timestamps == 'datetime':
-                return datetime.fromisoformat(t)
+                return _DateUtil.to_datetime(t)
             if timestamps == 'epoch':
-                return datetime.fromisoformat(t).timestamp()
+                return _DateUtil.to_datetime(t).timestamp()
             return t
 
         # use all series if no series provided
