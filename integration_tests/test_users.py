@@ -10,7 +10,7 @@ import secrets
 import string
 import time
 from contextlib import suppress
-from typing import Union
+from typing import Union, Tuple
 
 import pytest
 import pyotp
@@ -154,7 +154,7 @@ def user_factory(live_c8y: CumulocityApi):
 
     created_users = []
 
-    def factory_fun(with_password=False) -> Union[User, tuple[User, str]]:
+    def factory_fun(with_password=False) -> Union[User, Tuple[User, str]]:
         username = RandomNameGenerator.random_name(2)
         email = f'{username}@software.ag'
         password = generate_password()

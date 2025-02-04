@@ -15,7 +15,7 @@ import pytest
 
 from c8y_api.model._base import CumulocityObject
 
-from testing_util import RandomNameGenerator
+from util.testing_util import RandomNameGenerator
 
 
 def get_ids(objs: List[CumulocityObject]) -> Set[str]:

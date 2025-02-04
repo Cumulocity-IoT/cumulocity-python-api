@@ -11,7 +11,7 @@ from urllib.parse import unquote_plus
 import pytest
 
 from c8y_api import CumulocityApi
-from model import Alarms, Alarm
+from c8y_api.model import Alarms, Alarm
 
 from tests.utils import isolate_last_call_arg
 

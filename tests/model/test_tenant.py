@@ -13,7 +13,7 @@ from unittest.mock import Mock
 import pytest
 
 from c8y_api import CumulocityRestApi
-from model.tenants import Tenant
+from c8y_api.model.tenants import Tenant
 
 from tests.utils import isolate_last_call_arg
 
@@ -48,12 +48,12 @@ def test_parsing(sample_json):
         assert tenant.contact_phone == sample_json['contactPhone']
 
     if 'applications' in sample_json:
-        for a in zip(tenant.applications, sample_json['applications']['references'], strict=True):
+        for a in zip(tenant.applications, sample_json['applications']['references']):
             assert a[0].id == a[1]['application']['id']
             assert a[0].owner == a[1]['application']['owner']['tenant']['id']
 
     if 'ownedApplications' in sample_json:
-        for a in zip(tenant.owned_applications, sample_json['ownedApplications']['references'], strict=True):
+        for a in zip(tenant.owned_applications, sample_json['ownedApplications']['references']):
             assert a[0].id == a[1]['application']['id']
             assert a[0].owner == a[1]['application']['owner']['tenant']['id']
 

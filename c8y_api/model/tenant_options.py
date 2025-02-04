@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from typing import Generator, List
+from typing import Generator, List, Dict
 
 from c8y_api._base_api import CumulocityRestApi
 from c8y_api.model._base import SimpleObject, CumulocityResource
@@ -181,7 +181,7 @@ class TenantOptions(CumulocityResource):
         """
         return list(self.select(category=category, limit=limit, page_size=page_size, page_number=page_number))
 
-    def get_all_mapped(self, category: str = None) -> dict[str, str]:
+    def get_all_mapped(self, category: str = None) -> Dict[str, str]:
         """ Query the database for tenant options and return the results
         as a dictionary.
 
@@ -262,7 +262,7 @@ class TenantOptions(CumulocityResource):
         for o in options:
             self.c8y.put(self.build_object_path(o.category, o.key), json=o.to_diff_json(), accept=None)
 
-    def update_by(self, category: str, options: dict[str, str]) -> None:
+    def update_by(self, category: str, options: Dict[str, str]) -> None:
         """ Update options within the database.
 
         Args:

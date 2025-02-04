@@ -123,7 +123,7 @@ def test_get_availability(live_c8y: CumulocityApi, sample_device: Device):
     # verify availability information is defined
     # -> the information is updated asynchronously, hence this may be delayed
     availability = None
-    for i in range(1, 5):
+    for i in range(1, 8):
         time.sleep(pow(2, i))
         try:
             availability = live_c8y.inventory.get_latest_availability(sample_device.id)

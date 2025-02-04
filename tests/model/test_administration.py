@@ -10,7 +10,7 @@ from urllib.parse import unquote_plus
 import pytest
 
 from c8y_api import CumulocityApi
-from utils import isolate_last_call_arg
+from tests.utils import isolate_last_call_arg
 
 
 @pytest.mark.parametrize('params, expected, not_expected', [
