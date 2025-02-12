@@ -94,6 +94,9 @@ class Event(ComplexObject):
     def _build_attachment_path(self) -> str:
         return super()._build_object_path() + '/binaries'
 
+    def __repr__(self):
+        return self._repr('source', 'type')
+
     @classmethod
     def from_json(cls, json: dict) -> Event:
         # (no doc update required)

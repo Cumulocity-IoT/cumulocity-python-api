@@ -32,6 +32,9 @@ class Binary(ManagedObject):
         """Content type set for this binary."""
         return self.contentType
 
+    def __repr__(self):
+        return self._repr('name', 'type')
+
     @classmethod
     def from_json(cls, json: dict) -> Binary:
         """ Build a new Binary instance from JSON.

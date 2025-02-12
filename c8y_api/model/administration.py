@@ -147,6 +147,9 @@ class InventoryRole(SimpleObject):
     name = SimpleObject.UpdatableProperty('_u_name')
     description = SimpleObject.UpdatableProperty('_u_description')
 
+    def __repr__(self):
+        return self._repr('name')
+
     @classmethod
     def from_json(cls, json: dict) -> InventoryRole:
         # no doc change required
@@ -256,6 +259,9 @@ class GlobalRole(SimpleObject):
 
     name = SimpleObject.UpdatableProperty('_u_name')
     description = SimpleObject.UpdatableProperty('_u_description')
+
+    def __repr__(self):
+        return self._repr('name')
 
     @classmethod
     def from_json(cls, json: dict) -> GlobalRole:
@@ -549,6 +555,9 @@ class User(_BaseUser):
         self.application_ids = set()
         # self.effective_permission_ids = set()
         # self.custom_properties = WithUpdatableFragments()
+
+    def __repr__(self):
+        return self._repr('username')
 
     @classmethod
     def from_json(cls, json: dict) -> User:

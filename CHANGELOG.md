@@ -1,5 +1,11 @@
 # Changelog
 
+* Added `reload` function to inventory object classes
+* Added `delete_tree` function to inventory object classes, implicitly using `cascade` or
+  `forceCascade` parameters depending on the use case.
+* Added `__repr__` function to relevant object classes.
+* Removed redundant `util.py` file which impeded importing.
+
 ## Version 3.1.1
 
 * Fixing project dependencies for older Python versions.

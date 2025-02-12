@@ -134,6 +134,113 @@ def test_get_availability(live_c8y: CumulocityApi, sample_device: Device):
     assert availability
 
 
+def test_reload(live_c8y):
+    """Verify that the reload function works as expected.
+
+    We only need to test this for the ManagedObject class, implicitly verifying
+    the _reload function. The correct instrumentation of this abstract function
+    by other inventory objects is verified through a unit test.
+    """
+    name = RandomNameGenerator.random_name()
+    obj0 = ManagedObject(live_c8y, name=f'Root-{name}', type=f'Root-{name}').create()
+
+    # add a fragment
+    live_c8y.inventory.apply_to({'c8y_AdditionalFragment': {'key': 'value'}}, obj0.id)
+    obj1 = obj0.reload()
+    # -> should be read from Cumulocity
+    assert obj1.name == obj0.name
+    assert obj1.creation_time == obj0.creation_time
+    assert obj1.c8y_AdditionalFragment.key == 'value'
+
+    # remove a fragment
+    live_c8y.inventory.apply_to({'c8y_AdditionalFragment': None}, obj0.id)
+    obj2 = obj0.reload()
+    # -> should be removed when reloaded
+    assert 'c8y_AdditionalFragment' not in obj2.fragments
+
+
+def test_deletion(live_c8y: CumulocityApi, register_object):
+    name = RandomNameGenerator.random_name()
+    obj = register_object(ManagedObject(live_c8y, name=f'Root-{name}', type=f'Root-{name}').create())
+    addition = register_object(ManagedObject(live_c8y, name=f'Addition-{name}', type=f'Addition-{name}').create())
+    asset = register_object(ManagedObject(live_c8y, name=f'Asset-{name}', type=f'Asset-{name}').create())
+    device = register_object(Device(live_c8y, name=f'Device-{name}', type=f'Device-{name}').create())
+    obj.add_child_addition(addition)
+    obj.add_child_asset(asset)
+    obj.add_child_device(device)
+
+    obj = obj.reload()
+    assert len(obj.child_additions) == 1
+    assert obj.child_additions[0].id == addition.id
+    assert len(obj.child_assets) == 1
+    assert obj.child_assets[0].id == asset.id
+    assert len(obj.child_devices) == 1
+    assert obj.child_devices[0].id == device.id
+
+    # delete the root managed object
+    obj.delete()
+    # -> everything else is still around
+    addition.reload()
+    asset.reload()
+    device.reload()
+
+    # assign to a new root
+    obj = register_object(ManagedObject(live_c8y, name=f'Root-{name}', type=f'Root-{name}').create())
+    obj.add_child_addition(addition)
+    obj.add_child_asset(asset)
+    obj.add_child_device(device)
+    # delete tree
+    obj.delete_tree()
+    # -> everything else is gone as well
+    with pytest.raises(KeyError):
+        addition.reload()
+    with pytest.raises(KeyError):
+        asset.reload()
+    with pytest.raises(KeyError):
+        device.reload()
+
+
+def test_device_deletion(live_c8y: CumulocityApi, register_object):
+    name = RandomNameGenerator.random_name()
+    obj = register_object(Device(live_c8y, name=f'Root-{name}', type=f'Root-{name}').create())
+    addition = register_object(ManagedObject(live_c8y, name=f'Addition-{name}', type=f'Addition-{name}').create())
+    asset = register_object(ManagedObject(live_c8y, name=f'Asset-{name}', type=f'Asset-{name}').create())
+    device = register_object(Device(live_c8y, name=f'Device-{name}', type=f'Device-{name}').create())
+    obj.add_child_addition(addition)
+    obj.add_child_asset(asset)
+    obj.add_child_device(device)
+
+    obj = obj.reload()
+    assert len(obj.child_additions) == 1
+    assert obj.child_additions[0].id == addition.id
+    assert len(obj.child_assets) == 1
+    assert obj.child_assets[0].id == asset.id
+    assert len(obj.child_devices) == 1
+    assert obj.child_devices[0].id == device.id
+
+    # delete the root managed object
+    obj.delete()
+    # -> everything else is still around
+    addition.reload()
+    asset.reload()
+    device.reload()
+
+    # assign to a new root
+    obj = register_object(Device(live_c8y, name=f'Root-{name}', type=f'Root-{name}').create())
+    obj.add_child_addition(addition)
+    obj.add_child_asset(asset)
+    obj.add_child_device(device)
+    # delete tree
+    obj.delete_tree()
+    # -> everything else is gone as well
+    with pytest.raises(KeyError):
+        addition.reload()
+    with pytest.raises(KeyError):
+        asset.reload()
+    with pytest.raises(KeyError):
+        device.reload()
+
+
 @pytest.fixture
 def object_with_measurements(live_c8y: CumulocityApi, mutable_object: ManagedObject) -> ManagedObject:
     """Provide a managed object with predefined measurements."""

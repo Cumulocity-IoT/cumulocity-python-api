@@ -18,6 +18,7 @@ from c8y_api._main_api import CumulocityApi
 from c8y_api._util import c8y_keys
 from c8y_api.app import SimpleCumulocityApp
 from c8y_api.model import Application, Device
+
 from util.testing_util import RandomNameGenerator
 
 
@@ -40,6 +41,30 @@ def safe_executor(logger):
         return False
 
     return execute
+
+
+@pytest.fixture(scope='session')
+def register_object(logger):
+    """Wrap a created Cumulocity object so that it will automatically be deleted
+    after a test regardless of an exception or failure."""
+
+    objects = []
+
+    def register(obj):
+        objects.append(obj)
+        return obj
+
+    yield register
+
+    for o in objects:
+        try:
+            # Deletion should through a KeyError if object was already deleted
+            o.delete()
+            logger.warning(f"Object #{o.id} was not deleted by test.")
+        except KeyError:
+            pass
+        except BaseException as e:
+            logger.warning(f"Caught exception ignored due to safe call: {e}")
 
 
 @pytest.fixture(scope='session')

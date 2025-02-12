@@ -1,17 +1,14 @@
-# Copyright (c) 2020 Software AG,
-# Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA,
-# and/or its subsidiaries and/or its affiliates and/or their licensors.
-# Use, reproduction, transfer, publication or disclosure is prohibited except
-# as specifically provided for in your License Agreement with Software AG.
-import datetime
+# Copyright (c) 2025 Cumulocity GmbH
 # pylint: disable=redefined-outer-name
 
+import datetime
 import json
 import os
 
+from unittest.mock import Mock
 import pytest
 
-from c8y_api.model import Availability, ManagedObject
+from c8y_api.model.managedobjects import Availability, Device, DeviceGroup,ManagedObject
 
 
 def test_parsing():
@@ -200,3 +197,38 @@ def test_item_access(object_with_fragments):
     with pytest.raises(KeyError) as e:
         _ = mo['complex_1']['not_existing']
     assert 'not_existing' in str(e)
+
+
+@pytest.mark.parametrize('obj, repr', [
+    (ManagedObject(), "ManagedObject()"),
+    (ManagedObject(name='NAME', type='TYPE'), "ManagedObject(name=NAME, type=TYPE)"),
+    (Device(), "Device()"),
+    (Device(name='NAME', type='TYPE'), "Device(name=NAME, type=TYPE)"),
+    (DeviceGroup(), "DeviceGroup(type=c8y_DeviceSubGroup)"),
+    (DeviceGroup(root=True), "DeviceGroup(type=c8y_DeviceGroup)"),
+    (ManagedObject.from_json({'id':12, 'name':'NAME', 'type':'TYPE', 'other':'OTHER'}),
+     "ManagedObject(id=12, name=NAME, type=TYPE)"),
+    (Device.from_json({'id': 12, 'name': 'NAME', 'type': 'TYPE', 'other': 'OTHER', 'c8y_IsDevice':{}}),
+     "Device(id=12, name=NAME, type=TYPE)"),
+    (DeviceGroup.from_json({'id': 12, 'name': 'NAME', 'type': 'TYPE', 'other': 'OTHER', 'c8y_DeviceGroup':{}}),
+     "DeviceGroup(id=12, name=NAME, type=TYPE)"),
+    (DeviceGroup.from_json({'id': 12, 'name': 'NAME', 'type': 'TYPE', 'other': 'OTHER', 'c8y_DeviceSubGroup': {}}),
+     "DeviceGroup(id=12, name=NAME, type=TYPE)"),
+])
+def test_repr(obj, repr):
+    """Verify that the string representation works as expected."""
+    assert str(obj) == repr
+
+
+@pytest.mark.parametrize('obj', [
+    ManagedObject(),
+    Device(),
+    DeviceGroup(),
+], ids=lambda x: str(x))
+def test_reload(obj):
+    """Verify that the base _reload function is utilized as expected by each
+    managed object variant."""
+    obj._reload = Mock()
+    obj.reload()
+    obj._reload.assert_called_once()
+    assert isinstance(obj._reload.call_args[0][0], type(obj))

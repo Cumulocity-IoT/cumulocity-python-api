@@ -1,3 +1,5 @@
+# Copyright (c) 2025 Cumulocity GmbH
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -7,7 +9,7 @@ from c8y_api._base_api import CumulocityRestApi
 from c8y_api.model.administration import User, Users
 from c8y_api.model._base import _DictWrapper, SimpleObject, ComplexObject
 from c8y_api.model._parser import ComplexObjectParser
-from c8y_api.model._util import _DateUtil
+from c8y_api.model._util import _DateUtil, _StringUtil
 
 
 class NamedObject(object):
@@ -316,6 +318,9 @@ class ManagedObject(ComplexObject):
         """
         return super()._to_datetime(self.update_time)
 
+    def __repr__(self):
+        return self._repr('name', 'type')
+
     @classmethod
     def _from_json(cls, json: dict, obj: Any) -> Any:
         # pylint: disable=arguments-differ
@@ -364,6 +369,22 @@ class ManagedObject(ComplexObject):
     @classmethod
     def _parse_references(cls, base_json):
         return [NamedObject.from_json(j['managedObject']) for j in base_json['references']]
+
+    def _reload(self, new_object):
+        self._assert_c8y()
+        self._assert_id()
+        result = self._from_json(self.c8y.get(self._build_object_path()), new_object)
+        result.c8y = self.c8y
+        return result
+
+    def reload(self) -> ManagedObject:
+        """Reload this object's data from database.
+
+        Returns:
+            New ManagedObject instance built from latest data.
+        """
+        return self._reload(ManagedObject())
+
 
     def create(self) -> ManagedObject:
         """ Create a new representation of this object within the database.
@@ -415,11 +436,25 @@ class ManagedObject(ComplexObject):
     def delete(self):
         """ Delete this object within the database.
 
-        The database ID must be defined for this to function.
+        Note: child additions, assets (and devices) are not implicitly
+        deleted. The database ID must be defined for this to function.
 
         See also function Inventory.delete to delete multiple objects.
         """
         self._delete()
+
+    def delete_tree(self):
+        """Delete this managed object within the database including child.
+        additions, devices and assets.
+        This is equivalent to using the `forceCascade` parameter of the
+        Cumulocity REST API.
+
+        The database ID must be defined for this to function.
+
+        See also function DeviceInventory.delete_trees to delete multiple objects.
+        """
+        self._delete(forceCascade='true')
+
 
     def add_child_asset(self, child: ManagedObject | str | int):
         """ Link a child asset to this managed object.
@@ -601,6 +636,49 @@ class Device(ManagedObject):
         """
         return Users(self.c8y).get(self.get_username())
 
+    def reload(self) -> Device:
+        """Reload this object's data from database.
+
+        Returns:
+            New Device instance built from latest data.
+        """
+        return self._reload(Device())
+
+    def delete(self, with_device_user=False):
+        """Delete this device object within the database.
+
+        Note: child additions, assets (and devices) are not implicitly
+        deleted. The database ID must be defined for this to function.
+
+        Args:
+            with_device_user (bool):  Whether the device user is deleted
+                as well.
+
+        See also function DeviceInventory.delete to delete multiple objects.
+        """
+        if with_device_user:
+            self._delete(withDeviceUser='true')
+        else:
+            self._delete()
+
+    def delete_tree(self, with_device_user=False):
+        """Delete this device object within the database including child.
+        additions, devices and assets.
+
+        The database ID must be defined for this to function.
+
+        Args:
+            with_device_user (bool):  Whether the device user is deleted
+                as well.
+
+        See also function DeviceInventory.delete to delete multiple objects.
+        """
+        if with_device_user:
+            self._delete(cascade='true', withDeviceUser='true')
+        else:
+            self._delete(cascade='true')
+
+
 
 class DeviceGroup(ManagedObject):
     """ Represent a device group within Cumulocity.
@@ -663,6 +741,14 @@ class DeviceGroup(ManagedObject):
         """
         return super()._from_json(json, DeviceGroup())
 
+    def reload(self) -> DeviceGroup:
+        """Reload this object's data from database.
+
+        Returns:
+            New DeviceGroup instance built from latest data.
+        """
+        return self._reload(DeviceGroup())
+
     def create_child(self, name: str, owner: str = None, **kwargs) -> DeviceGroup:
         """ Create and assign a child group.
 
@@ -715,9 +801,7 @@ class DeviceGroup(ManagedObject):
         equivalent to using the `cascade=false` parameter in the
         Cumulocity REST API.
         """
-        self._assert_c8y()
-        self._assert_id()
-        self.c8y.delete(self._build_object_path() + '?cascade=false')
+        self._delete(cascade='false')
 
     def delete_tree(self):
         """Delete this device group and its children.
@@ -725,9 +809,7 @@ class DeviceGroup(ManagedObject):
         This is equivalent to using the `cascade=true` parameter in the
         Cumulocity REST API.
         """
-        self._assert_c8y()
-        self._assert_id()
-        self.c8y.delete(self._build_object_path() + '?cascade=true')
+        self._delete(cascade='true')
 
     def assign_child_group(self, child: DeviceGroup | str | int):
         """Link a child group to this device group.

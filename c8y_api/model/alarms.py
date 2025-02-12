@@ -128,6 +128,9 @@ class Alarm(ComplexObject):
         """
         return super()._to_datetime(self.first_occurrence_time)
 
+    def __repr__(self):
+        return self._repr('source', 'type', 'status', 'severity')
+
     @classmethod
     def from_json(cls, json: dict) -> Alarm:
         """Build a new Alarm instance from JSON.

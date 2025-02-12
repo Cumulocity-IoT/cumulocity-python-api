@@ -1,11 +1,9 @@
-# Copyright (c) 2020 Software AG,
-# Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA,
-# and/or its subsidiaries and/or its affiliates and/or their licensors.
-# Use, reproduction, transfer, publication or disclosure is prohibited except
-# as specifically provided for in your License Agreement with Software AG.
+# Copyright (c) 2025 Cumulocity GmbH
 
 import re
 from datetime import datetime, timedelta, timezone
+from typing import Union
+
 from dateutil import parser
 from re import sub
 
@@ -13,6 +11,14 @@ from re import sub
 class _StringUtil(object):
 
     TO_PASCAL_PATTERN = re.compile(r'_([a-z])')
+
+    @staticmethod
+    def concat(*strings:Union[str, None]):
+        return ''.join(x for x in strings if x)
+
+    @staticmethod
+    def concat_with(sep: str, *strings:Union[str, None]):
+        return sep.join(x for x in strings if x)
 
     @staticmethod
     def to_pascal_case(name: str):
