@@ -73,6 +73,9 @@ class Operation(ComplexObject):
         """
         return super()._to_datetime(self.creation_time)
 
+    def __repr__(self):
+        return self._repr('device_id', 'status', 'description')
+
     @classmethod
     def from_json(cls, json) -> Operation:
         """ Build a new Operation instance from Cumulocity JSON.

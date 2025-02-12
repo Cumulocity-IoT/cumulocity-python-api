@@ -49,6 +49,9 @@ class ExternalId(SimpleObject):
         self.external_type = external_type
         self.managed_object_id = managed_object_id
 
+    def __repr__(self):
+        return self._repr('external_type', 'external_id', 'managed_object_id')
+
     @classmethod
     def from_json(cls, json: dict) -> ExternalId:
         """ Build a new ExternalId instance from JSON.

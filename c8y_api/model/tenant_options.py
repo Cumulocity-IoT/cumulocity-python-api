@@ -58,6 +58,9 @@ class TenantOption(SimpleObject):
         # corresponding assertion was run beforehand
         return f'{self._build_resource_path()}/{self.category}/{self.key}'
 
+    def __repr__(self):
+        return self._repr('category', 'key')
+
     @classmethod
     def from_json(cls, json: dict) -> TenantOption:
         """ Build a new TenantOption instance from JSON.

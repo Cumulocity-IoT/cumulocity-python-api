@@ -133,6 +133,9 @@ class Tenant(SimpleObject):
         """
         return list(self.owned_applications)
 
+    def __repr__(self):
+        return self._repr('domain')
+
     @classmethod
     def from_json(cls, json: dict) -> Tenant:
         """ Build a new Tenant instance from JSON.

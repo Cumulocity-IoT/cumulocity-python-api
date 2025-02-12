@@ -1,8 +1,4 @@
-# Copyright (c) 2020 Software AG,
-# Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA,
-# and/or its subsidiaries and/or its affiliates and/or their licensors.
-# Use, reproduction, transfer, publication or disclosure is prohibited except
-# as specifically provided for in your License Agreement with Software AG.
+# Copyright (c) 2025 Cumulocity GmbH
 
 from __future__ import annotations
 
@@ -120,6 +116,20 @@ class CumulocityObject:
     def _assert_id(self):
         if not self.id:
             raise ValueError("The object ID must be set to allow direct object access.")
+
+    def _repr(self, *names) -> str:
+        return ''.join([
+            type(self).__name__,
+            '(',
+            ', '.join(filter(lambda x: x is not None,
+                         [
+                             f'{n}={self.__getattribute__(n)}' if self.__getattribute__(n) else None
+                             for n in ['id', *names]
+                         ])),
+            ')'])
+
+    def __repr__(self) -> str:
+        return self._repr()
 
     @classmethod
     def _to_datetime(cls, timestring):
@@ -338,12 +348,12 @@ class SimpleObject(CumulocityObject):
         result.c8y = self.c8y
         return result
 
-    def _delete(self):
+    def _delete(self, **params):
         self._assert_c8y()
         self._assert_id()
-        self.c8y.delete(self._build_object_path())
+        self.c8y.delete(self._build_object_path(), params=params)
 
-    def delete(self):
+    def delete(self, **_):
         """Delete the object within the database."""
         self._delete()
 
