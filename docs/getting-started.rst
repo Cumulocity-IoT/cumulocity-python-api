@@ -1,8 +1,4 @@
-.. Copyright (c) 2020 Software AG,
-   Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA,
-   and/or its subsidiaries and/or its affiliates and/or their licensors.
-   Use, reproduction, transfer, publication or disclosure is prohibited except
-   as specifically provided for in your License Agreement with Software AG.
+.. Copyright (c) 2025 Cumulocity GmbH
 
 Getting started with the Cumulocity Python API
 ==============================================
@@ -16,7 +12,7 @@ Preliminaries
 -------------
 If you want to follow this guide you’d need access to a Cumulocity IoT
 tenant (duh!). If you don’t have one, yet, register for your free trial `here
-<https://www.softwareag.cloud/site/product/cumulocity-iot.html#>`_ and
+<https://www.cumulocity.com/start-your-journey/free-trial/>`_ and
 register your mobile phone as a device following `this guide
 <https://cumulocity.com/guides/users-guide/sensor-app/#overview>`_.
 
@@ -64,7 +60,7 @@ the API provides a set of nice access points just for that.
 
 The Cumulocity Python API is not an official API provisioned by Software AG.
 It’s an open source project (`hosted on GitHub
-<https://github.com/SoftwareAG/cumulocity-python-api>`_), maintained by
+<https://github.com/Cumulocity-IoT/cumulocity-python-api>`_), maintained by
 Software AG consultants and other Cumulocity experts world wide. You are
 invited to contribute!
 
@@ -386,4 +382,4 @@ Some hints where to go next:
    You can also create measurements using a neat object-oriented API
 
 If you are interested in participating in the further development of the
-Cumulocity Python API, please join our `GitHub community <https://github.com/SoftwareAG/cumulocity-python-api>`_.
+Cumulocity Python API, please join our `GitHub community <https://github.com/Cumulocity-IoT/cumulocity-python-api>`_.

@@ -1,8 +1,4 @@
-# Copyright (c) 2020 Software AG,
-# Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA,
-# and/or its subsidiaries and/or its affiliates and/or their licensors.
-# Use, reproduction, transfer, publication or disclosure is prohibited except
-# as specifically provided for in your License Agreement with Software AG.
+# Copyright (c) 2025 Cumulocity GmbH
 
 from getpass import getpass
 from invoke import task
@@ -63,6 +59,7 @@ def lint(c, scope='all'):
                "Python version to use - 3.7 or 3.11. Default: None")
 })
 def test(c, scope='tests', python=None):
+    """Run test."""
 
     docker_name = None
     if python == '3.7':
@@ -76,7 +73,8 @@ def test(c, scope='tests', python=None):
         c.run(cmd_build, pty=True)
         cmd_run = ('docker run --rm -it -v $(pwd):/code --env-file .env '
                    f'{docker_name} bash -c "cd /code '
-                   '&& pip show c8y_api || pip install -e . '
+                   '&& export PYTHONPATH="/code:${PYTHONPATH}"'
+                   # '&& pip show c8y_api || pip install -e . '
                    f'&& pytest -W ignore::DeprecationWarning {scope}"')
         print(f"Executing '{cmd_run}' ...")
         c.run(cmd_run, pty=True)

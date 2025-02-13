@@ -1,8 +1,4 @@
-# Copyright (c) 2020 Software AG,
-# Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA,
-# and/or its subsidiaries and/or its affiliates and/or their licensors.
-# Use, reproduction, transfer, publication or disclosure is prohibited except
-# as specifically provided for in your License Agreement with Software AG.
+# Copyright (c) 2025 Cumulocity GmbH
 
 # pylint: disable=protected-access
 
@@ -74,7 +70,7 @@ def create_jwt_token(tenant_id, hostname, username, valid_seconds=60) -> str:
 @pytest.fixture(name='jwt_token')
 def fixture_jwt_token() -> str:
     """Provide a sample JWT token as string."""
-    return create_jwt_token('t12345', 't12345.cumulocity.com', 'some.user@softwareag.com')
+    return create_jwt_token('t12345', 't12345.cumulocity.com', 'some.user@cumulocity.com')
 
 
 @pytest.fixture(name='jwt_token_bytes')
@@ -92,4 +88,4 @@ def test_resolve_tenant_id(jwt_token_bytes):
 def test_resolve_username(jwt_token_bytes):
     """Verify that parsing the username from a Bearer authentication
     string works as expected."""
-    assert JWT(jwt_token_bytes).username == 'some.user@softwareag.com'
+    assert JWT(jwt_token_bytes).username == 'some.user@cumulocity.com'

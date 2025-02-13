@@ -33,9 +33,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/SoftwareAG/cumulocity-python-api"
-Source = "https://github.com/SoftwareAG/cumulocity-python-api"
-Issues = "https://github.com/SoftwareAG/cumulocity-python-api/issues"
+Homepage = "https://github.com/Cumulocity-IoT/cumulocity-python-api"
+Source = "https://github.com/Cumulocity-IoT/cumulocity-python-api"
+Issues = "https://github.com/Cumulocity-IoT/cumulocity-python-api/issues"
 Documentation = "https://cumulocity-python-api.readthedocs.io/en/latest/"
 
 [tool.hatch.build]
