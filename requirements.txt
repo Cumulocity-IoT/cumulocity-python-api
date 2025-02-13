@@ -5,6 +5,7 @@ PyYAML
 requests
 Deprecated
 pytest
+pytest-asyncio
 responses
 python-dotenv
 invoke

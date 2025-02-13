@@ -1,14 +1,11 @@
-# Copyright (c) 2020 Software AG,
-# Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA,
-# and/or its subsidiaries and/or its affiliates and/or their licensors.
-# Use, reproduction, transfer, publication or disclosure is prohibited except
-# as specifically provided for in your License Agreement with Software AG.
+# Copyright (c) 2025 Cumulocity GmbH
 
 import asyncio
 import json as js
 import logging
 from typing import Callable, Awaitable
-import websockets as ws
+import websockets.asyncio.client as ws_client
+from websockets.exceptions import ConnectionClosed
 
 from c8y_api import CumulocityApi
 
@@ -82,18 +79,18 @@ class AsyncListener(object):
         self._is_closed = False
         self._connection = None
 
-    async def _get_connection(self) -> ws.WebSocketClientProtocol:
+    async def _get_connection(self) -> ws_client.ClientConnection:
         if not self._connection:
             if not self._current_uri:
                 token = self.c8y.notification2_tokens.generate(self.subscription_name, expires=2)
                 self._current_uri = self.c8y.notification2_tokens.build_websocket_uri(token)
                 self._log.debug("New Notification 2.0 token requested for subscription '{}'.", self.subscription_name)
             try:
-                self._connection = await ws.connect(self._current_uri,
+                self._connection = await ws_client.connect(self._current_uri,
                                                     ping_interval=AsyncListener.ping_interval,
                                                     ping_timeout=AsyncListener.ping_timeout)
                 self._log.info("Websocket connection established for subscription: {}", self.subscription_name)
-            except ws.ConnectionClosed as e:
+            except ConnectionClosed as e:
                 self._log.info("Cannot open websocket connection. Closed: {}", e)
                 self._connection = None
                 self._current_uri = None  # maybe the URI can be reused if not expired?
@@ -131,7 +128,7 @@ class AsyncListener(object):
                 payload = await c.recv()
                 self._log.debug("Received message: {}.", payload)
                 await asyncio.create_task(_callback(AsyncListener.Message(listener=self, payload=payload)))
-            except ws.ConnectionClosed as e:
+            except ConnectionClosed as e:
                 self._log.info("Websocket connection closed: {}", e)
 
     async def send(self, payload: str):

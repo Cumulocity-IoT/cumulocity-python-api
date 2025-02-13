@@ -713,7 +713,7 @@ class CumulocityResource:
         for o in objects:
             self.c8y.put(self.resource + '/' + str(o.id), json=jsonify_func(o), accept=None)
 
-    def _apply_to(self, jsonify_func, model: dict|Any, *object_ids):
+    def _apply_to(self, jsonify_func, model: dict|Any, *object_ids: str|int):
         model_json = model if isinstance(model, dict) else jsonify_func(model)
         for object_id in object_ids:
             self.c8y.put(self.resource + '/' + str(object_id), model_json, accept=None)

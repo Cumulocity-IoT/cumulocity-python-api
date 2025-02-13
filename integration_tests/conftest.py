@@ -1,14 +1,10 @@
-# Copyright (c) 2020 Software AG,
-# Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA,
-# and/or its subsidiaries and/or its affiliates and/or their licensors.
-# Use, reproduction, transfer, publication or disclosure is prohibited except
-# as specifically provided for in your License Agreement with Software AG.
+# Copyright (c) 2025 Cumulocity GmbH
 
 # pylint: disable=redefined-outer-name
 
 import logging
 import os
-from typing import List, Callable
+from typing import List, Callable, Any
 
 import pytest
 from dotenv import load_dotenv
@@ -50,7 +46,7 @@ def register_object(logger):
 
     objects = []
 
-    def register(obj):
+    def register(obj) -> Any:
         objects.append(obj)
         return obj
 
@@ -66,6 +62,30 @@ def register_object(logger):
         except BaseException as e:
             logger.warning(f"Caught exception ignored due to safe call: {e}")
 
+
+@pytest.fixture(scope='session')
+def safe_create(logger):
+    """Wrap a created Cumulocity object so that it will automatically be deleted
+    after a test regardless of an exception or failure."""
+
+    objects = []
+
+    def create_and_register(obj) -> Any:
+        o = obj.create()
+        objects.append(o)
+        return o
+
+    yield create_and_register
+
+    for o in objects:
+        try:
+            # Deletion should through a KeyError if object was already deleted
+            o.delete()
+            logger.warning(f"Object #{o.id} was not deleted by test.")
+        except KeyError:
+            pass
+        except BaseException as e:
+            logger.warning(f"Caught exception ignored due to safe call: {e}")
 
 @pytest.fixture(scope='session')
 def logger():

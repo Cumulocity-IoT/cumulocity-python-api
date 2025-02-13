@@ -412,6 +412,14 @@ class ManagedObject(ComplexObject):
         """
         return self._update()
 
+    def apply(self, json: dict):
+        self._assert_c8y()
+        result_json = self.c8y.put(self._build_object_path(), json=json,
+                                   accept=self.c8y.ACCEPT_MANAGED_OBJECT)
+        result = ManagedObject.from_json(result_json)
+        result.c8y = self.c8y
+        return result
+
     def apply_to(self, other_id: str | int) -> ManagedObject:
         """Apply the details of this object to another object in the database.
 
