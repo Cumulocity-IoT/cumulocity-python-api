@@ -182,8 +182,12 @@ def factory(logger, live_c8y: CumulocityApi):
     yield factory_fun
 
     for c in created:
-        c.delete()
-        logger.info(f"Removed object #{c.id}, ({c.__class__.__name__})")
+        try:
+            c.delete()
+            logger.info(f"Removed object #{c.id}, ({c.__class__.__name__})")
+        except KeyError:
+            logger.warning(f"Object #{c.id}, ({c.__class__.__name__}) could not be removed (not found).")
+
 
 
 @pytest.fixture(scope='session')
