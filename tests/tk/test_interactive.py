@@ -1,8 +1,4 @@
-# Copyright (c) 2020 Software AG,
-# Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA,
-# and/or its subsidiaries and/or its affiliates and/or their licensors.
-# Use, reproduction, transfer, publication or disclosure is prohibited except
-# as specifically provided for in your License Agreement with Software AG.
+# Copyright (c) 2025 Cumulocity GmbH
 
 import os
 from unittest.mock import patch, Mock
@@ -71,6 +67,10 @@ def test_with_invalid_token(getpass_fun, post_fun, monkeypatch, token: str):
 
     # inject old token into environment
     monkeypatch.setenv('C8Y_TOKEN', token)
+    monkeypatch.delenv('C8Y_BASEURL', raising=False)
+    monkeypatch.delenv('C8Y_TENANT', raising=False)
+    monkeypatch.delenv('C8Y_USER', raising=False)
+    monkeypatch.delenv('C8Y_PASSWORD', raising=False)
     # assume getpass function to be invoked
     getpass_fun.return_value = 'some-password'
     # assume post function to be invoked
@@ -81,6 +81,7 @@ def test_with_invalid_token(getpass_fun, post_fun, monkeypatch, token: str):
         assert c8y.auth.token is new_token
 
     # provided password should have been used to renew token
+    assert getpass_fun.called
     post_args = post_fun.call_args[1]  # kwargs
     assert post_args['data']['username'] == old_token.username
     assert post_args['data']['password'] == 'some-password'

@@ -1,8 +1,4 @@
-# Copyright (c) 2020 Software AG,
-# Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA,
-# and/or its subsidiaries and/or its affiliates and/or their licensors.
-# Use, reproduction, transfer, publication or disclosure is prohibited except
-# as specifically provided for in your License Agreement with Software AG.
+# Copyright (c) 2025 Cumulocity GmbH
 
 # pylint: disable=protected-access, redefined-outer-name
 

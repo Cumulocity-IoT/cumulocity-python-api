@@ -50,7 +50,7 @@
       "text": "Device name: 'Motor #1', alarm text: 'Production Failure'",
       "time": "1970-01-01T00:00:00.000Z",
       "type": "Alarm",
-      "user": "someone@softwareag.com"
+      "user": "someone@cumulocity.com"
     },
     {
          "activity": "User login",
@@ -58,9 +58,9 @@
          "type": "UserAuthentication",
          "self": "https://t12345.cumulocity.com/audit/auditRecords/72293841",
          "id": "72293841",
-         "text": "python-api@softwareag.com user logged in to the platform with OAuth internal login mode",
+         "text": "python-api@cumulocity.com user logged in to the platform with OAuth internal login mode",
          "time": "2023-12-07T10:38:04.718Z",
-         "user": "python-api@softwareag.com"
+         "user": "python-api@cumulocity.com"
       },
       {
          "activity": "Application subscribed",
@@ -74,7 +74,7 @@
          "id": "72293840",
          "text": "Application \"inttest-application\" subscribed",
          "time": "2023-12-07T10:38:04.021Z",
-         "user": "python-api@softwareag.com",
+         "user": "python-api@cumulocity.com",
          "c8y_Metadata": {
             "action": "SUBSCRIBE"
          }

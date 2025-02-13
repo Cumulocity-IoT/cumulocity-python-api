@@ -74,7 +74,4 @@ These tools are provided as-is and without warranty or support. They do not cons
 
 ______________________
 
-You can find additional information in the [Software AG TECHcommunity](https://tech.forums.softwareag.com/tag/Cumulocity-IoT). There is also an introductory article ([Getting started with the Cumulocity Python API](https://tech.forums.softwareag.com/t/getting-started-with-the-cumulocity-python-api/264700)) available.
-
-Contact us at [TECHcommunity](mailto:technologycommunity@softwareag.com?subject=Github/SoftwareAG) if you have any questions.
-
+You can find additional information in the [Cumulocity Tech Community](https://techcommunity.cumulocity.com/). There is also an introductory article ([Getting started with the Cumulocity Python API](https://techcommunity.cumulocity.com/t/getting-started-with-the-cumulocity-python-api)) available.

@@ -14,10 +14,10 @@
   "displayName": "tstusr",
   "firstName": "test",
   "lastName": "user",
-  "email": "testuser@softwareag.com",
+  "email": "testuser@cumulocity.com",
   "enabled": true,
   "groups": {
-    "next": "https://t12345.eu-latest.cumulocity.com/user/t12345/users/testuser@softwareag.com/groups?pageSize=5&currentPage=2",
+    "next": "https://t12345.eu-latest.cumulocity.com/user/t12345/users/testuser@cumulocity.com/groups?pageSize=5&currentPage=2",
     "references": [
       {
         "group": {
@@ -261,7 +261,7 @@
             "self": "https://t12345.eu-latest.cumulocity.com/1/users"
           }
         },
-        "self": "https://t12345.eu-latest.cumulocity.com/user/t12345/users/testuser@softwareag.com/groups/1"
+        "self": "https://t12345.eu-latest.cumulocity.com/user/t12345/users/testuser@cumulocity.com/groups/1"
       },
       {
         "group": {
@@ -285,7 +285,7 @@
             "self": "https://t12345.eu-latest.cumulocity.com/14/users"
           }
         },
-        "self": "https://t12345.eu-latest.cumulocity.com/user/t12345/users/testuser@softwareag.com/groups/14"
+        "self": "https://t12345.eu-latest.cumulocity.com/user/t12345/users/testuser@cumulocity.com/groups/14"
       },
       {
         "group": {
@@ -598,7 +598,7 @@
             "self": "https://t12345.eu-latest.cumulocity.com/2/users"
           }
         },
-        "self": "https://t12345.eu-latest.cumulocity.com/user/t12345/users/testuser@softwareag.com/groups/2"
+        "self": "https://t12345.eu-latest.cumulocity.com/user/t12345/users/testuser@cumulocity.com/groups/2"
       },
       {
         "group": {
@@ -744,7 +744,7 @@
             "self": "https://t12345.eu-latest.cumulocity.com/5/users"
           }
         },
-        "self": "https://t12345.eu-latest.cumulocity.com/user/t12345/users/testuser@softwareag.com/groups/5"
+        "self": "https://t12345.eu-latest.cumulocity.com/user/t12345/users/testuser@cumulocity.com/groups/5"
       },
       {
         "group": {
@@ -817,7 +817,7 @@
             "self": "https://t12345.eu-latest.cumulocity.com/7/users"
           }
         },
-        "self": "https://t12345.eu-latest.cumulocity.com/user/t12345/users/testuser@softwareag.com/groups/7"
+        "self": "https://t12345.eu-latest.cumulocity.com/user/t12345/users/testuser@cumulocity.com/groups/7"
       },
       {
         "group": {
@@ -879,21 +879,21 @@
             "self": "https://t12345.eu-latest.cumulocity.com/8/users"
           }
         },
-        "self": "https://t12345.eu-latest.cumulocity.com/user/t12345/users/testuser@softwareag.com/groups/8"
+        "self": "https://t12345.eu-latest.cumulocity.com/user/t12345/users/testuser@cumulocity.com/groups/8"
       }
     ],
-    "self": "https://t12345.eu-latest.cumulocity.com/user/t12345/users/testuser@softwareag.com/groups?pageSize=5&currentPage=1",
+    "self": "https://t12345.eu-latest.cumulocity.com/user/t12345/users/testuser@cumulocity.com/groups?pageSize=5&currentPage=1",
     "statistics": {
       "currentPage": 1,
       "pageSize": 5
     }
   },
-  "id": "testuser@softwareag.com",
+  "id": "testuser@cumulocity.com",
   "lastPasswordChange": "2020-05-07T07:40:22.219Z",
   "passwordStrength": "GREEN",
   "phone": "+123456789",
   "roles": {
-    "next": "https://t12345.eu-latest.cumulocity.com/user/t12345/users/testuser@softwareag.com/roles?pageSize=5&currentPage=2",
+    "next": "https://t12345.eu-latest.cumulocity.com/user/t12345/users/testuser@cumulocity.com/roles?pageSize=5&currentPage=2",
     "references": [
       {
         "role": {
@@ -901,7 +901,7 @@
           "name": "ROLE_USER_MANAGEMENT_OWN_READ",
           "self": "https://t12345.eu-latest.cumulocity.com/user/roles/ROLE_USER_MANAGEMENT_OWN_READ"
         },
-        "self": "https://t12345.eu-latest.cumulocity.com/user/t12345/users/testuser@softwareag.com/roles/ROLE_USER_MANAGEMENT_OWN_READ/"
+        "self": "https://t12345.eu-latest.cumulocity.com/user/t12345/users/testuser@cumulocity.com/roles/ROLE_USER_MANAGEMENT_OWN_READ/"
       },
       {
         "role": {
@@ -909,17 +909,17 @@
           "name": "ROLE_USER_MANAGEMENT_OWN_ADMIN",
           "self": "https://t12345.eu-latest.cumulocity.com/user/roles/ROLE_USER_MANAGEMENT_OWN_ADMIN"
         },
-        "self": "https://t12345.eu-latest.cumulocity.com/user/t12345/users/testuser@softwareag.com/roles/ROLE_USER_MANAGEMENT_OWN_ADMIN/"
+        "self": "https://t12345.eu-latest.cumulocity.com/user/t12345/users/testuser@cumulocity.com/roles/ROLE_USER_MANAGEMENT_OWN_ADMIN/"
       }
     ],
-    "self": "https://t12345.eu-latest.cumulocity.com/user/t12345/users/testuser@softwareag.com/roles?pageSize=5&currentPage=1",
+    "self": "https://t12345.eu-latest.cumulocity.com/user/t12345/users/testuser@cumulocity.com/roles?pageSize=5&currentPage=1",
     "statistics": {
       "currentPage": 1,
       "pageSize": 5
     }
   },
-  "self": "https://t12345.eu-latest.cumulocity.com/user/t12345/users/testuser@softwareag.com",
+  "self": "https://t12345.eu-latest.cumulocity.com/user/t12345/users/testuser@cumulocity.com",
   "shouldResetPassword": false,
   "twoFactorAuthenticationEnabled": false,
-  "userName": "testuser@softwareag.com"
+  "userName": "testuser@cumulocity.com"
 }
