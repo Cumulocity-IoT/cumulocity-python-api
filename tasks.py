@@ -71,7 +71,7 @@ def test(c, scope='tests', python=None):
         cmd_build = f'docker build -f {dockerfile} -t {docker_name} .'
         print(f"Executing '{cmd_build}' ...")
         c.run(cmd_build, pty=True)
-        cmd_run = (f'docker run --rm -it -v $(pwd):/code --env-file .env {docker_name} '
+        cmd_run = (f'docker run --rm -it -v $(pwd):/code {docker_name} '
                    'bash -c "cd /code '
                    '&& export PYTHONPATH="/code:${PYTHONPATH}" '
                    f'&& pytest -W ignore::DeprecationWarning {scope}"')

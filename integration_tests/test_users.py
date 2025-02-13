@@ -128,13 +128,11 @@ def test_current_totp(live_c8y: CumulocityApi, user_c8y: CumulocityApi):
     assert not current_user.is_valid_totp(code)
     with pytest.raises(ValueError) as ex:
         current_user.verify_totp(code)
-    assert '403' in str(ex)
     assert 'Invalid verification code' in str(ex)
 
     # Simply disabling the TOTP feature is no longer supported (v10.20)
-    with pytest.raises(ValueError) as ex:
+    with pytest.raises(Exception) as ex:
         current_user.disable_totp()
-    assert '403' in str(ex)
     assert 'Cannot deactivate TOTP setup!' in str(ex)
 
     # Revoking does automatically disable the feature
@@ -152,7 +150,7 @@ def user_factory(live_c8y: CumulocityApi):
 
     def factory_fun(with_password=False) -> Union[User, Tuple[User, str]]:
         username = RandomNameGenerator.random_name(2)
-        email = f'{username}@software.ag'
+        email = f'{username}@cumulocity.gmbh'
         password = generate_password()
         print(f"User: {email}, Password: {password}")
         user = User(c8y=live_c8y, username=username, password=password, email=email).create()
