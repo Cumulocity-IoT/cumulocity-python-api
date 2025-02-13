@@ -71,10 +71,9 @@ def test(c, scope='tests', python=None):
         cmd_build = f'docker build -f {dockerfile} -t {docker_name} .'
         print(f"Executing '{cmd_build}' ...")
         c.run(cmd_build, pty=True)
-        cmd_run = ('docker run --rm -it -v $(pwd):/code --env-file .env '
-                   f'{docker_name} bash -c "cd /code '
-                   '&& export PYTHONPATH="/code:${PYTHONPATH}"'
-                   # '&& pip show c8y_api || pip install -e . '
+        cmd_run = (f'docker run --rm -it -v $(pwd):/code --env-file .env {docker_name} '
+                   'bash -c "cd /code '
+                   '&& export PYTHONPATH="/code:${PYTHONPATH}" '
                    f'&& pytest -W ignore::DeprecationWarning {scope}"')
         print(f"Executing '{cmd_run}' ...")
         c.run(cmd_run, pty=True)
