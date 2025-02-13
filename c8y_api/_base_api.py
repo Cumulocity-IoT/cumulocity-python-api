@@ -30,6 +30,9 @@ class HttpError(Exception):
         self.code = code
         self. message = message
 
+    def __repr__(self):
+        return f'HTTP {self.code}: {self.method} {self.url} - {self.message}'
+
 
 class UnauthorizedError(HttpError):
     """Error raised for unauthorized access."""
@@ -271,9 +274,9 @@ class CumulocityRestApi:
         additional_headers = self._prepare_headers(accept=accept, content_type=content_type)
         r = self.session.post(self.base_url + resource, json=json, headers=additional_headers)
         if r.status_code == 401:
-            raise UnauthorizedError(self.METHOD_POST, self.base_url + resource)
+            raise UnauthorizedError(self.METHOD_POST, self.base_url + resource, message=r.json()['message'])
         if r.status_code == 403:
-            raise AccessDeniedError(self.METHOD_POST, self.base_url + resource)
+            raise AccessDeniedError(self.METHOD_POST, self.base_url + resource, message=r.json()['message'])
         if r.status_code == 404:
             raise KeyError(f"No such object: {resource}")
         if 500 <= r.status_code <= 599:
