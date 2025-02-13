@@ -1,8 +1,4 @@
-# Copyright (c) 2020 Software AG,
-# Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA,
-# and/or its subsidiaries and/or its affiliates and/or their licensors.
-# Use, reproduction, transfer, publication or disclosure is prohibited except
-# as specifically provided for in your License Agreement with Software AG.
+# Copyright (c) 2025 Cumulocity GmbH
 
 # pylint: disable=protected-access
 
@@ -62,7 +58,7 @@ def test_formatting():
                          activity='audit activity', text='audit text',
                          severity=AuditRecord.Severity.INFORMATION,
                          application='some application',
-                         user='some@softwareag.com',
+                         user='some@cumulocity.com',
                          changes=[
                              Change(attribute='attr', new_value='new', previous_value='old', type='type'),
                              Change(attribute='attr2', new_value='new2', previous_value='old2', type='type2')

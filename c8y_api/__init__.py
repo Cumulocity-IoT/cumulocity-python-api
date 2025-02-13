@@ -1,13 +1,9 @@
-# Copyright (c) 2020 Software AG,
-# Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA,
-# and/or its subsidiaries and/or its affiliates and/or their licensors.
-# Use, reproduction, transfer, publication or disclosure is prohibited except
-# as specifically provided for in your License Agreement with Software AG.
+# Copyright (c) 2025 Cumulocity GmbH
 
 try:
-    from importlib.metadata import version
+    from importlib.metadata import version, PackageNotFoundError
 except ModuleNotFoundError:
-    from importlib_metadata import version
+    from importlib_metadata import version, PackageNotFoundError
 
 from c8y_api._base_api import (
     ProcessingMode,
@@ -21,4 +17,7 @@ from c8y_api._main_api import CumulocityApi
 from c8y_api._registry_api import CumulocityDeviceRegistry
 from c8y_api._auth import HTTPBasicAuth, HTTPBearerAuth
 
-__version__ = version(__name__)
+try:
+    __version__ = version(__name__)
+except PackageNotFoundError:
+    __version__ = 'LATEST'
