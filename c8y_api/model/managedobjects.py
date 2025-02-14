@@ -9,7 +9,7 @@ from c8y_api._base_api import CumulocityRestApi
 from c8y_api.model.administration import User, Users
 from c8y_api.model._base import _DictWrapper, SimpleObject, ComplexObject
 from c8y_api.model._parser import ComplexObjectParser
-from c8y_api.model._util import _DateUtil, _StringUtil
+from c8y_api.model._util import _DateUtil
 
 
 class NamedObject(object):
@@ -433,7 +433,7 @@ class ManagedObject(ComplexObject):
         result.c8y = self.c8y
         return result
 
-    def delete(self):
+    def delete(self, **_) -> None:
         """ Delete this object within the database.
 
         Note: child additions, assets (and devices) are not implicitly
@@ -443,7 +443,7 @@ class ManagedObject(ComplexObject):
         """
         self._delete()
 
-    def delete_tree(self):
+    def delete_tree(self) -> None:
         """Delete this managed object within the database including child.
         additions, devices and assets.
         This is equivalent to using the `forceCascade` parameter of the
@@ -644,7 +644,7 @@ class Device(ManagedObject):
         """
         return self._reload(Device())
 
-    def delete(self, with_device_user=False):
+    def delete(self, with_device_user=False, **_) -> None:
         """Delete this device object within the database.
 
         Note: child additions, assets (and devices) are not implicitly
@@ -661,7 +661,7 @@ class Device(ManagedObject):
         else:
             self._delete()
 
-    def delete_tree(self, with_device_user=False):
+    def delete_tree(self, with_device_user=False) -> None:
         """Delete this device object within the database including child.
         additions, devices and assets.
 
@@ -794,7 +794,7 @@ class DeviceGroup(ManagedObject):
         """
         return super()._update()
 
-    def delete(self):
+    def delete(self, **_) -> None:
         """Delete this device group.
 
         The child groups (if there are any) are left dangling. This is
@@ -803,7 +803,7 @@ class DeviceGroup(ManagedObject):
         """
         self._delete(cascade='false')
 
-    def delete_tree(self):
+    def delete_tree(self) -> None:
         """Delete this device group and its children.
 
         This is equivalent to using the `cascade=true` parameter in the

@@ -91,8 +91,8 @@ class _ListWrapper(MutableSequence, list):
     #     if self.__dict__['_property_on_update']:
     #         self.__dict__['_property_on_update']()
 
-    def insert(self, i, value):
-        self.__dict__['_property_items'].insert(i, value)
+    def insert(self, index, value):
+        self.__dict__['_property_items'].insert(index, value)
         if self.__dict__['_property_on_update']:
             self.__dict__['_property_on_update']()
 
@@ -123,7 +123,7 @@ class CumulocityObject:
             '(',
             ', '.join(filter(lambda x: x is not None,
                          [
-                             f'{n}={self.__getattribute__(n)}' if self.__getattribute__(n) else None
+                             f'{n}={getattr(self, n)}' if getattr(self, n) else None
                              for n in ['id', *names]
                          ])),
             ')'])
@@ -353,7 +353,7 @@ class SimpleObject(CumulocityObject):
         self._assert_id()
         self.c8y.delete(self._build_object_path(), params=params)
 
-    def delete(self, **_):
+    def delete(self, **_) -> None:
         """Delete the object within the database."""
         self._delete()
 
@@ -719,7 +719,7 @@ class CumulocityResource:
             self.c8y.put(self.resource + '/' + str(object_id), model_json, accept=None)
 
     # this one should be ok for all implementations, hence we define it here
-    def delete(self, *objects: str):
+    def delete(self, *objects: str) -> None:
         """ Delete one or more objects within the database.
 
         The objects can be specified as instances of a database object

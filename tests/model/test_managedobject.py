@@ -1,5 +1,5 @@
 # Copyright (c) 2025 Cumulocity GmbH
-# pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name, protected-access
 
 import datetime
 import json

@@ -171,6 +171,12 @@ def test_reload(live_c8y):
 
 
 def test_deletion(live_c8y: CumulocityApi, register_object):
+    """Verify that deletion works as expected.
+
+    This test creates a managed object tree (root plus child asset, child device and child addition).
+    Deleting the root object will not delete the children unless the 'cascade' option is used
+    (using the delete_tree function).
+    """
     name = RandomNameGenerator.random_name()
     obj = register_object(ManagedObject(live_c8y, name=f'Root-{name}', type=f'Root-{name}').create())
     addition = register_object(ManagedObject(live_c8y, name=f'Addition-{name}', type=f'Addition-{name}').create())
@@ -212,6 +218,12 @@ def test_deletion(live_c8y: CumulocityApi, register_object):
 
 
 def test_device_deletion(live_c8y: CumulocityApi, register_object):
+    """Verify that device deletion works as expected.
+
+    This test creates a device tree (root plus child asset, child device and child addition).
+    Deleting the root device will not delete the children unless the 'cascade' option is used
+    (using the delete_tree function).
+    """
     name = RandomNameGenerator.random_name()
     obj = register_object(Device(live_c8y, name=f'Root-{name}', type=f'Root-{name}').create())
     addition = register_object(ManagedObject(live_c8y, name=f'Addition-{name}', type=f'Addition-{name}').create())

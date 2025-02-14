@@ -288,6 +288,7 @@ class Inventory(CumulocityResource):
             text: str = None,
             **kwargs,
     ) -> dict:
+        # pylint: disable=too-many-branches
         query_key = 'q' if only_devices else 'query'
 
         # if query is directly specified -> use it and ignore everything else
@@ -665,7 +666,7 @@ class DeviceInventory(Inventory):
             page_size=1,
             **kwargs))
 
-    def delete(self, *devices: Device):
+    def delete(self, *devices: Device) -> None:
         """ Delete one or more devices and the corresponding within the database.
 
         The objects can be specified as instances of a database object
@@ -961,7 +962,7 @@ class DeviceGroupInventory(Inventory):
         refs = {'references': [ManagedObjectUtil.build_managed_object_reference(i) for i in child_ids]}
         self.c8y.delete(self.build_object_path(root_id) + '/childAssets', json=refs)
 
-    def delete(self, *groups: DeviceGroup | str):
+    def delete(self, *groups: DeviceGroup | str) -> None:
         """Delete one or more single device groups within the database.
 
         The child groups (if there are any) are left dangling. This is
@@ -973,7 +974,7 @@ class DeviceGroupInventory(Inventory):
         """
         self._delete(False, *groups)
 
-    def delete_trees(self, *groups: DeviceGroup | str):
+    def delete_trees(self, *groups: DeviceGroup | str) -> None:
         """Delete one or more device groups trees within the database.
 
         This is equivalent to using the `cascade=true` parameter in the
