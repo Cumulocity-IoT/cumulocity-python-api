@@ -70,6 +70,10 @@ def register_object(logger):
 @pytest.fixture(scope='session')
 def logger():
     """Provide a logger for testing."""
+    # Configure logging
+    logging.getLogger('urllib3').setLevel(logging.DEBUG)
+    logging.getLogger('c8y_api').setLevel(logging.DEBUG)
+    logging.getLogger('c8y_api.test').setLevel(logging.DEBUG)
     return logging.getLogger('c8y_api.test')
 
 

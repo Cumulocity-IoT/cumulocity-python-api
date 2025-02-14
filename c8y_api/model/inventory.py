@@ -288,18 +288,21 @@ class Inventory(CumulocityResource):
             text: str = None,
             **kwargs,
     ) -> dict:
-        # if expression
         query_key = 'q' if only_devices else 'query'
+
         # if query is directly specified -> use it and ignore everything else
         if query:
             return {query_key: query, **kwargs}
-
+        # if ids are directly specified -> use it and ignore everything else
         if ids:
             return {'ids': ids, **kwargs}
 
         def filter_none(**xs):
             return {k: v for k, v in xs.items() if v is not None}
 
+        if only_devices:
+            fragments = [fragment] if fragment else None
+            fragment = 'c8y_IsDevice'
         use_query = parent or filters or order_by or name or fragments
         if not use_query:
             return filter_none(type=type, owner=owner, text=text, fragment=fragment, **kwargs)
