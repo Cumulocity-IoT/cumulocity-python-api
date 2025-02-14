@@ -301,8 +301,12 @@ class Inventory(CumulocityResource):
             return {k: v for k, v in xs.items() if v is not None}
 
         if only_devices:
-            fragments = [fragment] if fragment else None
-            fragment = 'c8y_IsDevice'
+            if fragments:
+                fragments = ['c8y_IsDevice', *fragments]
+            elif fragment:
+                fragments = ['c8y_IsDevice', fragment]
+            else:
+                fragment = 'c8y_IsDevice'
         use_query = parent or filters or order_by or name or fragments
         if not use_query:
             return filter_none(type=type, owner=owner, text=text, fragment=fragment, **kwargs)
@@ -791,6 +795,12 @@ class DeviceGroupInventory(Inventory):
             Generator of DeviceGroup instances
         """
         type = type or (DeviceGroup.CHILD_TYPE if parent else None)
+        if fragments:
+            fragments = ['c8y_IsDeviceGroup', *fragments] if fragments else None
+        elif fragment:
+            fragments = ['c8y_IsDeviceGroup', fragment]
+        else:
+            fragment = 'c8y_IsDeviceGroup'
 
         return super()._select(
             parse_fun=DeviceGroup.from_json,
@@ -840,6 +850,13 @@ class DeviceGroupInventory(Inventory):
             Number of potential results
         """
         type = type or (DeviceGroup.CHILD_TYPE if parent else None)
+        if fragments:
+            fragments = ['c8y_IsDeviceGroup', *fragments] if fragments else None
+        elif fragment:
+            fragments = ['c8y_IsDeviceGroup', fragment]
+        else:
+            fragment = 'c8y_IsDeviceGroup'
+
         base_query = self._prepare_inventory_query(
             device_mode=False,
             expression=expression,

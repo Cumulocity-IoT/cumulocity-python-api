@@ -84,14 +84,17 @@ def similar_objects(object_factory) -> List[ManagedObject]:
 
 def test_get_all(live_c8y: CumulocityApi):
     """Verify that the get_all query works as expected."""
-    # get all devices
+    # (1) get all devices
     devices = live_c8y.device_inventory.get_all(limit=1000)
     assert all('c8y_IsDevice' in d for d in devices)
-    # get all managed objects
+    # (2) get all managed objects
     objects = live_c8y.inventory.get_all(limit=1000)
     # -> there should be both device and non-device objects
     device_objects = [o for o in objects if 'c8y_IsDevice' in o]
     assert len(objects) > len(device_objects)
+    # (3) get all device groups
+    groups = live_c8y.group_inventory.get_all(limit=1000)
+    assert all('c8y_IsDeviceGroup' in g for g in groups)
 
 
 @pytest.mark.parametrize('key, value_fun', [
