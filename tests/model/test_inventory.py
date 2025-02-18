@@ -131,12 +131,12 @@ def gen_common_select_cases():
          ['$filter=', 'has(a)', 'has(b)', 'owner eq O', "text eq 'it''s text'"],
          ['fragment=', 'owner=']),
         # otherwise, simple filters should be used as such
-        ({'fragment': 'F'}, ['fragmentType=F'], ['$', 'has']),
+        # (fragment filters are special and tested per API below)
         ({'owner': 'O'}, ['owner=O'], ['$', ' eq ']),
         ({'type': 'T'}, ['type=T'], ['$', ' eq ']),
         ({'text': "it's text"}, ["text='it''s text'"], ['$', ' eq ']),
         # other flags don't change the query mode
-        ({'fragment': 'F', 'only_roots': True}, ['fragmentType=F', 'onlyRoots=True'], ['$', 'has']),
+        # (fragment filters are special and tested per API below)
         ({'type': 'T', 'with_children': False}, ['type=T', 'withChildren=False'], ['$', 'has']),
         ({'owner': 'O', 'skip_children_names': False}, ['owner=O', 'skipChildrenNames=False'], ['$', 'has']),
         ({'text': "it's text", 'with_latest_values': True}, ["text='it''s text'", 'withLatestValues=T'], ['$', ' eq ']),
@@ -177,14 +177,22 @@ def test_common_select_params(fun, params, expected, not_expected):
         assert e not in url
 
 
+# ({'fragment': 'ANY'}, ['fragmentType='], ['$', 'has']),
+# ({'fragment': 'F', 'only_roots': True}, ['fragmentType=', 'onlyRoots=True'], ['$', 'has']),
 @pytest.mark.parametrize('fun',[
         'device_inventory.get_all',
         'device_inventory.get_count',
     ])
 @pytest.mark.parametrize('params, expected, not_expected', [
+    ({}, ['fragmentType=c8y_IsDevice'], ['q=', '$filter', 'has']),
+    ({'fragment': 'F'}, ['q=', '$filter', 'has(c8y_IsDevice)', 'has(F)'], ['fragmentType=']),
+    ({'fragments': ['F1', 'F2']}, ['q=', '$filter', 'has(c8y_IsDevice)', 'has(F1)', 'has(F2)'], ['fragmentType=']),
     ({'name': "it's name"}, ['q=', "name eq 'it''s name'"], ['query']),
 ], ids=[
-    'name'
+    'unfiltered',
+    'fragment',
+    'fragments',
+    'name',
 ])
 def test_device_inventory_filters(fun, params, expected, not_expected):
     """Verify that the filter parameters are all forwarded correctly
@@ -201,6 +209,15 @@ def test_device_inventory_filters(fun, params, expected, not_expected):
         'group_inventory.get_count',
     ])
 @pytest.mark.parametrize('params, expected, not_expected', [
+    ({},
+     ['fragmentType=c8y_IsDeviceGroup'],
+     ['type']),
+    ({'fragment': 'F'},
+     ['query=', '$filter', 'has(c8y_IsDeviceGroup)', 'has(F)'],
+     ['fragmentType=']),
+    ({'fragments': ['F1', 'F2']},
+     ['query=', '$filter', 'has(c8y_IsDeviceGroup)', 'has(F1)', 'has(F2)'],
+     ['fragmentType=']),
     ({'parent': 'PARENT'},
      ['query=', 'bygroupid(PARENT)', 'type eq c8y_DeviceSubGroup'],
      []),
@@ -212,9 +229,12 @@ def test_device_inventory_filters(fun, params, expected, not_expected):
      ['query=QUERY'],
      ['name eq ', 'bygroupid', 'PARENT', 'c8y_DeviceSubGroup']),
 ], ids=[
+    'unfiltered',
+    'fragment',
+    'fragments',
     'parent',
     'name+parent',
-    'name+parent+query'
+    'name+parent+query',
 ])
 def test_group_inventory_filters(fun, params, expected, not_expected):
     """Verify that the filter parameters are all forwarded correctly

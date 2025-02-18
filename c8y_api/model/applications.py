@@ -134,7 +134,7 @@ class Application(SimpleObject):
         """
         return super()._update()
 
-    def delete(self):
+    def delete(self, **_) -> None:
         """Delete the Application within the database."""
         super()._delete()
 

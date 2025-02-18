@@ -95,7 +95,7 @@ class TenantOption(SimpleObject):
         """
         return super()._update()
 
-    def delete(self) -> None:
+    def delete(self, **_) -> None:
         """Delete the option within the database.
 
         See also function `TenantOptions.delete` to delete multiple objects.

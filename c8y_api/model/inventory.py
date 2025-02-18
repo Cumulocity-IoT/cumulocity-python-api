@@ -288,18 +288,26 @@ class Inventory(CumulocityResource):
             text: str = None,
             **kwargs,
     ) -> dict:
-        # if expression
+        # pylint: disable=too-many-branches
         query_key = 'q' if only_devices else 'query'
+
         # if query is directly specified -> use it and ignore everything else
         if query:
             return {query_key: query, **kwargs}
-
+        # if ids are directly specified -> use it and ignore everything else
         if ids:
             return {'ids': ids, **kwargs}
 
         def filter_none(**xs):
             return {k: v for k, v in xs.items() if v is not None}
 
+        if only_devices:
+            if fragments:
+                fragments = ['c8y_IsDevice', *fragments]
+            elif fragment:
+                fragments = ['c8y_IsDevice', fragment]
+            else:
+                fragment = 'c8y_IsDevice'
         use_query = parent or filters or order_by or name or fragments
         if not use_query:
             return filter_none(type=type, owner=owner, text=text, fragment=fragment, **kwargs)
@@ -658,7 +666,7 @@ class DeviceInventory(Inventory):
             page_size=1,
             **kwargs))
 
-    def delete(self, *devices: Device):
+    def delete(self, *devices: Device) -> None:
         """ Delete one or more devices and the corresponding within the database.
 
         The objects can be specified as instances of a database object
@@ -788,6 +796,12 @@ class DeviceGroupInventory(Inventory):
             Generator of DeviceGroup instances
         """
         type = type or (DeviceGroup.CHILD_TYPE if parent else None)
+        if fragments:
+            fragments = ['c8y_IsDeviceGroup', *fragments] if fragments else None
+        elif fragment:
+            fragments = ['c8y_IsDeviceGroup', fragment]
+        else:
+            fragment = 'c8y_IsDeviceGroup'
 
         return super()._select(
             parse_fun=DeviceGroup.from_json,
@@ -837,6 +851,13 @@ class DeviceGroupInventory(Inventory):
             Number of potential results
         """
         type = type or (DeviceGroup.CHILD_TYPE if parent else None)
+        if fragments:
+            fragments = ['c8y_IsDeviceGroup', *fragments] if fragments else None
+        elif fragment:
+            fragments = ['c8y_IsDeviceGroup', fragment]
+        else:
+            fragment = 'c8y_IsDeviceGroup'
+
         base_query = self._prepare_inventory_query(
             device_mode=False,
             expression=expression,
@@ -941,7 +962,7 @@ class DeviceGroupInventory(Inventory):
         refs = {'references': [ManagedObjectUtil.build_managed_object_reference(i) for i in child_ids]}
         self.c8y.delete(self.build_object_path(root_id) + '/childAssets', json=refs)
 
-    def delete(self, *groups: DeviceGroup | str):
+    def delete(self, *groups: DeviceGroup | str) -> None:
         """Delete one or more single device groups within the database.
 
         The child groups (if there are any) are left dangling. This is
@@ -953,7 +974,7 @@ class DeviceGroupInventory(Inventory):
         """
         self._delete(False, *groups)
 
-    def delete_trees(self, *groups: DeviceGroup | str):
+    def delete_trees(self, *groups: DeviceGroup | str) -> None:
         """Delete one or more device groups trees within the database.
 
         This is equivalent to using the `cascade=true` parameter in the

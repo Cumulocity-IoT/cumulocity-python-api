@@ -16,7 +16,7 @@ class CumulocityDeviceRegistry(CumulocityRestApi):
     https://cumulocity.com/guides/users-guide/device-management/#connecting-devices
     """
 
-    __log = logging.getLogger(__name__ + '.CumulocityDeviceRegistry')
+    _log = logging.getLogger(__name__ + '.CumulocityDeviceRegistry')
 
     @dataclass
     class Credentials:
@@ -84,7 +84,7 @@ class CumulocityDeviceRegistry(CumulocityRestApi):
         while True:
             if timeout_time < time.time():
                 raise TimeoutError
-            self.__log.debug("Requesting device credentials for device id '{}' ...", device_id)
+            self._log.debug(f"Requesting device credentials for device id '{device_id}' ...")
             response: requests.Response = session.send(request)
             if response.status_code == 404:
                 # This is the expected response until the device registration request got accepted

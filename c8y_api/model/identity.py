@@ -81,7 +81,7 @@ class ExternalId(SimpleObject):
         Identity(self.c8y).create(self.external_id, self.external_type, self.managed_object_id)
         return self
 
-    def delete(self):
+    def delete(self, **_) -> None:
         """ Remove the external ID from the database.
 
         Returns:
@@ -108,11 +108,6 @@ class ExternalId(SimpleObject):
         """
         self._assert_c8y()
         return Identity(self.c8y).get_object(self.external_id, self.external_type)
-
-    def __repr__(self):
-        return str({'external_id': self.external_id,
-                    'external_type': self.external_type,
-                    'object_id': self.managed_object_id})
 
 
 class Identity(object):
@@ -151,7 +146,7 @@ class Identity(object):
         path = f'/identity/globalIds/{managed_object_id}/externalIds'
         self.c8y.post(path, body_json)
 
-    def delete(self, external_id, external_type):
+    def delete(self, external_id, external_type) -> None:
         """ Remove an External ID from the database.
 
         Args:

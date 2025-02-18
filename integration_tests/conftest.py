@@ -90,6 +90,10 @@ def safe_create(logger):
 @pytest.fixture(scope='session')
 def logger():
     """Provide a logger for testing."""
+    # Configure logging
+    logging.getLogger('urllib3').setLevel(logging.DEBUG)
+    logging.getLogger('c8y_api').setLevel(logging.DEBUG)
+    logging.getLogger('c8y_api.test').setLevel(logging.DEBUG)
     return logging.getLogger('c8y_api.test')
 
 
@@ -202,8 +206,12 @@ def factory(logger, live_c8y: CumulocityApi):
     yield factory_fun
 
     for c in created:
-        c.delete()
-        logger.info(f"Removed object #{c.id}, ({c.__class__.__name__})")
+        try:
+            c.delete()
+            logger.info(f"Removed object #{c.id}, ({c.__class__.__name__})")
+        except KeyError:
+            logger.warning(f"Object #{c.id}, ({c.__class__.__name__}) could not be removed (not found).")
+
 
 
 @pytest.fixture(scope='session')

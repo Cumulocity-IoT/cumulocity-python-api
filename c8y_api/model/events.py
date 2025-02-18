@@ -129,7 +129,7 @@ class Event(ComplexObject):
         """
         return super()._update()
 
-    def delete(self):
+    def delete(self, **_) -> None:
         """Delete the Event within the database."""
         super()._delete()
 
@@ -205,7 +205,7 @@ class Event(ComplexObject):
         return self.c8y.put_file(self._build_attachment_path(), file,
                                  accept='application/json', content_type=content_type)
 
-    def delete_attachment(self):
+    def delete_attachment(self) -> None:
         """Remove the binary attachment."""
         super()._assert_c8y()
         super()._assert_id()
@@ -543,7 +543,7 @@ class Events(CumulocityResource):
         """
         return self.c8y.get_file(self.build_attachment_path(event_id))
 
-    def delete_attachment(self, event_id: str):
+    def delete_attachment(self, event_id: str) -> None:
         """Remove an event's binary attachment.
 
         Args:

@@ -7,7 +7,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Generator, List
 
-from c8y_api._base_api import CumulocityRestApi
+from c8y_api._base_api import CumulocityRestApi, AccessDeniedError
 from c8y_api.model._base import CumulocityResource, SimpleObject
 from c8y_api.model._parser import SimpleObjectParser, ComplexObjectParser
 from c8y_api.model._util import _DateUtil
@@ -179,7 +179,7 @@ class InventoryRole(SimpleObject):
         """
         return super()._update()
 
-    def delete(self):
+    def delete(self, **_) -> None:
         """Delete the role within the database."""
         super()._delete()
 
@@ -291,7 +291,7 @@ class GlobalRole(SimpleObject):
         """
         return super()._update()
 
-    def delete(self):
+    def delete(self, **_) -> None:
         """Delete the GlobalRole within the database."""
         super()._delete()
 
@@ -594,7 +594,7 @@ class User(_BaseUser):
         result_json = self.c8y.put(self._build_user_path(), self.to_diff_json(), accept=self._accept)
         return self.from_json(result_json)
 
-    def delete(self):
+    def delete(self, **_) -> None:
         """Delete the User within the database."""
         self._delete()
 
@@ -892,7 +892,10 @@ class CurrentUser(_BaseUser):
             ValueError if the token is invalid/could not be verified.
         """
         self._assert_c8y()
-        self.c8y.post(f'{self._resource}/totpSecret/verify', {'code': code})
+        try:
+            self.c8y.post(f'{self._resource}/totpSecret/verify', {'code': code})
+        except AccessDeniedError as ex:
+            raise ValueError(ex.message) from ex
 
     def is_valid_totp(self, code: str) -> bool:
         """Verify a TFA/TOTP token.

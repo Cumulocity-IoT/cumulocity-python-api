@@ -197,7 +197,7 @@ class Alarm(ComplexObject):
         """
         return super()._apply_to(other_id)
 
-    def delete(self):
+    def delete(self, **_) -> None:
         """Delete this object within the database.
 
         An alarm is identified through its type and source. These fields
@@ -492,7 +492,7 @@ class Alarms(CumulocityResource):
             **kwargs)
         self.c8y.put(base_query, alarm.to_full_json(), accept='')
 
-    def delete(self, *alarms):
+    def delete(self, *alarms) -> None:
         """Delete alarm objects within the database.
 
         Note: within Cumulocity alarms are identified by type and source.

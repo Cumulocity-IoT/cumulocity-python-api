@@ -229,6 +229,7 @@ def test_complexobject_instantiation_and_formatting():
 
 
 class ComplexObjectUpdates:
+    # pylint: disable=missing-class-docstring, missing-function-docstring
 
     @staticmethod
     def field(obj):
@@ -338,6 +339,7 @@ def test_complex_object_get():
 
 
 def test_dot_notation():
+    """Verify that the dot notation access works as expected."""
     obj = ComplexTestObject(
         field='field value',
         array=['a', 'b'],

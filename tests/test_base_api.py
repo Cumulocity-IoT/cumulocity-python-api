@@ -4,7 +4,7 @@
 
 import base64
 from typing import Type
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 import json
 import pytest
@@ -307,6 +307,7 @@ def test_40x(name, code, ex: Type[HttpError]):
     with patch(f'requests.Session.{method}') as method_mock:
         mock_response = requests.Response()
         mock_response.status_code = code
+        mock_response.json = Mock(return_value={"error":"ERROR", "message":"MESSAGE", "info":"INFO"})
         method_mock.return_value = mock_response
         with pytest.raises(ex) as error:
             function('/resource', {})
