@@ -3,11 +3,13 @@
 import asyncio
 import json as js
 import logging
+import time
 from typing import Callable, Awaitable
 import websockets.asyncio.client as ws_client
-from websockets.exceptions import ConnectionClosed
+from websockets.exceptions import ConnectionClosed, InvalidStatus
 
-from c8y_api import CumulocityApi
+from c8y_api.app import CumulocityApi
+from c8y_api._jwt import JWT
 
 
 class _Message(object):
@@ -69,31 +71,56 @@ class AsyncListener(object):
             """Acknowledge the message."""
             await self.listener.send(self.id)
 
-    def __init__(self, c8y: CumulocityApi, subscription_name: str):
+    def __init__(self, c8y: CumulocityApi, subscription_name: str, subscriber_name: str = None):
+        """Create a new Listener.
+
+        Args:
+            c8y (CumulocityRestApi):  Cumulocity connection reference; needs
+                to be set for direct manipulation (create, delete)
+            subscription_name (str):  Subscription name
+            subscriber_name (str): Subscriber (consumer) name; a sensible default
+                is used when this is not defined.
+            """
         self.c8y = c8y
         self.subscription_name = subscription_name
+        self.subscriber_name = subscriber_name
 
         self._event_loop = None
         self._outbound_queue = []
+        self._current_validity = None
         self._current_uri = None
         self._is_closed = False
         self._connection = None
 
     async def _get_connection(self) -> ws_client.ClientConnection:
         if not self._connection:
+            if self._current_uri and self._current_validity < time.time():
+                self._current_uri = None
             if not self._current_uri:
-                token = self.c8y.notification2_tokens.generate(self.subscription_name, expires=2)
+                token = self.c8y.notification2_tokens.generate(
+                    subscription=self.subscription_name,
+                    subscriber=self.subscriber_name)
                 self._current_uri = self.c8y.notification2_tokens.build_websocket_uri(token)
-                self._log.debug("New Notification 2.0 token requested for subscription '{}'.", self.subscription_name)
+                self._current_validity = float(JWT(token).get_claim('exp'))
+                self._log.debug("New Notification 2.0 token requested for subscription %s, %s",
+                                self.subscription_name,
+                                self.subscriber_name or 'default')
             try:
+                self._log.debug("Connecting ...")
                 self._connection = await ws_client.connect(self._current_uri,
                                                     ping_interval=AsyncListener.ping_interval,
                                                     ping_timeout=AsyncListener.ping_timeout)
-                self._log.info("Websocket connection established for subscription: {}", self.subscription_name)
-            except ConnectionClosed as e:
-                self._log.info("Cannot open websocket connection. Closed: {}", e)
+                self._log.info("Websocket connection established for subscription %s, %s",
+                               self.subscription_name,
+                               self.subscriber_name or 'default')
+            except InvalidStatus as e:
+                self._log.info("Cannot open websocket connection. Failed: {e}", exc_info=e)
                 self._connection = None
-                self._current_uri = None  # maybe the URI can be reused if not expired?
+                raise e
+            except ConnectionClosed as e:
+                self._log.info("Cannot open websocket connection. Closed: {e}", exc_info=e)
+                self._connection = None
+                raise e
 
         return self._connection
 
@@ -126,10 +153,12 @@ class AsyncListener(object):
             try:
                 c = await self._get_connection()
                 payload = await c.recv()
-                self._log.debug("Received message: {}.", payload)
+                self._log.debug("Received message: %s", payload)
                 await asyncio.create_task(_callback(AsyncListener.Message(listener=self, payload=payload)))
+            except InvalidStatus as e:
+                self._log.info("Websocket connection failed: %s", e)
             except ConnectionClosed as e:
-                self._log.info("Websocket connection closed: {}", e)
+                self._log.info("Websocket connection closed: %s", e)
 
     async def send(self, payload: str):
         """Send a custom message.
@@ -138,9 +167,9 @@ class AsyncListener(object):
             payload (str):  Message payload to send.
         """
         websocket = await self._get_connection()
-        self._log.debug("Sending message: {}", payload)
+        self._log.debug("Sending message: %s", payload)
         await websocket.send(payload)
-        self._log.debug("Message sent: {}", payload)
+        self._log.debug("Message sent: %s", payload)
 
     async def ack(self, payload: str):
         """Acknowledge a Notification 2.0 message.
@@ -166,7 +195,7 @@ class AsyncListener(object):
         websocket = await self._get_connection()
         self._log.debug("Waiting for message ...")
         payload = await websocket.recv()
-        self._log.debug("Message received: {}", payload)
+        self._log.debug("Message received: %s", payload)
         return payload
 
     async def close(self):
