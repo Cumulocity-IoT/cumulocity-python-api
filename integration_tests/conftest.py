@@ -13,9 +13,22 @@ from requests.auth import HTTPBasicAuth
 from c8y_api._main_api import CumulocityApi
 from c8y_api._util import c8y_keys
 from c8y_api.app import SimpleCumulocityApp
-from c8y_api.model import Application, Device
+from c8y_api.model import Application, Device, ManagedObject
 
 from util.testing_util import RandomNameGenerator
+
+
+# Configure logging
+logging.getLogger('urllib3').setLevel(logging.DEBUG)
+logging.getLogger('websockets').setLevel(logging.DEBUG)
+logging.getLogger('c8y_tk').setLevel(logging.DEBUG)
+logging.getLogger('c8y_api').setLevel(logging.DEBUG)
+
+
+@pytest.fixture(scope='function')
+def random_name():
+    """Conveniently provide a random name."""
+    return RandomNameGenerator().random_name()
 
 
 @pytest.fixture(scope='session')
@@ -90,10 +103,6 @@ def safe_create(logger):
 @pytest.fixture(scope='session')
 def logger():
     """Provide a logger for testing."""
-    # Configure logging
-    logging.getLogger('urllib3').setLevel(logging.DEBUG)
-    logging.getLogger('c8y_api').setLevel(logging.DEBUG)
-    logging.getLogger('c8y_api.test').setLevel(logging.DEBUG)
     return logging.getLogger('c8y_api.test')
 
 
@@ -214,8 +223,16 @@ def factory(logger, live_c8y: CumulocityApi):
 
 
 
+@pytest.fixture(scope='function')
+def sample_object(logger, live_c8y, random_name, register_object):
+    """Provide a sample object which is automatically removed after test."""
+    obj = ManagedObject(live_c8y, name=random_name, type=random_name).create()
+    register_object(obj)
+    return obj
+
+
 @pytest.fixture(scope='session')
-def sample_device(logger: logging.Logger, live_c8y: CumulocityApi) -> Device:
+def sample_device(logger: logging.Logger, live_c8y: CumulocityApi):
     """Provide an sample device, just for testing purposes."""
 
     typename = RandomNameGenerator.random_name()

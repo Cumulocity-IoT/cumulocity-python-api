@@ -185,5 +185,51 @@ async def test_asyncio_parent_updates(live_c8y: CumulocityApi, object_tree_build
     await asyncio.wait(listener_tasks)
 
 
-def test_multiple_listeners():
-    pass
+def build_managed_object_subscription(mo):
+    """Build a subscription for a managed object."""
+    return Subscription(
+        name=f'{mo.name.replace("_", "")}Subscription',
+        context=Subscription.Context.MANAGED_OBJECT, source_id=mo.id
+    )
+
+def create_managed_object_subscription(c8y, mo):
+    """Build and create subscription for a managed object."""
+    s = build_managed_object_subscription(mo)
+    s.c8y = c8y
+    return s.create()
+
+
+@pytest.mark.asyncio(loop_scope='function')
+async def test_multiple_subscribers(live_c8y: CumulocityApi, sample_object):
+    """Verify that multiple subscribers/consumers can be created for a single subscription.
+
+    This test creates a managed object and corresponding subscription as well as multiple
+    listeners with unique subscriber names. An update to the managed object should notify
+    each of the subscribers.
+    """
+
+    mo = sample_object
+    sub = create_managed_object_subscription(live_c8y, mo)
+
+    # prepare listeners
+    notifications:list[AsyncListener.Message] = []
+    async def receive_notification(m:AsyncListener.Message):
+        notifications.append(m)
+        await m.ack()
+
+    n_listeners = 3
+    listeners = [AsyncListener(live_c8y, subscription_name=sub.name, subscriber_name=f"{sub.name}{i}")
+                 for i in range(n_listeners)]
+    listener_tasks = [asyncio.create_task(l.listen(receive_notification)) for l in listeners]
+    await asyncio.sleep(5)  # ensure creation
+
+    # update the object
+    mo.apply({'test_CustomFragment': {'num': 42}})
+    await asyncio.sleep(5)  # ensure processing
+    # -> all received notifications are identical
+    assert len(notifications) == 3
+    assert all(n.raw == notifications[0].raw for n in notifications)
+
+    # (99) cleanup
+    await asyncio.gather(*[l.close() for l in listeners])
+    await asyncio.wait(listener_tasks)
