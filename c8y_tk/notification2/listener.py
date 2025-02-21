@@ -209,7 +209,7 @@ class AsyncListener(object):
         self._log.info("Closing websocket connection ...")
         self._is_closed = True
         c = await self._get_connection()
-        asyncio.create_task(c.close())
+        await c.close()
 
 
 class Listener(object):
