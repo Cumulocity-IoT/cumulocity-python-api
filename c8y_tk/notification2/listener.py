@@ -5,7 +5,11 @@ import json as js
 import logging
 import time
 from typing import Callable, Awaitable
-import websockets.asyncio.client as ws_client
+
+try:
+    import websockets.asyncio.client as ws_client
+except ModuleNotFoundError:
+    import websockets.client as ws_client
 from websockets.exceptions import ConnectionClosed, InvalidStatus
 
 from c8y_api.app import CumulocityApi
@@ -80,7 +84,7 @@ class AsyncListener(object):
             subscription_name (str):  Subscription name
             subscriber_name (str): Subscriber (consumer) name; a sensible default
                 is used when this is not defined.
-            """
+        """
         self.c8y = c8y
         self.subscription_name = subscription_name
         self.subscriber_name = subscriber_name
@@ -92,6 +96,8 @@ class AsyncListener(object):
         self._is_closed = False
         self._connection = None
 
+    # Note: Return type naming differs for different Python Versions; ClientConnection
+    # refers to the latest module revision
     async def _get_connection(self) -> ws_client.ClientConnection:
         if not self._connection:
             if self._current_uri and self._current_validity < time.time():
@@ -246,8 +252,17 @@ class Listener(object):
             """Acknowledge the message."""
             self.listener.send(self.id)
 
-    def __init__(self, c8y: CumulocityApi, subscription_name: str):
-        self._listener = AsyncListener(c8y=c8y, subscription_name=subscription_name)
+    def __init__(self, c8y: CumulocityApi, subscription_name: str, subscriber_name: str = None):
+        """Create a new Listener.
+
+        Args:
+            c8y (CumulocityRestApi):  Cumulocity connection reference; needs
+                to be set for direct manipulation (create, delete)
+            subscription_name (str):  Subscription name
+            subscriber_name (str): Subscriber (consumer) name; a sensible default
+                is used when this is not defined.
+        """
+        self._listener = AsyncListener(c8y=c8y, subscription_name=subscription_name, subscriber_name=subscriber_name)
         self._event_loop = asyncio.new_event_loop()
         self._current_uri = None
         self._is_closed = False

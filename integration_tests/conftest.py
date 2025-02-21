@@ -52,6 +52,27 @@ def safe_executor(logger):
     return execute
 
 
+@pytest.fixture(scope='function')
+def auto_delete(logger):
+    """Register a created Cumulocity object for automatic deletion after test function execution."""
+
+    objects = []
+
+    def register(obj) -> Any:
+        objects.append(obj)
+
+    yield register
+
+    for o in objects:
+        try:
+            # Deletion should through a KeyError if object was already deleted
+            o.delete()
+        except KeyError:
+            pass
+        except BaseException as e:
+            logger.warning(f"Caught exception ignored due to safe call: {e}")
+
+
 @pytest.fixture(scope='session')
 def register_object(logger):
     """Wrap a created Cumulocity object so that it will automatically be deleted
@@ -224,10 +245,10 @@ def factory(logger, live_c8y: CumulocityApi):
 
 
 @pytest.fixture(scope='function')
-def sample_object(logger, live_c8y, random_name, register_object):
+def sample_object(logger, live_c8y, random_name, auto_delete):
     """Provide a sample object which is automatically removed after test."""
     obj = ManagedObject(live_c8y, name=random_name, type=random_name).create()
-    register_object(obj)
+    auto_delete(obj)
     return obj
 
 

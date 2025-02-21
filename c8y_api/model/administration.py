@@ -179,10 +179,6 @@ class InventoryRole(SimpleObject):
         """
         return super()._update()
 
-    def delete(self, **_) -> None:
-        """Delete the role within the database."""
-        super()._delete()
-
 
 class InventoryRoleAssignment(SimpleObject):
     """Represent an instance of an inventory role assignment in Cumulocity.
@@ -291,9 +287,6 @@ class GlobalRole(SimpleObject):
         """
         return super()._update()
 
-    def delete(self, **_) -> None:
-        """Delete the GlobalRole within the database."""
-        super()._delete()
 
     def add_permissions(self, *permissions: str):
         """Add permissions to a global role.
@@ -593,10 +586,6 @@ class User(_BaseUser):
         self._assert_username()
         result_json = self.c8y.put(self._build_user_path(), self.to_diff_json(), accept=self._accept)
         return self.from_json(result_json)
-
-    def delete(self, **_) -> None:
-        """Delete the User within the database."""
-        self._delete()
 
     def set_owner(self, user_id: str):
         """Set the owner for this user.

@@ -129,10 +129,6 @@ class Event(ComplexObject):
         """
         return super()._update()
 
-    def delete(self, **_) -> None:
-        """Delete the Event within the database."""
-        super()._delete()
-
     def apply_to(self, other_id: str) -> Event:
         """Apply changes made to this object to another object in the
             database.

@@ -1,12 +1,14 @@
 # Copyright (c) 2025 Cumulocity GmbH
 
 import asyncio
+import threading
+import time
 
 import pytest
 
 from c8y_api import CumulocityApi
 from c8y_api.model import Device, ManagedObject, Subscription
-from c8y_tk.notification2 import AsyncListener
+from c8y_tk.notification2 import AsyncListener, Listener
 
 from util.testing_util import RandomNameGenerator
 
@@ -42,6 +44,76 @@ def fix_object_tree_builder(live_c8y: CumulocityApi, safe_create):
         return mo.reload()
 
     return build
+
+
+def test_object_update_and_deletion(live_c8y: CumulocityApi, sample_object):
+    """Verify that we can subscribe to managed object changes and they are received.
+
+    This test creates a simple managed object and a corresponding subscription; the subscription
+    limits the 'fragments to copy'. We then apply 2 changes, both should be received but only the
+    expected fragment should be part of the notification body.
+
+    Finally, the deletion of the object should also be received.
+    """
+
+    mo = sample_object
+    sub = Subscription(live_c8y, name=f'{mo.name.replace("_", "")}Subscription',
+                       context=Subscription.Context.MANAGED_OBJECT,
+                       fragments=['test_AwaitedFragment'],
+                       source_id=mo.id,).create()
+
+    notifications:list[Listener.Message] = []
+    def receive_notification(m:Listener.Message):
+        notifications.append(m)
+        m.ack()
+
+    # (1) Create listener and start listening
+    listener = Listener(live_c8y, subscription_name=sub.name)
+    listener_thread = threading.Thread(target=listener.listen, args=[receive_notification])
+    listener_thread.start()
+    time.sleep(5)  # ensure creation
+
+    # (2) apply first change, expected fragment
+    mo.apply({'test_AwaitedFragment': {'num': 42}})
+    time.sleep(5)  # ensure processing
+    # -> notification should appear
+    assert len(notifications) == 1
+    assert mo.id in notifications[0].source
+    assert notifications[0].action == "UPDATE"
+    # -> basic data AND expected fragment in payload
+    assert notifications[0].json['id'] == mo.id
+    assert notifications[0].json['name'] == mo.name
+    assert notifications[0].json['type'] == mo.type
+    assert notifications[0].json['test_AwaitedFragment']['num'] == 42
+
+    # (3) Apply 2nd change, different fragment
+    notifications = []
+    mo.apply({'test_DifferentFragment': {'num': 42}})
+    time.sleep(5)  # ensure processing
+    # -> notification should appear
+    assert len(notifications) == 1
+    assert mo.id in notifications[0].source
+    assert notifications[0].action == "UPDATE"
+    # -> basic data in payload
+    assert notifications[0].json['id'] == mo.id
+    assert notifications[0].json['name'] == mo.name
+    assert notifications[0].json['type'] == mo.type
+    # -> other fragment not in payload
+    assert 'test_AwaitedFragment' in notifications[0].json
+    assert 'test_DifferentFragment' not in notifications[0].json
+
+    # (4) delete object tree
+    notifications = []
+    mo.delete_tree()
+    time.sleep(5)  # ensure processing
+    # -> notification should appear
+    assert len(notifications) == 1
+    assert mo.id in notifications[0].source
+    assert notifications[0].action == "DELETE"
+
+    # (99) cleanup
+    listener.close()
+    listener_thread.join()
 
 
 @pytest.mark.asyncio(loop_scope='function')
@@ -114,6 +186,42 @@ async def test_asyncio_object_update_and_deletion(live_c8y: CumulocityApi, safe_
     await listener_task
 
 
+def test_child_updates(live_c8y: CumulocityApi, object_tree_builder):
+    """Verify that updates to child objects are ignored."""
+    root = object_tree_builder()
+
+    root_subscription = Subscription(
+        live_c8y,
+        name=f'{root.name.replace("_", "")}Subscription',
+        context=Subscription.Context.MANAGED_OBJECT, source_id=root.id
+    ).create()
+
+    # prepare listener
+    notifications:list[Listener.Message] = []
+    def receive_notification(m:Listener.Message):
+        notifications.append(m)
+        m.ack()
+
+    listener = Listener(live_c8y, subscription_name=root_subscription.name)
+    listener_thread = threading.Thread(target=listener.listen, args=[receive_notification])
+    listener_thread.start()
+    time.sleep(5)  # ensure creation
+
+    # update all child objects
+    live_c8y.inventory.apply_to(
+        {'test_CustomFragment': {'num': 42}},
+        *[x.id for x in root.child_assets],
+        *[x.id for x in root.child_devices],
+        *[x.id for x in root.child_additions],
+    )
+
+    assert not notifications
+
+    # (99) cleanup
+    listener.close()
+    listener_thread.join()
+
+
 @pytest.mark.asyncio(loop_scope='function')
 async def test_asyncio_child_updates(live_c8y: CumulocityApi, object_tree_builder):
     """Verify that updates to child objects are ignored."""
@@ -148,6 +256,44 @@ async def test_asyncio_child_updates(live_c8y: CumulocityApi, object_tree_builde
     # (99) cleanup
     await listener.close()
     await listener_task
+
+
+def test_parent_updates(live_c8y: CumulocityApi, object_tree_builder):
+    """Verify that updates to parent objects are ignored."""
+    root = object_tree_builder()
+
+    children = root.child_assets + root.child_devices + root.child_additions
+    child_subscriptions = [
+        Subscription(
+            live_c8y,
+            name=f'{c.name.replace("_", "")}Subscription',
+            context=Subscription.Context.MANAGED_OBJECT, source_id=c.id
+        ).create()
+        for c in children
+    ]
+
+    # prepare listeners
+    notifications:list[Listener.Message] = []
+    def receive_notification(m:Listener.Message):
+        notifications.append(m)
+        m.ack()
+
+    listeners = [Listener(live_c8y, subscription_name=s.name) for s in child_subscriptions]
+    listener_threads = [threading.Thread(target=l.listen, args=[receive_notification]) for l in listeners]
+    for l in listener_threads:
+        l.start()
+    time.sleep(5)  # ensure creation
+
+    # update all child objects
+    root.apply({'test_CustomFragment': {'num': 42}})
+
+    assert not notifications
+
+    # (99) cleanup
+    for l in listeners:
+        l.close()
+    for l in listener_threads:
+        l.join()
 
 
 @pytest.mark.asyncio(loop_scope='function')
@@ -199,8 +345,47 @@ def create_managed_object_subscription(c8y, mo):
     return s.create()
 
 
+def test_multiple_subscribers(live_c8y: CumulocityApi, sample_object):
+    """Verify that multiple subscribers/consumers can be created for a single subscription.
+
+    This test creates a managed object and corresponding subscription as well as multiple
+    listeners with unique subscriber names. An update to the managed object should notify
+    each of the subscribers.
+    """
+
+    mo = sample_object
+    sub = create_managed_object_subscription(live_c8y, mo)
+
+    # prepare listeners
+    notifications:list[Listener.Message] = []
+    def receive_notification(m:Listener.Message):
+        notifications.append(m)
+        m.ack()
+
+    n_listeners = 3
+    listeners = [Listener(live_c8y, subscription_name=sub.name, subscriber_name=f"{sub.name}{i}")
+                 for i in range(n_listeners)]
+    listener_threads = [threading.Thread(target=l.listen, args=[receive_notification]) for l in listeners]
+    for l in listener_threads:
+        l.start()
+    time.sleep(5)  # ensure creation
+
+    # update the object
+    mo.apply({'test_CustomFragment': {'num': 42}})
+    time.sleep(5)  # ensure processing
+    # -> all received notifications are identical
+    assert len(notifications) == 3
+    assert all(n.raw == notifications[0].raw for n in notifications)
+
+    # (99) cleanup
+    for l in listeners:
+        l.close()
+    for l in listener_threads:
+        l.join()
+
+
 @pytest.mark.asyncio(loop_scope='function')
-async def test_multiple_subscribers(live_c8y: CumulocityApi, sample_object):
+async def test_asyncio_multiple_subscribers(live_c8y: CumulocityApi, sample_object):
     """Verify that multiple subscribers/consumers can be created for a single subscription.
 
     This test creates a managed object and corresponding subscription as well as multiple
@@ -233,3 +418,4 @@ async def test_multiple_subscribers(live_c8y: CumulocityApi, sample_object):
     # (99) cleanup
     await asyncio.gather(*[l.close() for l in listeners])
     await asyncio.wait(listener_tasks)
+    await asyncio.all_tasks()
