@@ -484,6 +484,18 @@ class ComplexObject(SimpleObject):
             return default
         return value
 
+    def apply(self, json: dict):
+        """Apply a JSON model to this object.
+
+        Args:
+            json (dict):  A JSON document to apply
+        """
+        self._assert_c8y()
+        result_json = self.c8y.put(self._build_object_path(), json=json)
+        result = self.from_json(result_json)
+        result.c8y = self.c8y
+        return result
+
     @deprecated
     def set_attribute(self, name, value):
         # pylint: disable=missing-function-docstring

@@ -412,14 +412,6 @@ class ManagedObject(ComplexObject):
         """
         return self._update()
 
-    def apply(self, json: dict):
-        self._assert_c8y()
-        result_json = self.c8y.put(self._build_object_path(), json=json,
-                                   accept=self.c8y.ACCEPT_MANAGED_OBJECT)
-        result = ManagedObject.from_json(result_json)
-        result.c8y = self.c8y
-        return result
-
     def apply_to(self, other_id: str | int) -> ManagedObject:
         """Apply the details of this object to another object in the database.
 
@@ -433,13 +425,7 @@ class ManagedObject(ComplexObject):
 
         See also function Inventory.apply_to which doesn't parse the result.
         """
-        self._assert_c8y()
-        # put diff json to another object (by ID)
-        result_json = self.c8y.put(self.__RESOURCE + str(other_id), json=self.to_diff_json(),
-                                   accept=self.c8y.ACCEPT_MANAGED_OBJECT)
-        result = ManagedObject.from_json(result_json)
-        result.c8y = self.c8y
-        return result
+        return self._apply_to(other_id)
 
     def delete(self, **_) -> None:
         """ Delete this object within the database.
