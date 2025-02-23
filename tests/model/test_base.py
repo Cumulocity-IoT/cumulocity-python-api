@@ -9,7 +9,7 @@ from unittest.mock import Mock
 import pytest
 
 from c8y_api import CumulocityRestApi
-from c8y_api.model._base import SimpleObject, ComplexObject, CumulocityResource, CumulocityObject
+from c8y_api.model._base import SimpleObject, ComplexObject, CumulocityResource, CumulocityObject, get_by_path
 from c8y_api.model._parser import SimpleObjectParser, ComplexObjectParser
 
 
@@ -37,6 +37,21 @@ class ComplexTestObject(ComplexObject):
         self.fixed_field = fixed_field
 
     field = SimpleObject.UpdatableProperty('_field')
+
+
+@pytest.mark.parametrize("json, path, default, expected",[
+    ({}, "some", None, None),
+    ({'a': 1}, 'a', 'x', 1),
+    ({'x': 1}, 'a', 1, 1),
+    ({'a': 1, 'b': 2}, 'b', None, 2),
+    ({'a': {'b': 1, 'c': 2}, 'm': '3'}, 'a.b', None, 1),
+    ({'a': {'b': 1, 'c': 2}, 'm': '3'}, 'a.c', None, 2),
+    ({'a': {'b': 1, 'c': 2}, 'm': 3}, 'm', None, 3),
+    ({'a': {'b': 1, 'c': 2}, 'm': 3}, 'a.d', 4, 4),
+])
+def test_get_by_path(json, path, default, expected):
+    """Verify that get by path works as expected."""
+    assert get_by_path(json, path, default) == expected
 
 
 def test_simpleobject_instantiation_and_formatting():

@@ -1,5 +1,8 @@
 # Changelog
 
+* Added `as_tuples` parameter to `select` and `get_all` functions in all inventory API as well
+  as Events and Alarms API. This parameter can be used to directly extract specific values from
+  the results instead of parsing the JSON. 
 * Added `reload` function to inventory object classes
 * Added `delete_tree` function to inventory object classes, implicitly using `cascade` or
   `forceCascade` parameters depending on the use case.

@@ -13,6 +13,48 @@ from c8y_api._base_api import CumulocityRestApi
 from c8y_api.model._util import _DateUtil, _StringUtil, _QueryUtil
 
 
+def get_by_path(dictionary: dict, path: str, default: Any = None) -> Any:
+    """Select a nested value from a dictionary by path-like expression
+    (dot notation).
+
+    Args:
+        dictionary (dict):  the dictionary to extract values from
+        path (str):  a path-like expressions
+        default (Any):  default value to return if the path expression
+            doesn't match a value in the dictionary.
+
+    Return:
+        The extracted value or the specified default.
+    """
+    def _get_by_path(current: dict, segments: list[str]) -> Any:
+        if not segments:
+            return current
+        if segments[0] in current:
+            return _get_by_path(current[segments[0]], segments[1:])
+        return default
+
+    return _get_by_path(dictionary, path.split('.'))
+
+
+def get_all_by_path(dictionary: dict, paths: list[str] | dict[str, Any]) -> tuple:
+    """Select nested values from a dictionary by path-like expressions
+    (dot notation).
+
+    Args:
+        dictionary (dict):  the dictionary to extract values from
+        paths: (list or dict):  a set of path-like expressions; use
+            a dictionary to define default values for each
+
+    Return:
+        The extracted values (or defaults it specified) as tuple. The
+        number of elements in the tuple matches the length of the paths
+        argument.
+    """
+    if isinstance(paths, dict):
+        return tuple(get_by_path(dictionary, p, d) for p, d in paths.items())
+    return tuple(get_by_path(dictionary, p) for p in paths)
+
+
 class _DictWrapper(MutableMapping, dict):
 
     def __init__(self, dictionary: dict, on_update=None):
@@ -704,7 +746,8 @@ class CumulocityResource:
             for result in results:
                 if limit and num_results >= limit:
                     return
-                result.c8y = self.c8y  # inject c8y connection into instance
+                if hasattr(result, 'c8y'):
+                    result.c8y = self.c8y  # inject c8y connection into instance
                 yield result
                 num_results = num_results + 1
             # when a specific page was specified we don't read more pages

@@ -7,7 +7,7 @@ import pytest
 from urllib import parse
 
 from c8y_api import CumulocityRestApi, CumulocityApi
-from c8y_api.model import Inventory
+from c8y_api.model import Inventory, DeviceGroupInventory, DeviceInventory
 from c8y_api.model._util import _QueryUtil
 
 from tests.utils import isolate_last_call_arg
@@ -91,6 +91,32 @@ def test_select_by_name_plus():
 
     for e in expected:
         assert e in url
+
+
+@pytest.mark.parametrize('inventory_class', [Inventory, DeviceInventory, DeviceGroupInventory])
+def test_select_as_tuples(inventory_class):
+    """Verify that select as tuples works as expected."""
+    data = [
+        {'name': 'n1', 'type': 't1', 'test_Fragment': {'key': 'value1', 'key2': 'value2'}},
+        {'name': 'n2', 'type': 't2', 'test_Fragment': {'key': 'value2'}},
+    ]
+    c8y: CumulocityRestApi = Mock()
+
+    inventory = inventory_class(c8y)
+    c8y.get = Mock(side_effect=[{'managedObjects': data}, {'managedObjects': []}])
+    result = inventory.get_all(as_tuples=['name', 'type', 'test_Fragment.key', 'test_Fragment.key2'])
+    assert result == [
+        ('n1', 't1', 'value1', 'value2'),
+        ('n2', 't2', 'value2', None),
+    ]
+
+    c8y.get = Mock(side_effect=[{'managedObjects': data}, {'managedObjects': []}])
+    result = inventory.get_all(as_tuples={'name': None, 'type': None,
+                                          'test_Fragment.key': None, 'test_Fragment.key2': '-'})
+    assert result == [
+        ('n1', 't1', 'value1', 'value2'),
+        ('n2', 't2', 'value2', '-'),
+    ]
 
 
 def _invoke_target_and_isolate_url(target, kwargs):
