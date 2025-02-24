@@ -1,7 +1,8 @@
 
-![GitHub](https://img.shields.io/github/license/SoftwareAG/cumulocity-python-api)
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/SoftwareAG/cumulocity-python-api)
-![GitHub Release Date](https://img.shields.io/github/release-date/SoftwareAG/cumulocity-python-api)
+![GitHub](https://img.shields.io/github/license/Cumulocity-IoT/cumulocity-python-api)
+![TOML Python Version](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FCumulocity-IoT%2Fcumulocity-python-api%2Frefs%2Fheads%2Fmain%2Fpyproject.toml)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/Cumulocity-IoT/cumulocity-python-api)
+![GitHub Release Date](https://img.shields.io/github/release-date/Cumulocity-IoT/cumulocity-python-api)
 ![ReadTheDocs](https://img.shields.io/readthedocs/cumulocity-python-api)
 
 # cumulocity-python-api
@@ -70,7 +71,7 @@ This project is licensed under the Apache 2.0 license - see <https://www.apache.
 
 ______________________
 
-These tools are provided as-is and without warranty or support. They do not constitute part of the Software AG product suite. Users are free to use, fork and modify them, subject to the license agreement. While Software AG welcomes contributions, we cannot guarantee to include every contribution in the master project.
+These tools are provided as-is and without warranty or support. They do not constitute part of the Cumulocity product suite. Users are free to use, fork and modify them, subject to the license agreement. While Cumulocity GmbH welcomes contributions, we cannot guarantee to include every contribution in the master project.
 
 ______________________
 

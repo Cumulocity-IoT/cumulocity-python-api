@@ -134,10 +134,6 @@ class Application(SimpleObject):
         """
         return super()._update()
 
-    def delete(self):
-        """Delete the Application within the database."""
-        super()._delete()
-
 
 class ApplicationSetting(object):
     """Represent current application settings within in Cumulocity.

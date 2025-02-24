@@ -6,10 +6,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Generator, List, BinaryIO
+from typing import Generator, List, BinaryIO, Any
 
 from c8y_api._base_api import CumulocityRestApi
-from c8y_api.model._base import CumulocityResource, SimpleObject, ComplexObject
+from c8y_api.model._base import CumulocityResource, SimpleObject, ComplexObject, get_all_by_path
 from c8y_api.model._parser import ComplexObjectParser
 from c8y_api.model._util import _DateUtil
 
@@ -129,10 +129,6 @@ class Event(ComplexObject):
         """
         return super()._update()
 
-    def delete(self):
-        """Delete the Event within the database."""
-        super()._delete()
-
     def apply_to(self, other_id: str) -> Event:
         """Apply changes made to this object to another object in the
             database.
@@ -205,7 +201,7 @@ class Event(ComplexObject):
         return self.c8y.put_file(self._build_attachment_path(), file,
                                  accept='application/json', content_type=content_type)
 
-    def delete_attachment(self):
+    def delete_attachment(self) -> None:
         """Remove the binary attachment."""
         super()._assert_c8y()
         super()._assert_id()
@@ -268,6 +264,7 @@ class Events(CumulocityResource):
                reverse: bool = False, limit: int = None,
                with_source_assets: bool = None, with_source_devices: bool = None,
                page_size: int = 1000, page_number: int = None,
+               as_tuples: list[str] | dict[str, Any] = None,
                **kwargs) -> Generator[Event]:
         """Query the database for events and iterate over the results.
 
@@ -318,6 +315,10 @@ class Events(CumulocityResource):
                 parsed in one chunk). This is a performance related setting.
             page_number (int): Pull a specific page; this effectively disables
                 automatic follow-up page retrieval.
+            as_tuples: (list[str] or dict[str, Any]):  Don't parse Events, but
+                extract the values at certain JSON paths as tuples; If the
+                path is not defined in a result, None is used; Specify a
+                dictionary to define proper default values for each path.
 
         Returns:
             Generator for Event objects
@@ -339,7 +340,11 @@ class Events(CumulocityResource):
             with_source_devices=with_source_devices, with_source_assets=with_source_assets,
             page_size=page_size,
             **kwargs)
-        return super()._iterate(base_query, page_number, limit, Event.from_json)
+        return super()._iterate(
+            base_query,
+            page_number,
+            limit,
+            Event.from_json if not as_tuples else (lambda x: get_all_by_path(x, as_tuples)))
 
     def get_all(
             self,
@@ -356,6 +361,7 @@ class Events(CumulocityResource):
             reverse: bool = False, limit: int = None,
             with_source_assets: bool = None, with_source_devices: bool = None,
             page_size: int = 1000, page_number: int = None,
+            as_tuples: list[str] | dict[str, Any] = None,
             **kwargs) -> List[Event]:
         """Query the database for events and return the results as list.
 
@@ -381,6 +387,7 @@ class Events(CumulocityResource):
             reverse=reverse,
             with_source_devices=with_source_devices, with_source_assets=with_source_assets,
             limit=limit, page_size=page_size, page_number=page_number,
+            as_tuples=as_tuples,
             **kwargs
         ))
 
@@ -543,7 +550,7 @@ class Events(CumulocityResource):
         """
         return self.c8y.get_file(self.build_attachment_path(event_id))
 
-    def delete_attachment(self, event_id: str):
+    def delete_attachment(self, event_id: str) -> None:
         """Remove an event's binary attachment.
 
         Args:

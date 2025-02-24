@@ -249,10 +249,6 @@ class Measurement(ComplexObject):
         """Not implemented for Measurements."""
         raise NotImplementedError('Measurements cannot be updated within Cumulocity.')
 
-    def delete(self):
-        """Delete the Measurement within the database."""
-        self._delete()
-
 
 class Series(dict):
     """ A wrapper for a series result.

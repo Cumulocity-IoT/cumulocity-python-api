@@ -82,6 +82,21 @@ def similar_objects(object_factory) -> List[ManagedObject]:
     return object_factory(*mos)
 
 
+def test_get_all(live_c8y: CumulocityApi):
+    """Verify that the get_all query works as expected."""
+    # (1) get all devices
+    devices = live_c8y.device_inventory.get_all(limit=1000)
+    assert all('c8y_IsDevice' in d for d in devices)
+    # (2) get all managed objects
+    objects = live_c8y.inventory.get_all(limit=1000)
+    # -> there should be both device and non-device objects
+    device_objects = [o for o in objects if 'c8y_IsDevice' in o]
+    assert len(objects) > len(device_objects)
+    # (3) get all device groups
+    groups = live_c8y.group_inventory.get_all(limit=1000)
+    assert all('c8y_IsDeviceGroup' in g for g in groups)
+
+
 @pytest.mark.parametrize('key, value_fun', [
     ('type', lambda mo: mo.type),
     ('name', lambda mo: mo.type + '*'),
@@ -156,6 +171,12 @@ def test_reload(live_c8y):
 
 
 def test_deletion(live_c8y: CumulocityApi, register_object):
+    """Verify that deletion works as expected.
+
+    This test creates a managed object tree (root plus child asset, child device and child addition).
+    Deleting the root object will not delete the children unless the 'cascade' option is used
+    (using the delete_tree function).
+    """
     name = RandomNameGenerator.random_name()
     obj = register_object(ManagedObject(live_c8y, name=f'Root-{name}', type=f'Root-{name}').create())
     addition = register_object(ManagedObject(live_c8y, name=f'Addition-{name}', type=f'Addition-{name}').create())
@@ -197,6 +218,12 @@ def test_deletion(live_c8y: CumulocityApi, register_object):
 
 
 def test_device_deletion(live_c8y: CumulocityApi, register_object):
+    """Verify that device deletion works as expected.
+
+    This test creates a device tree (root plus child asset, child device and child addition).
+    Deleting the root device will not delete the children unless the 'cascade' option is used
+    (using the delete_tree function).
+    """
     name = RandomNameGenerator.random_name()
     obj = register_object(Device(live_c8y, name=f'Root-{name}', type=f'Root-{name}').create())
     addition = register_object(ManagedObject(live_c8y, name=f'Addition-{name}', type=f'Addition-{name}').create())

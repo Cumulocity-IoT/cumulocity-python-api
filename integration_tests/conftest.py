@@ -1,14 +1,10 @@
-# Copyright (c) 2020 Software AG,
-# Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA,
-# and/or its subsidiaries and/or its affiliates and/or their licensors.
-# Use, reproduction, transfer, publication or disclosure is prohibited except
-# as specifically provided for in your License Agreement with Software AG.
+# Copyright (c) 2025 Cumulocity GmbH
 
 # pylint: disable=redefined-outer-name
 
 import logging
 import os
-from typing import List, Callable
+from typing import List, Callable, Any
 
 import pytest
 from dotenv import load_dotenv
@@ -17,9 +13,22 @@ from requests.auth import HTTPBasicAuth
 from c8y_api._main_api import CumulocityApi
 from c8y_api._util import c8y_keys
 from c8y_api.app import SimpleCumulocityApp
-from c8y_api.model import Application, Device
+from c8y_api.model import Application, Device, ManagedObject
 
 from util.testing_util import RandomNameGenerator
+
+
+# Configure logging
+logging.getLogger('urllib3').setLevel(logging.DEBUG)
+logging.getLogger('websockets').setLevel(logging.DEBUG)
+logging.getLogger('c8y_tk').setLevel(logging.DEBUG)
+logging.getLogger('c8y_api').setLevel(logging.DEBUG)
+
+
+@pytest.fixture(scope='function')
+def random_name():
+    """Conveniently provide a random name."""
+    return RandomNameGenerator().random_name()
 
 
 @pytest.fixture(scope='session')
@@ -43,6 +52,27 @@ def safe_executor(logger):
     return execute
 
 
+@pytest.fixture(scope='function')
+def auto_delete(logger):
+    """Register a created Cumulocity object for automatic deletion after test function execution."""
+
+    objects = []
+
+    def register(obj) -> Any:
+        objects.append(obj)
+
+    yield register
+
+    for o in objects:
+        try:
+            # Deletion should through a KeyError if object was already deleted
+            o.delete()
+        except KeyError:
+            pass
+        except BaseException as e:
+            logger.warning(f"Caught exception ignored due to safe call: {e}")
+
+
 @pytest.fixture(scope='session')
 def register_object(logger):
     """Wrap a created Cumulocity object so that it will automatically be deleted
@@ -50,7 +80,7 @@ def register_object(logger):
 
     objects = []
 
-    def register(obj):
+    def register(obj) -> Any:
         objects.append(obj)
         return obj
 
@@ -66,6 +96,30 @@ def register_object(logger):
         except BaseException as e:
             logger.warning(f"Caught exception ignored due to safe call: {e}")
 
+
+@pytest.fixture(scope='session')
+def safe_create(logger):
+    """Wrap a created Cumulocity object so that it will automatically be deleted
+    after a test regardless of an exception or failure."""
+
+    objects = []
+
+    def create_and_register(obj) -> Any:
+        o = obj.create()
+        objects.append(o)
+        return o
+
+    yield create_and_register
+
+    for o in objects:
+        try:
+            # Deletion should through a KeyError if object was already deleted
+            o.delete()
+            logger.warning(f"Object #{o.id} was not deleted by test.")
+        except KeyError:
+            pass
+        except BaseException as e:
+            logger.warning(f"Caught exception ignored due to safe call: {e}")
 
 @pytest.fixture(scope='session')
 def logger():
@@ -190,8 +244,16 @@ def factory(logger, live_c8y: CumulocityApi):
 
 
 
+@pytest.fixture(scope='function')
+def sample_object(logger, live_c8y, random_name, auto_delete):
+    """Provide a sample object which is automatically removed after test."""
+    obj = ManagedObject(live_c8y, name=random_name, type=random_name).create()
+    auto_delete(obj)
+    return obj
+
+
 @pytest.fixture(scope='session')
-def sample_device(logger: logging.Logger, live_c8y: CumulocityApi) -> Device:
+def sample_device(logger: logging.Logger, live_c8y: CumulocityApi):
     """Provide an sample device, just for testing purposes."""
 
     typename = RandomNameGenerator.random_name()

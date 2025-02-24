@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import List, Generator
+from typing import List, Generator, Any
 
 from c8y_api._base_api import CumulocityRestApi
-from c8y_api.model._base import CumulocityResource, SimpleObject, ComplexObject
+from c8y_api.model._base import CumulocityResource, SimpleObject, ComplexObject, get_all_by_path
 from c8y_api.model._parser import ComplexObjectParser
 from c8y_api.model._util import _DateUtil
 
@@ -197,7 +197,7 @@ class Alarm(ComplexObject):
         """
         return super()._apply_to(other_id)
 
-    def delete(self):
+    def delete(self, **_) -> None:
         """Delete this object within the database.
 
         An alarm is identified through its type and source. These fields
@@ -255,6 +255,7 @@ class Alarms(CumulocityResource):
                reverse: bool = False, limit: int = None,
                with_source_assets: bool = None, with_source_devices: bool = None,
                page_size: int = 1000, page_number: int = None,
+               as_tuples: list[str] | dict[str, Any] = None,
                **kwargs) -> Generator[Alarm]:
         """Query the database for alarms and iterate over the results.
 
@@ -306,6 +307,10 @@ class Alarms(CumulocityResource):
                 parsed in one chunk). This is a performance related setting.
             page_number (int): Pull a specific page; this effectively disables
                 automatic follow-up page retrieval.
+            as_tuples: (list[str] or dict[str, Any]):  Don't parse Alarms, but
+                extract the values at certain JSON paths as tuples; If the
+                path is not defined in a result, None is used; Specify a
+                dictionary to define proper default values for each path.
 
         Returns:
             Generator of Alarm objects
@@ -324,7 +329,11 @@ class Alarms(CumulocityResource):
             min_age=min_age, max_age=max_age,
             reverse=reverse, page_size=page_size,
             **kwargs)
-        return super()._iterate(base_query, page_number, limit, Alarm.from_json)
+        return super()._iterate(
+            base_query,
+            page_number,
+            limit,
+            Alarm.from_json if not as_tuples else (lambda x: get_all_by_path(x, as_tuples)))
 
     def get_all(
             self,
@@ -341,6 +350,7 @@ class Alarms(CumulocityResource):
             with_source_assets: bool = None, with_source_devices: bool = None,
             reverse: bool = False, limit: int = None,
             page_size: int = 1000, page_number: int = None,
+            as_tuples: list[str] | dict[str, Any] = None,
             **kwargs) -> List[Alarm]:
         """Query the database for alarms and return the results as list.
 
@@ -365,6 +375,7 @@ class Alarms(CumulocityResource):
             min_age=min_age, max_age=max_age, reverse=reverse,
             with_source_devices=with_source_devices, with_source_assets=with_source_assets,
             limit=limit, page_size=page_size, page_number=page_number,
+            as_tuples=as_tuples,
             **kwargs))
 
     def count(
@@ -492,7 +503,7 @@ class Alarms(CumulocityResource):
             **kwargs)
         self.c8y.put(base_query, alarm.to_full_json(), accept='')
 
-    def delete(self, *alarms):
+    def delete(self, *alarms) -> None:
         """Delete alarm objects within the database.
 
         Note: within Cumulocity alarms are identified by type and source.

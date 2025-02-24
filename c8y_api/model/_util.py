@@ -14,10 +14,12 @@ class _StringUtil(object):
 
     @staticmethod
     def concat(*strings:Union[str, None]):
+        """Concatenate non-None strings."""
         return ''.join(x for x in strings if x)
 
     @staticmethod
     def concat_with(sep: str, *strings:Union[str, None]):
+        """Concatenate non-None strings with separator."""
         return sep.join(x for x in strings if x)
 
     @staticmethod

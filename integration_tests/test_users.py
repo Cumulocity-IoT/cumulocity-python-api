@@ -27,7 +27,7 @@ def test_CRUD(live_c8y: CumulocityApi):  # noqa (case)
     """Verify that basic CRUD functionality works."""
 
     username = RandomNameGenerator.random_name()
-    email = f'{username}@software.ag'
+    email = f'{username}@cumulocity.gmbh'
 
     user = User(c8y=live_c8y,
                 username=username, email=email,

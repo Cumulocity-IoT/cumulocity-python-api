@@ -95,13 +95,6 @@ class TenantOption(SimpleObject):
         """
         return super()._update()
 
-    def delete(self) -> None:
-        """Delete the option within the database.
-
-        See also function `TenantOptions.delete` to delete multiple objects.
-        """
-        super()._delete()
-
 
 class TenantOptions(CumulocityResource):
     """Provides access to the Tenant Options API.

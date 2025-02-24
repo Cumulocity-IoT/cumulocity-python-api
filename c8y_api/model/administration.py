@@ -179,10 +179,6 @@ class InventoryRole(SimpleObject):
         """
         return super()._update()
 
-    def delete(self):
-        """Delete the role within the database."""
-        super()._delete()
-
 
 class InventoryRoleAssignment(SimpleObject):
     """Represent an instance of an inventory role assignment in Cumulocity.
@@ -291,9 +287,6 @@ class GlobalRole(SimpleObject):
         """
         return super()._update()
 
-    def delete(self):
-        """Delete the GlobalRole within the database."""
-        super()._delete()
 
     def add_permissions(self, *permissions: str):
         """Add permissions to a global role.
@@ -594,10 +587,6 @@ class User(_BaseUser):
         result_json = self.c8y.put(self._build_user_path(), self.to_diff_json(), accept=self._accept)
         return self.from_json(result_json)
 
-    def delete(self):
-        """Delete the User within the database."""
-        self._delete()
-
     def set_owner(self, user_id: str):
         """Set the owner for this user.
 
@@ -895,7 +884,7 @@ class CurrentUser(_BaseUser):
         try:
             self.c8y.post(f'{self._resource}/totpSecret/verify', {'code': code})
         except AccessDeniedError as ex:
-            raise ValueError(ex.message)
+            raise ValueError(ex.message) from ex
 
     def is_valid_totp(self, code: str) -> bool:
         """Verify a TFA/TOTP token.

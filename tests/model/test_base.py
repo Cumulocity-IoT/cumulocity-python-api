@@ -4,12 +4,13 @@
 
 from __future__ import annotations
 
+import random
 from unittest.mock import Mock
 
 import pytest
 
 from c8y_api import CumulocityRestApi
-from c8y_api.model._base import SimpleObject, ComplexObject, CumulocityResource, CumulocityObject
+from c8y_api.model._base import SimpleObject, ComplexObject, CumulocityResource, CumulocityObject, get_by_path
 from c8y_api.model._parser import SimpleObjectParser, ComplexObjectParser
 
 
@@ -37,6 +38,21 @@ class ComplexTestObject(ComplexObject):
         self.fixed_field = fixed_field
 
     field = SimpleObject.UpdatableProperty('_field')
+
+
+@pytest.mark.parametrize("json, path, default, expected",[
+    ({}, "some", None, None),
+    ({'a': 1}, 'a', 'x', 1),
+    ({'x': 1}, 'a', 1, 1),
+    ({'a': 1, 'b': 2}, 'b', None, 2),
+    ({'a': {'b': 1, 'c': 2}, 'm': '3'}, 'a.b', None, 1),
+    ({'a': {'b': 1, 'c': 2}, 'm': '3'}, 'a.c', None, 2),
+    ({'a': {'b': 1, 'c': 2}, 'm': 3}, 'm', None, 3),
+    ({'a': {'b': 1, 'c': 2}, 'm': 3}, 'a.d', 4, 4),
+])
+def test_get_by_path(json, path, default, expected):
+    """Verify that get by path works as expected."""
+    assert get_by_path(json, path, default) == expected
 
 
 def test_simpleobject_instantiation_and_formatting():
@@ -229,6 +245,7 @@ def test_complexobject_instantiation_and_formatting():
 
 
 class ComplexObjectUpdates:
+    # pylint: disable=missing-class-docstring, missing-function-docstring
 
     @staticmethod
     def field(obj):
@@ -334,10 +351,71 @@ def test_complex_object_get():
     assert obj.get('not') is None
     assert obj.get('not', 'default') == 'default'
     assert obj.get('c8y_complex.not') is None
-    assert obj.get('c8y_complex.not', 'default') == 'default'
+    assert obj.get('c8y_complex.not', default='default') == 'default'
+
+
+path_options = [
+    ('value', 'value'),
+    (('value', 'x'), 'value'),
+    ('not', None),
+    (('not', None), None),
+    (('not', []), []),
+    (('not', True), True),
+    (('not', False), False),
+    ('empty', []),
+    (('empty', None,), []),
+    (('empty', []), []),
+    (('empty', False), []),
+    ('true', True),
+    (('true', True), True),
+    (('true', False), True),
+    ('false', False),
+    (('false', False), False),
+    (('false', True), False),
+    ('c8y_complex.a', 'valueA'),
+    (('c8y_complex.a', None), 'valueA'),
+    (('c8y_complex.a', True), 'valueA'),
+    (('c8y_complex.a', False), 'valueA'),
+    (('c8y_complex.a', []), 'valueA'),
+    ('c8y_complex.b', []),
+    (('c8y_complex.b', None), []),
+    (('c8y_complex.b', True), []),
+    (('c8y_complex.b', False), []),
+    (('c8y_complex.b', []), []),
+    ('c8y_complex.c', False),
+    (('c8y_complex.c', None), False),
+    (('c8y_complex.c', True), False),
+    (('c8y_complex.c', False), False),
+    (('c8y_complex.c', []), False),
+    ('c8y_complex.not', None),
+    (('c8y_complex.not', None), None),
+    (('c8y_complex.not', '-'), '-'),
+    (('c8y_complex.not', True), True),
+    (('c8y_complex.not', False), False),
+    (('c8y_complex.not', []), []),
+]
+
+
+@pytest.mark.parametrize('f1, e1', random.sample(path_options, 10))
+@pytest.mark.parametrize('f2, e2', random.sample(path_options, 10))
+@pytest.mark.parametrize('f3, e3', random.sample(path_options, 10))
+def test_complex_object_as_tuples(f1, e1, f2, e2, f3, e3):
+    """Verify that the as_tuples function works as expected."""
+
+    obj = ComplexTestObject(
+        value='value',
+        empty=[],
+        true=True,
+        false=False,
+        c8y_complex={'a': 'valueA', 'b': [], 'c': False},
+    )
+
+    # multiple values
+    assert obj.as_tuple(f1, f2, f3) == (e1, e2, e3)
 
 
 def test_dot_notation():
+    """Verify that the dot notation access works as expected."""
     obj = ComplexTestObject(
         field='field value',
         array=['a', 'b'],

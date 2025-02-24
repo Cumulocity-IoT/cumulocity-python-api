@@ -178,13 +178,6 @@ class Tenant(SimpleObject):
         """
         return super()._update()
 
-    def delete(self) -> None:
-        """Delete the tenant within the database.
-
-        See also function `Tenants.delete` to delete multiple objects.
-        """
-        super()._delete()
-
 
 class Tenants(CumulocityResource):
     """Provides access to the Tenant Options API.

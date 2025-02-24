@@ -136,7 +136,7 @@
         ],
         "self": "https://t12345.cumulocity.com/tenant/tenants/t12345/applications"
       },
-      "company": "Software AG",
+      "company": "Cumulocity GmbH",
       "contactName": "Contact Name",
       "contactPhone": "+1234567890",
       "creationTime": "2019-08-13T14:10:01.444Z",

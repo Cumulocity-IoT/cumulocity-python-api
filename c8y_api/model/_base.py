@@ -13,6 +13,48 @@ from c8y_api._base_api import CumulocityRestApi
 from c8y_api.model._util import _DateUtil, _StringUtil, _QueryUtil
 
 
+def get_by_path(dictionary: dict, path: str, default: Any = None) -> Any:
+    """Select a nested value from a dictionary by path-like expression
+    (dot notation).
+
+    Args:
+        dictionary (dict):  the dictionary to extract values from
+        path (str):  a path-like expressions
+        default (Any):  default value to return if the path expression
+            doesn't match a value in the dictionary.
+
+    Return:
+        The extracted value or the specified default.
+    """
+    def _get_by_path(current: dict, segments: list[str]) -> Any:
+        if not segments:
+            return current
+        if segments[0] in current:
+            return _get_by_path(current[segments[0]], segments[1:])
+        return default
+
+    return _get_by_path(dictionary, path.split('.'))
+
+
+def get_all_by_path(dictionary: dict, paths: list[str] | dict[str, Any]) -> tuple:
+    """Select nested values from a dictionary by path-like expressions
+    (dot notation).
+
+    Args:
+        dictionary (dict):  the dictionary to extract values from
+        paths: (list or dict):  a set of path-like expressions; use
+            a dictionary to define default values for each
+
+    Return:
+        The extracted values (or defaults it specified) as tuple. The
+        number of elements in the tuple matches the length of the paths
+        argument.
+    """
+    if isinstance(paths, dict):
+        return tuple(get_by_path(dictionary, p, d) for p, d in paths.items())
+    return tuple(get_by_path(dictionary, p) for p in paths)
+
+
 class _DictWrapper(MutableMapping, dict):
 
     def __init__(self, dictionary: dict, on_update=None):
@@ -59,6 +101,7 @@ class _DictWrapper(MutableMapping, dict):
     def __str__(self):
         return self.__dict__['_property_items'].__str__()
 
+
 class _ListWrapper(MutableSequence, list):
 
     def __init__(self, values: list, on_update=None):
@@ -91,8 +134,8 @@ class _ListWrapper(MutableSequence, list):
     #     if self.__dict__['_property_on_update']:
     #         self.__dict__['_property_on_update']()
 
-    def insert(self, i, value):
-        self.__dict__['_property_items'].insert(i, value)
+    def insert(self, index, value):
+        self.__dict__['_property_items'].insert(index, value)
         if self.__dict__['_property_on_update']:
             self.__dict__['_property_on_update']()
 
@@ -123,7 +166,7 @@ class CumulocityObject:
             '(',
             ', '.join(filter(lambda x: x is not None,
                          [
-                             f'{n}={self.__getattribute__(n)}' if self.__getattribute__(n) else None
+                             f'{n}={getattr(self, n)}' if getattr(self, n) else None
                              for n in ['id', *names]
                          ])),
             ')'])
@@ -353,7 +396,7 @@ class SimpleObject(CumulocityObject):
         self._assert_id()
         self.c8y.delete(self._build_object_path(), params=params)
 
-    def delete(self, **_):
+    def delete(self, **_) -> None:
         """Delete the object within the database."""
         self._delete()
 
@@ -461,12 +504,12 @@ class ComplexObject(SimpleObject):
     def __contains__(self, name):
         return name in self.fragments
 
-    def get(self, path: str, default=None):
+    def get(self, path: str, default=None) -> Any:
         """Get a fragment/value by path.
 
         Args:
             path (str): A fragment/value path in dot notation, e.g.
-                "c8y_Firmware.version"
+                "c8y_Firmware.version"; Note: arrays are not supported.
             default: Sensible default if the path is not defined.
 
         Returns:
@@ -483,6 +526,40 @@ class ComplexObject(SimpleObject):
                 return value.__getattribute__(segment)
             return default
         return value
+
+    def as_tuple(self, *path: str | tuple[str, Any]) -> tuple:
+        """Get a set of fragments/values by path.
+
+        Args:
+            path (str or tuple): A fragment/value path in dot notation, e.g.
+                "c8y_Firmware.version"; Can also be a tuple (str and Any) to
+                define a sensible default for an undefined path.
+                Note: arrays are not supported.
+
+        Returns:
+            The fragments/values specified via the paths or None if the path
+            is not defined and no other default was provided.
+        """
+
+        def _get(p):
+            if isinstance(p, tuple):
+                return self.get(p[0], p[1])
+            return self.get(p, None)
+
+        return tuple(_get(p) for p in path)
+
+
+    def apply(self, json: dict):
+        """Apply a JSON model to this object.
+
+        Args:
+            json (dict):  A JSON document to apply
+        """
+        self._assert_c8y()
+        result_json = self.c8y.put(self._build_object_path(), json=json)
+        result = self.from_json(result_json)
+        result.c8y = self.c8y
+        return result
 
     @deprecated
     def set_attribute(self, name, value):
@@ -692,7 +769,8 @@ class CumulocityResource:
             for result in results:
                 if limit and num_results >= limit:
                     return
-                result.c8y = self.c8y  # inject c8y connection into instance
+                if hasattr(result, 'c8y'):
+                    result.c8y = self.c8y  # inject c8y connection into instance
                 yield result
                 num_results = num_results + 1
             # when a specific page was specified we don't read more pages
@@ -713,13 +791,13 @@ class CumulocityResource:
         for o in objects:
             self.c8y.put(self.resource + '/' + str(o.id), json=jsonify_func(o), accept=None)
 
-    def _apply_to(self, jsonify_func, model: dict|Any, *object_ids):
+    def _apply_to(self, jsonify_func, model: dict|Any, *object_ids: str|int):
         model_json = model if isinstance(model, dict) else jsonify_func(model)
         for object_id in object_ids:
             self.c8y.put(self.resource + '/' + str(object_id), model_json, accept=None)
 
     # this one should be ok for all implementations, hence we define it here
-    def delete(self, *objects: str):
+    def delete(self, *objects: str) -> None:
         """ Delete one or more objects within the database.
 
         The objects can be specified as instances of a database object
