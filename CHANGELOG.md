@@ -1,5 +1,7 @@
 # Changelog
 
+## Version 3.2
+
 * Added a `as_tuple` function to all complex objects which can be used to extract multiple nested values 
   as a tuple using path-like expressions (complementing the generic `get` function). 
 * Added `as_tuples` parameter to `select` and `get_all` functions in all inventory API as well
