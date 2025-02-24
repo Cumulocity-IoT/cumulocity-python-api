@@ -19,8 +19,8 @@ sys.path.insert(0, os.path.abspath('..'))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'Cumulocity Python API'
-copyright = '2023, Christoph Souris, Software AG'
-author = 'Christoph Souris, Software AG'
+copyright = '2025, Christoph Souris, Cumulocity GmbH'
+author = 'Christoph Souris, Cumulocity GmbH'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

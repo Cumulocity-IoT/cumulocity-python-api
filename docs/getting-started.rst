@@ -58,11 +58,11 @@ to work with the standard REST API. You will always know exactly what’s going
 on. You will always be able to perform a direct REST query for edge cases -
 the API provides a set of nice access points just for that.
 
-The Cumulocity Python API is not an official API provisioned by Software AG.
-It’s an open source project (`hosted on GitHub
+The Cumulocity Python API is not an official API provisioned by the Cumulocity
+GmbH. It’s an open source project (`hosted on GitHub
 <https://github.com/Cumulocity-IoT/cumulocity-python-api>`_), maintained by
-Software AG consultants and other Cumulocity experts world wide. You are
-invited to contribute!
+the Cumulocity GmbH consultants and other Cumulocity experts world wide. You
+are invited to contribute!
 
 Getting started - project setup
 -------------------------------

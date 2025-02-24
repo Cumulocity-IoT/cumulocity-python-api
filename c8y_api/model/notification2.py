@@ -273,7 +273,7 @@ class Tokens(CumulocityResource):
               https://cumulocity.com/guides/reference/notifications/
     """
 
-    _subscriber_uuid = uuid.uuid5(uuid.NAMESPACE_URL, 'https://github.com/SoftwareAG/cumulocity-python-api')
+    _subscriber_uuid = uuid.uuid5(uuid.NAMESPACE_URL, 'https://github.com/Cumulocity-IoT/cumulocity-python-api')
     _default_subscriber = 'c8yapi' + str(_subscriber_uuid).replace('-', '')
 
     def __init__(self, c8y: CumulocityRestApi):
