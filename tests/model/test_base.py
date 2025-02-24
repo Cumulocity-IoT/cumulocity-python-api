@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import random
 from unittest.mock import Mock
 
 import pytest
@@ -350,7 +351,67 @@ def test_complex_object_get():
     assert obj.get('not') is None
     assert obj.get('not', 'default') == 'default'
     assert obj.get('c8y_complex.not') is None
-    assert obj.get('c8y_complex.not', 'default') == 'default'
+    assert obj.get('c8y_complex.not', default='default') == 'default'
+
+
+path_options = [
+    ('value', 'value'),
+    (('value', 'x'), 'value'),
+    ('not', None),
+    (('not', None), None),
+    (('not', []), []),
+    (('not', True), True),
+    (('not', False), False),
+    ('empty', []),
+    (('empty', None,), []),
+    (('empty', []), []),
+    (('empty', False), []),
+    ('true', True),
+    (('true', True), True),
+    (('true', False), True),
+    ('false', False),
+    (('false', False), False),
+    (('false', True), False),
+    ('c8y_complex.a', 'valueA'),
+    (('c8y_complex.a', None), 'valueA'),
+    (('c8y_complex.a', True), 'valueA'),
+    (('c8y_complex.a', False), 'valueA'),
+    (('c8y_complex.a', []), 'valueA'),
+    ('c8y_complex.b', []),
+    (('c8y_complex.b', None), []),
+    (('c8y_complex.b', True), []),
+    (('c8y_complex.b', False), []),
+    (('c8y_complex.b', []), []),
+    ('c8y_complex.c', False),
+    (('c8y_complex.c', None), False),
+    (('c8y_complex.c', True), False),
+    (('c8y_complex.c', False), False),
+    (('c8y_complex.c', []), False),
+    ('c8y_complex.not', None),
+    (('c8y_complex.not', None), None),
+    (('c8y_complex.not', '-'), '-'),
+    (('c8y_complex.not', True), True),
+    (('c8y_complex.not', False), False),
+    (('c8y_complex.not', []), []),
+]
+
+
+@pytest.mark.parametrize('f1, e1', random.sample(path_options, 10))
+@pytest.mark.parametrize('f2, e2', random.sample(path_options, 10))
+@pytest.mark.parametrize('f3, e3', random.sample(path_options, 10))
+def test_complex_object_as_tuples(f1, e1, f2, e2, f3, e3):
+    """Verify that the as_tuples function works as expected."""
+
+    obj = ComplexTestObject(
+        value='value',
+        empty=[],
+        true=True,
+        false=False,
+        c8y_complex={'a': 'valueA', 'b': [], 'c': False},
+    )
+
+    # multiple values
+    assert obj.as_tuple(f1, f2, f3) == (e1, e2, e3)
 
 
 def test_dot_notation():

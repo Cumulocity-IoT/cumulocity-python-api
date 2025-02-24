@@ -1,5 +1,7 @@
 # Changelog
 
+* Added a `as_tuple` function to all complex objects which can be used to extract multiple nested values 
+  as a tuple using path-like expressions (complementing the generic `get` function). 
 * Added `as_tuples` parameter to `select` and `get_all` functions in all inventory API as well
   as Events and Alarms API. This parameter can be used to directly extract specific values from
   the results instead of parsing the JSON. 

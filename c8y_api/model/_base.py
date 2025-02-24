@@ -101,6 +101,7 @@ class _DictWrapper(MutableMapping, dict):
     def __str__(self):
         return self.__dict__['_property_items'].__str__()
 
+
 class _ListWrapper(MutableSequence, list):
 
     def __init__(self, values: list, on_update=None):
@@ -503,12 +504,12 @@ class ComplexObject(SimpleObject):
     def __contains__(self, name):
         return name in self.fragments
 
-    def get(self, path: str, default=None):
+    def get(self, path: str, default=None) -> Any:
         """Get a fragment/value by path.
 
         Args:
             path (str): A fragment/value path in dot notation, e.g.
-                "c8y_Firmware.version"
+                "c8y_Firmware.version"; Note: arrays are not supported.
             default: Sensible default if the path is not defined.
 
         Returns:
@@ -525,6 +526,28 @@ class ComplexObject(SimpleObject):
                 return value.__getattribute__(segment)
             return default
         return value
+
+    def as_tuple(self, *path: str | tuple[str, Any]) -> tuple:
+        """Get a set of fragments/values by path.
+
+        Args:
+            path (str or tuple): A fragment/value path in dot notation, e.g.
+                "c8y_Firmware.version"; Can also be a tuple (str and Any) to
+                define a sensible default for an undefined path.
+                Note: arrays are not supported.
+
+        Returns:
+            The fragments/values specified via the paths or None if the path
+            is not defined and no other default was provided.
+        """
+
+        def _get(p):
+            if isinstance(p, tuple):
+                return self.get(p[0], p[1])
+            return self.get(p, None)
+
+        return tuple(_get(p) for p in path)
+
 
     def apply(self, json: dict):
         """Apply a JSON model to this object.
