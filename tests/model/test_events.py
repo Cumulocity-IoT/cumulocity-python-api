@@ -113,3 +113,26 @@ def test_select_invalid_combinations(fun, args, errors):
         params = {x: x.upper() for x in args}
         isolate_call_url(fun, **params)
     assert all(e in str(error) for e in errors)
+
+
+def test_select_as_tuples():
+    """Verify that select as tuples works as expected."""
+    jsons = [
+        {'type': 'type1', 'text': 'text1', 'source': 'source1', 'test_Fragment': {'key': 'value1', 'key2': 'value2'}},
+        {'type': 'type2', 'text': 'text2', 'source': 'source2', 'test_Fragment': {'key': 'value2'}},
+    ]
+
+    api = Events(c8y=Mock())
+    api.c8y.get = Mock(side_effect=[{'events': jsons}, {'events': []}])
+    result = api.get_all(as_tuples=['type', 'text', 'test_Fragment.key', 'test_Fragment.key2'])
+    assert result == [
+        ('type1', 'text1', 'value1', 'value2'),
+        ('type2', 'text2', 'value2', None),
+    ]
+
+    api.c8y.get = Mock(side_effect=[{'events': jsons}, {'events': []}])
+    result = api.get_all(as_tuples={'type': None, 'text': None, 'test_Fragment.key': None, 'test_Fragment.key2': '-'})
+    assert result == [
+        ('type1', 'text1', 'value1', 'value2'),
+        ('type2', 'text2', 'value2', '-'),
+    ]
