@@ -70,9 +70,9 @@ assert len(a_values) == len(b_values)
 counter_measurements = c8y.measurements.get_all(source=new_device.id, after=start_datetime, series='iteration')
 i_values = [(m.time, m.c8y_Counter.iteration.value) for m in counter_measurements]
 
-df = pd.DataFrame(data={'a': a_values, 'b': b_values})
-df[['time', 'count']] = i_values
-print(df.head())
+# df = pd.DataFrame(data={'a': a_values, 'b': b_values})    
+# df[['time', 'count']] = i_values
+# print(df.head())
 
 # Querying series
 series_result = c8y.measurements.get_series(source=new_device.id, series=['cx_Data.A', 'cx_Data.B'],

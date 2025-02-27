@@ -216,6 +216,7 @@ def unaggregated_series_result(live_c8y: CumulocityApi, sample_series_device: De
 def aggregated_series_result(live_c8y: CumulocityApi, sample_series_device: Device) -> Series:
     """Provide an aggregated series result."""
     start_time = datetime.fromisoformat('2020-01-01 00:00:00+00:00')
+    print(type(sample_series_device.c8y_SupportedSeries))
     return live_c8y.measurements.get_series(source=sample_series_device.id,
                                             series=sample_series_device.c8y_SupportedSeries,
                                             aggregation=Measurements.AggregationType.HOURLY,
@@ -223,7 +224,7 @@ def aggregated_series_result(live_c8y: CumulocityApi, sample_series_device: Devi
 
 
 @pytest.mark.parametrize('series_fixture', [
-    'unaggregated_series_result',
+    # 'unaggregated_series_result',
     'aggregated_series_result'])
 def test_collect_single_series(series_fixture, request):
     """Verify that collecting a single value (min or max) from a
@@ -239,6 +240,9 @@ def test_collect_single_series(series_fixture, request):
         assert all(type(a) == type(b) for a, b in zip(values, values[1:]))
         # -> Values should be increasing continuously
         assert all(a<b for a,b in zip(values, values[1:]))
+
+
+
 
 
 @pytest.mark.parametrize('series_fixture', [

@@ -4,6 +4,8 @@ import random
 from unittest.mock import Mock
 from urllib.parse import urlencode
 
+import pytest
+
 from c8y_api.model import CumulocityResource
 
 from util.testing_util import RandomNameGenerator
@@ -56,6 +58,8 @@ def test_build_base_query():
     expected_params = kwargs.copy()
     for py_key, api_key in mapping.items():
         expected_params[api_key] = expected_params.pop(py_key)
+        if isinstance(expected_params[api_key], bool):
+            expected_params[api_key] = str(expected_params[api_key]).lower()
 
     # (1) init mock resource and build query
     resource = CumulocityResource(Mock(), 'res')
@@ -64,3 +68,34 @@ def test_build_base_query():
     # -> all expected params are there
     for key, value in expected_params.items():
         assert f'{key}={value}' in base_query
+
+
+@pytest.mark.parametrize('params, expected, not_expected', [
+    ({'expression': "X&Y='A''s B'"}, ["?X&Y='A''s%20B'"], []),
+    ({'expression': 'X', 'other': 'O'}, ['?X'], ['other', 'O']),
+    ({'reverse': True}, ['revert=true'], ['reverse']),
+    ({'series': 'A'}, ['series=A'], []),
+    ({'series': ['A','B']}, ['series=A', 'series=B'], [',']),
+    ({'series': ['A']}, ['series=A'], []),
+    ({'ids': [1, 2]}, ['ids=1%2C2'], []),
+    ({'before': 'BEFORE', 'after': 'AFTER'}, ['dateFrom=AFTER', 'dateTo=BEFORE'], ['source', 'series=']),
+    ({'date_from': 'FROM', 'date_to': 'TO'}, ['dateFrom=FROM', 'dateTo=TO'], ['date_to', 'date_from']),
+], ids=[
+    'expression',
+    'expression+',
+    'reverse',
+    'series',
+    'single series',
+    'multi series',
+    'ids',
+    'before+after',
+    'date_from+date_to',
+   ])
+def test_prepare_query(params, expected, not_expected):
+    """Verify that generic query preparation works as expected."""
+    resource = CumulocityResource(Mock(), 'res')
+    url = resource._prepare_query(**params)
+    for e in expected:
+        assert e in url
+    for e in not_expected:
+        assert e not in url

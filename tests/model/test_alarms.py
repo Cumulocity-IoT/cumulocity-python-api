@@ -38,7 +38,7 @@ def isolate_call_url(fun, **kwargs):
     ({'expression': 'EX', 'type': 'T'}, ['?EX'], ['type']),
     ({'type': 'T', 'source': 'S', 'fragment': 'F'}, ['type=T', 'source=S', 'fragmentType=F'], []),
     ({'status': 'ST', 'severity': 'SE', 'resolved': False}, ['status=ST', 'severity=SE', 'resolved=False'], []),
-    ({'reverse': False, 'page_size': 8}, ['revert=False', 'pageSize=8'], ['reverse']),
+    ({'reverse': False, 'page_size': 8}, ['revert=false', 'pageSize=8'], ['reverse']),
     ({'with_source_assets': False, 'with_source_devices': True, 'source': '123'},
      ['withSourceAssets=False', 'withSourceDevices=True'],
      ['_']),

@@ -3,6 +3,7 @@
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Union
+from urllib.parse import quote_plus
 
 from dateutil import parser
 from re import sub
@@ -32,6 +33,11 @@ class _StringUtil(object):
 
 
 class _QueryUtil(object):
+
+    @staticmethod
+    def encode_expression(expression):
+        return expression.replace(' ', '%20')
+        # return '&'.join(quote_plus(p) for p in expression.split('&'))
 
     @staticmethod
     def encode_odata_query_value(value):

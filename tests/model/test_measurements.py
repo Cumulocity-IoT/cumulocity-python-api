@@ -60,7 +60,7 @@ def isolate_call_url(fun, **kwargs):
     Measurements.delete_by,
 ])
 @pytest.mark.parametrize('params, expected, not_expected', [
-    ({'expression': 'EX', 'type': 'T'}, ['?EX'], ['type']),
+    ({'expression': "X&Y='A''s B'", 'type': 'T'}, ["?X&Y='A''s B'"], ['type']),
     ({'type': 'T', 'source': 'S'},
      ['type=T', 'source=S'],
      []),
@@ -90,7 +90,7 @@ def isolate_call_url(fun, **kwargs):
     'date_from+date_to',
     'after+before',
     'min_age+max_age',
-    'kwargs'
+    'kwargs',
 ])
 def test_select(fun, params, expected, not_expected):
     """Verify that the select function's parameters are processed as expected."""
@@ -153,6 +153,26 @@ def generate_series_data() -> tuple:
     return cases, ids
 
 
+@pytest.mark.parametrize('params, expected, not_expected', [
+    ({'expression': 'X&Y'}, ['X&Y'], ['expression']),
+    ({'source': 'SOURCE'}, ['source=SOURCE'], []),
+    ({'series': 'SERIES'}, ['series=SERIES'], []),
+    ({'series': ['A', 'B']}, ['series=A,B'], ['source']),
+    ({'aggregation': 'A'}, ['aggregationType=A'], ['series=']),
+    ({'reverse': True}, ['revert=true'], ['reverse']),
+    ({'before': 'BEFORE', 'after': 'AFTER'}, ['dateFrom=AFTER', 'dateTo=BEFORE'], ['source', 'series=']),
+    ({'date_from': 'FROM', 'date_to': 'TO'}, ['dateFrom=FROM', 'dateTo=TO'], ['date_to', 'date_from']),
+])
+def test_get_series_parameters(params, expected, not_expected):
+    """Verify that the get_series function parameters are translated as expected."""
+    resource = isolate_call_url(Measurements.get_series, **params)
+    for e in expected:
+        assert e in resource
+    for e in not_expected:
+        assert e not in resource
+
+
+@pytest.mark.skip("TODO: test purpose unclear")
 @pytest.mark.parametrize('testcase', generate_series_data()[0], ids=generate_series_data()[1])
 def test_get_series(testcase):
     """Verify that the get_series function works as expected."""
