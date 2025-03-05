@@ -418,4 +418,3 @@ async def test_asyncio_multiple_subscribers(live_c8y: CumulocityApi, sample_obje
     # (99) cleanup
     await asyncio.gather(*[l.close() for l in listeners])
     await asyncio.wait(listener_tasks)
-    await asyncio.all_tasks()

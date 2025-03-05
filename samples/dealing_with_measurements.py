@@ -33,17 +33,17 @@ n = 1000
 start_datetime = datetime.fromisoformat('2020-01-01 00:00:00.000+00:00')
 time_gap = timedelta(seconds=20)
 
-def create_DataMeasurement(seed):
+def create_data_measurement(seed):
     a = math.sin(seed + random() * 0.2)
     b = math.cos(seed + random() * 0.2)
     # the measurement's values are provided as custom fragments,
     # (here: cx_Data). The JSON structure must be like illustrated below
-    return Measurement(type='cx_DataMeasurement', source=new_device.id,
+    return Measurement(type='cx_Data', source=new_device.id,
                        time=start_datetime + seed * time_gap,
                        cx_Data={'A': {'value': a, 'unit': 'as'},
                                 'B': {'value': b, 'unit': 'bs'}})
 
-def create_CounterMeasurement(seed):
+def create_counter_measurement(seed):
     # The measurement's values are provided as custom fragments,
     # (here: c8y_Counter). There are helper classes available to build
     # the required JSON structure (here Count but there are others like
@@ -53,23 +53,25 @@ def create_CounterMeasurement(seed):
                        c8y_Counter={'iteration': Count(seed)})
 
 # prepare measurements
-ms = [create_CounterMeasurement(i) for i in range(1000)] +\
-     [create_DataMeasurement(i) for i in range(1000)]
+ms = [create_counter_measurement(i) for i in range(1000)] +\
+     [create_data_measurement(i) for i in range(1000)]
 
 # create in bulk
 c8y.measurements.create(*ms)
 
-
 # Querying measurements directly
-# a) by series
-data_measurements = c8y.measurements.get_all(source=new_device.id, after=start_datetime, type='cx_DataMeasurement')
+# a) by type
+data_measurements = c8y.measurements.get_all(
+    source=new_device.id, after=start_datetime, type='cx_Data')
 a_values = [m.cx_Data.A.value for m in data_measurements]
 b_values = [m.cx_Data.B.value for m in data_measurements]
 assert len(a_values) == len(b_values)
-# b) by type, including timestamps
-counter_measurements = c8y.measurements.get_all(source=new_device.id, after=start_datetime, series='iteration')
+# b) by series, including timestamps
+counter_measurements = c8y.measurements.get_all(
+    source=new_device.id, after=start_datetime, series='c8y_Counter.iteration')
 i_values = [(m.time, m.c8y_Counter.iteration.value) for m in counter_measurements]
 
+# Create a DataFrame for quick visualization
 df = pd.DataFrame(data={'a': a_values, 'b': b_values})
 df[['time', 'count']] = i_values
 print(df.head())

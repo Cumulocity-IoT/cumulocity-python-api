@@ -261,3 +261,37 @@ def test_collect_multiple_series(series_fixture, request):
     for i in range(0, len(series_names)):
         t = type(values[0][i])
         assert all(isinstance(v[i], t) for v in values if v[i])
+
+
+def test_get_and_collect_series(live_c8y, sample_series_device):
+    """Verify that get & collect works as expected."""
+    series = live_c8y.measurements.get_series(
+        source=sample_series_device.id,
+        series=sample_series_device.c8y_SupportedSeries,
+        aggregation=Measurements.AggregationType.HOURLY,
+        after='1970-01-01',
+        before='now'
+    )
+
+    # multiple series
+    collected = series.collect(sample_series_device.c8y_SupportedSeries)
+    directly_collected = live_c8y.measurements.collect_series(
+        source=sample_series_device.id,
+        series=sample_series_device.c8y_SupportedSeries,
+        aggregation=Measurements.AggregationType.HOURLY,
+        after='1970-01-01',
+        before='now'
+    )
+    assert collected == directly_collected
+
+    # single series
+    for series_name in sample_series_device.c8y_SupportedSeries:
+        collected = series.collect(series_name)
+        directly_collected = live_c8y.measurements.collect_series(
+            source=sample_series_device.id,
+            series=series_name,
+            aggregation=Measurements.AggregationType.HOURLY,
+            after='1970-01-01',
+            before='now'
+        )
+        assert collected == directly_collected

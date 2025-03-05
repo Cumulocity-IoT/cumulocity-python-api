@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Iterable, Set
-from urllib.parse import quote_plus, urlencode
+from urllib.parse import urlencode
 
 from collections.abc import MutableMapping, MutableSequence
 from deprecated import deprecated
@@ -61,6 +61,9 @@ class _DictWrapper(MutableMapping, dict):
         self.__dict__['_property_items'] = dictionary
         self.__dict__['_property_on_update'] = on_update
 
+    def __repr__(self):
+        return f'{type(self).__name__}({self.__dict__["_property_items"]})'
+
     def has(self, name: str):
         """Check whether a key is present in the dictionary."""
         return name in self.__dict__['_property_items']
@@ -107,6 +110,9 @@ class _ListWrapper(MutableSequence, list):
     def __init__(self, values: list, on_update=None):
         self.__dict__['_property_items'] = values
         self.__dict__['_property_on_update'] = on_update
+
+    def __repr__(self):
+        return f'{type(self).__name__}({self.__dict__["_property_items"]})'
 
     def __getitem__(self, i):
         item = self.__dict__['_property_items'][i]
@@ -423,7 +429,7 @@ class ComplexObject(SimpleObject):
         (specified as nested dictionary).::
 
             obj['c8y_SimpleValue'] = 14
-            obj['c8y_ComplexValue'] = { 'x': 1, 'y': 2, 'text': 'message'}
+            obj['c8y_ComplexValue'] = { ('x', 1, 'y': 2), 'text': 'message'}
 
         Args:
             name (str):  Name of the custom fragment.
@@ -642,7 +648,6 @@ class CumulocityResource:
             name=None,
             fragment=None,
             source=None,  # noqa (type)
-            value=None,
             series=None,
             owner=None,
             device_id=None,
@@ -669,7 +674,7 @@ class CumulocityResource:
             reverse=None,
             page_size=None,
             page_number=None,  # (must not be part of the prepared query)
-            **kwargs) -> dict:
+            **kwargs) -> list[tuple]:
         assert not page_number
 
         def multi(*xs):
@@ -716,6 +721,7 @@ class CumulocityResource:
             'owner': owner,
             'source': source,
             'fragmentType': fragment,
+            # 'series': series,
             'deviceId': device_id,
             'agentId': agent_id,
             'bulkId': bulk_id,
@@ -730,13 +736,19 @@ class CumulocityResource:
             'lastUpdatedTo': updated_to,
             'withSourceAssets': with_source_assets,
             'withSourceDevices': with_source_devices,
-            'revert': str(reverse) if reverse is not None else None,
+            'revert': str(reverse).lower() if reverse is not None else None,
             'pageSize': page_size}.items() if v is not None}
         params.update({_StringUtil.to_pascal_case(k): v for k, v in kwargs.items() if v is not None})
-        return params
+        tuples = list(params.items())
+        if series:
+            if isinstance(series, list):
+                tuples += [('series', s) for s in series]
+            else:
+                tuples.append(('series', series))
+        return tuples
 
     def _prepare_query(self, resource: str = None, expression: str = None, **kwargs):
-        encoded = quote_plus(expression) if expression else urlencode(self._map_params(**kwargs))
+        encoded = expression or urlencode(self._map_params(**kwargs))
         if not encoded:
             return resource or self.resource
         return (resource or self.resource) + '?' + encoded

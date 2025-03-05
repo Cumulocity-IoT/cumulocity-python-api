@@ -716,19 +716,11 @@ class Measurements(CumulocityResource):
 
         See also: https://cumulocity.com/api/core/#operation/getMeasurementSeriesResource
         """
-        # The 'series' parameter has to be added through a hack; it
-        # may be a list and because 'series' is by default converted to
-        # the 'valueFragmentSeries' parameter
-
-        if series:
-            series = series if isinstance(series, str) else ','.join(series)
-
         base_query = self._prepare_query(
             resource=f'{self.resource}/series',
             expression=expression,
             source=source,
-            # this is a non-mapped parameter
-            aggregationType=aggregation,
+            aggregationType=aggregation,  # this is a non-mapped parameter
             series=series,
             before=before,
             after=after,
@@ -738,14 +730,81 @@ class Measurements(CumulocityResource):
             **kwargs)
         return Series(self.c8y.get(base_query))
 
+    def collect_series(
+            self,
+            expression: str = None,
+            source: str = None,
+            aggregation: str = None,
+            series: str | Sequence[str] = None,
+            before: str | datetime = None,
+            after: str | datetime = None,
+            min_age: timedelta = None,
+            max_age: timedelta = None,
+            reverse: bool = None,
+            value: str = None,
+            timestamps: bool|str = None,
+            **kwargs
+    ):
+        """Query the database for series values.
+
+        This function is functionally the same as using the `get_series` function
+        with an immediate `collect` on the result.
+
+        Args:
+            expression (str):  Arbitrary filter expression which will be
+                passed to Cumulocity without change; all other filters
+                are ignored if this is provided
+            source (str):  Database ID of a source device
+            aggregation (str):  Aggregation type
+            series (str|Sequence[str]):  Series' to query and collect; If
+                multiple series are collected each element in the result will
+                be a tuple. If omitted, all available series are collected.
+            before (datetime|str):  Datetime object or ISO date/time string.
+                Only measurements assigned to a time before this date are
+                included.
+            after (datetime|str):  Datetime object or ISO date/time string.
+                Only measurements assigned to a time after this date are
+                included.
+            min_age (timedelta):  Timedelta object. Only measurements of
+                at least this age are included.
+            max_age (timedelta):  Timedelta object. Only measurements with
+                at most this age are included.
+            reverse (bool):  Invert the order of results, starting with the
+                most recent one.
+            value (str):  Which value (min/max) to collect. If omitted, both
+                values will be collected, grouped as 2-tuples.
+            timestamps (bool|str):  Whether each element in the result list will
+                be prepended with the corresponding timestamp. If True, the
+                timestamp string will be included; Use 'datetime' or 'epoch' to
+                parse the timestamp string.
+
+        Returns:
+            A simple list or list of tuples (potentially nested) depending on the
+            parameter combination.
+
+        See also: https://cumulocity.com/api/core/#operation/getMeasurementSeriesResource
+        """
+        result = self.get_series(
+            expression=expression,
+            source=source,
+            aggregation=aggregation,
+            series=series,
+            before=before,
+            after=after,
+            min_age=min_age,
+            max_age=max_age,
+            reverse=reverse,
+            **kwargs)
+        return result.collect(
+            series=series,
+            value=value,
+            timestamps=timestamps)
+
     def delete_by(
             self,
             expression: str = None,
             type: str = None,
             source: str | int = None,
-            # value_fragment_type: str = None,
-            # value_fragment_series: str = None,
-            # series: str = None,
             date_from: str | datetime = None,
             date_to: str | datetime = None,
             before: str | datetime = None,
@@ -785,9 +844,6 @@ class Measurements(CumulocityResource):
             expression=expression,
             type=type,
             source=source,
-            # value_fragment_type=value_fragment_type,
-            # value_fragment_series=value_fragment_series,
-            # series=series,
             date_from=date_from,
             date_to=date_to,
             before=before,
