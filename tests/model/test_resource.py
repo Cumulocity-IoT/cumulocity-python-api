@@ -71,7 +71,7 @@ def test_build_base_query():
 
 
 @pytest.mark.parametrize('params, expected, not_expected', [
-    ({'expression': "X&Y='A''s B'"}, ["?X&Y='A''s%20B'"], []),
+    ({'expression': "X&Y='A''s B'"}, ["?X&Y='A''s B'"], []), # no encoding, this is handled in requests module
     ({'expression': 'X', 'other': 'O'}, ['?X'], ['other', 'O']),
     ({'reverse': True}, ['revert=true'], ['reverse']),
     ({'series': 'A'}, ['series=A'], []),
@@ -93,6 +93,7 @@ def test_build_base_query():
    ])
 def test_prepare_query(params, expected, not_expected):
     """Verify that generic query preparation works as expected."""
+    # pylint: disable=protected-access
     resource = CumulocityResource(Mock(), 'res')
     url = resource._prepare_query(**params)
     for e in expected:
