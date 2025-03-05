@@ -127,32 +127,6 @@ def test_select_invalid_combinations(fun, args, errors):
         isolate_call_url(fun, **params)
     assert all(e in str(error) for e in errors)
 
-
-def generate_series_data() -> tuple:
-    """Generate all kinds of combinations of series fragments."""
-
-    def gen_level2(n):
-        level2_single = ({n: {'1': {'value': 1}}}, [f'{n}.1'])
-        level2_multi = ({n: {'1': {'value': 1}, '2': {'value': 2}}}, [f'{n}.1', f'{n}.2'])
-        level2_invalid = ({n: {'1': {'data': 1}}}, [])
-        level2_mix1 = ({n: {'1': {'data': 1}, '2': {'value': 2}}}, [f'{n}.2'])
-        level2_mix2 = ({n: {'1': {'value': 1}, '2': {'data': 2}}}, [f'{n}.1'])
-
-        return [level2_single, level2_multi, level2_invalid, level2_mix1, level2_mix2]
-
-    a = gen_level2('A')
-    b = gen_level2('B')
-    # collecting combinations of A and B cases
-    # (first element is the json, 2nd the expectation for each combination)
-    ab = [({**r[0][0], **r[1][0]}, r[0][1] + r[1][1]) for r in itertools.product(a, b)]
-
-    cases = a + ab
-    # id is the beautified expectation, prefixed with a number
-    ids = [f'{i}: ' + ','.join(map(lambda x: x.replace('.', ''), x[1])) for i, x in enumerate(cases)]
-
-    return cases, ids
-
-
 @pytest.mark.parametrize('params, expected, not_expected', [
     ({'expression': 'X&Y'}, ['X&Y'], ['expression']),
     ({'source': 'SOURCE'}, ['source=SOURCE'], []),
@@ -172,13 +146,59 @@ def test_get_series_parameters(params, expected, not_expected):
         assert e not in resource
 
 
-@pytest.mark.skip("TODO: test purpose unclear")
+def generate_series_data() -> tuple:
+    """Generate all kinds of combinations of series fragments.
+
+    Returns a tuple of testcases and corresponding testcase ID. Each testcase
+    element is again a tuple of a JSON structure (the test data) and a list
+    of expected series' names (for assertion).
+
+    We will define 2 sets (A and B) of such test cases (with different fragment
+    names), each featuring possible JSON combinations of single and multiple
+    series as well as invalid structures (not following the syntax for series).
+
+    Finally, we will create test cases from all possible combinations of the two
+    basic sets.
+
+    The tests' ID are generated from the expectation set.
+    """
+
+    def generate(fragment):
+        level2_single = ({fragment: {'series1': {'value': 1}}},
+                         [f'{fragment}.series1'])
+        level2_multi = ({fragment: {'series1': {'value': 1}, 'series2': {'value': 2}}},
+                        [f'{fragment}.series1', f'{fragment}.series2'])
+        level2_invalid = ({fragment: {'series1': {'data': 1}}},
+                          [])
+        level2_mix1 = ({fragment: {'series1': {'data': 1}, 'series2': {'value': 2}}},
+                       [f'{fragment}.series2'])
+        level2_mix2 = ({fragment: {'series1': {'value': 1}, 'series2': {'data': 2}}},
+                       [f'{fragment}.series1'])
+        return [level2_single, level2_multi, level2_invalid, level2_mix1, level2_mix2]
+
+    # generating A and B sets
+    a = generate('fragmentA')
+    b = generate('fragmentB')
+
+    # collecting combinations of A and B cases
+    ab = [({**r[0][0], **r[1][0]}, r[0][1] + r[1][1]) for r in itertools.product(a, b)]
+
+    cases = a + ab
+    # id is the beautified expectation, prefixed with a number
+    ids = [f'{i}: ' + ','.join(map(lambda x: x.replace('.', '/'), x[1])) for i, x in enumerate(cases)]
+
+    return cases, ids
+
+
 @pytest.mark.parametrize('testcase', generate_series_data()[0], ids=generate_series_data()[1])
 def test_get_series(testcase):
-    """Verify that the get_series function works as expected."""
+    """Verify that the get_series function works as expected.
+
+    The `get_series` function on a measurement determines and returns the
+    names of series defined within a single measurement.
+    """
     data = {**testcase[0], 'source': {'id': '1'}}
     m = Measurement.from_json(data)
-    # expected = [*xs for xs in testcase[1]]
     assert testcase[1] == m.get_series()
 
 

@@ -344,6 +344,8 @@ def test_complex_object_updating(fun):
 
 
 def test_inheritance():
+    """Verify that the base classes inheritance and typing is as expected."""
+    # pylint: disable=unidiomatic-typecheck
     mo = ManagedObject.from_json({
         'id': 'ID',
         'name': 'NAME',
