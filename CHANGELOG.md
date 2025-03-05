@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 3.2.1
+
+* Some essential fixes and improvements for dealing with measurements and series.
+
 ## Version 3.2
 
 * Added a `as_tuple` function to all complex objects which can be used to extract multiple nested values 
