@@ -720,8 +720,8 @@ class Measurements(CumulocityResource):
         # may be a list and because 'series' is by default converted to
         # the 'valueFragmentSeries' parameter
 
-        if series:
-            series = series if isinstance(series, str) else ','.join(series)
+        # if series:
+        #     series = series if isinstance(series, str) else ','.join(series)
 
         base_query = self._prepare_query(
             resource=f'{self.resource}/series',

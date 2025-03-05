@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Iterable, Set, Sequence
-from urllib.parse import quote_plus, urlencode
+from typing import Any, Iterable, Set
+from urllib.parse import urlencode
 
 from collections.abc import MutableMapping, MutableSequence
 from deprecated import deprecated
@@ -61,6 +61,9 @@ class _DictWrapper(MutableMapping, dict):
         self.__dict__['_property_items'] = dictionary
         self.__dict__['_property_on_update'] = on_update
 
+    def __repr__(self):
+        return f'{type(self).__name__}({self.__dict__["_property_items"]})'
+
     def has(self, name: str):
         """Check whether a key is present in the dictionary."""
         return name in self.__dict__['_property_items']
@@ -107,6 +110,9 @@ class _ListWrapper(MutableSequence, list):
     def __init__(self, values: list, on_update=None):
         self.__dict__['_property_items'] = values
         self.__dict__['_property_on_update'] = on_update
+
+    def __repr__(self):
+        return f'{type(self).__name__}({self.__dict__["_property_items"]})'
 
     def __getitem__(self, i):
         item = self.__dict__['_property_items'][i]
@@ -715,7 +721,7 @@ class CumulocityResource:
             'owner': owner,
             'source': source,
             'fragmentType': fragment,
-            'series': series,
+            # 'series': series,
             'deviceId': device_id,
             'agentId': agent_id,
             'bulkId': bulk_id,
@@ -734,8 +740,11 @@ class CumulocityResource:
             'pageSize': page_size}.items() if v is not None}
         params.update({_StringUtil.to_pascal_case(k): v for k, v in kwargs.items() if v is not None})
         tuples = [(k, v) for k, v in params.items()]
-        if isinstance(series, list):
-            tuples += [('series', s) for s in series]
+        if series:
+            if isinstance(series, list):
+                tuples += [('series', s) for s in series]
+            else:
+                tuples.append(('series', series))
         return tuples
 
     def _prepare_query(self, resource: str = None, expression: str = None, **kwargs):
