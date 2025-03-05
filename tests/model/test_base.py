@@ -10,10 +10,17 @@ from unittest.mock import Mock
 import pytest
 
 from c8y_api import CumulocityRestApi
-from c8y_api.model._base import SimpleObject, ComplexObject, CumulocityResource, CumulocityObject, get_by_path, \
-    _DictWrapper, _ListWrapper
-from c8y_api.model._parser import SimpleObjectParser, ComplexObjectParser
 from c8y_api.model import ManagedObject
+from c8y_api.model._base import (
+    SimpleObject,
+    ComplexObject,
+    CumulocityResource,
+    CumulocityObject,
+    get_by_path,
+    _DictWrapper,
+    _ListWrapper,
+)
+from c8y_api.model._parser import SimpleObjectParser, ComplexObjectParser
 
 
 class SimpleTestObject(SimpleObject):
@@ -351,15 +358,15 @@ def test_inheritance():
     assert mo.test_Fragment.a == 'A'
     assert mo.test_Array[0] == 1
     assert mo.test_FragmentArray[1].b == 'B'
+
+    assert type(mo.test_Fragment) == _DictWrapper
+    assert type(mo.test_Array) == _ListWrapper
+
     assert isinstance(mo.test_Fragment, dict)
     assert isinstance(mo.test_Fragment.cs, list)
     assert isinstance(mo.test_Array, list)
     assert isinstance(mo.test_FragmentArray, list)
 
-    assert type(mo.test_Fragment) == _DictWrapper
-    assert type(mo.test_Array) == _ListWrapper
-    print(f"{mo.test_Array}")
-    assert False
 
 def test_complex_object_get():
     """Verify that get by path works as expected."""

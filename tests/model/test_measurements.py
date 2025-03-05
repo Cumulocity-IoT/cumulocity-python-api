@@ -157,7 +157,7 @@ def generate_series_data() -> tuple:
     ({'expression': 'X&Y'}, ['X&Y'], ['expression']),
     ({'source': 'SOURCE'}, ['source=SOURCE'], []),
     ({'series': 'SERIES'}, ['series=SERIES'], []),
-    ({'series': ['A', 'B']}, ['series=A,B'], ['source']),
+    ({'series': ['A', 'B']}, ['series=A', 'series=B'], ['source', ',']),
     ({'aggregation': 'A'}, ['aggregationType=A'], ['series=']),
     ({'reverse': True}, ['revert=true'], ['reverse']),
     ({'before': 'BEFORE', 'after': 'AFTER'}, ['dateFrom=AFTER', 'dateTo=BEFORE'], ['source', 'series=']),
