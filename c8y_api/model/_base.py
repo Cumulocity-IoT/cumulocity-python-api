@@ -739,7 +739,7 @@ class CumulocityResource:
             'revert': str(reverse).lower() if reverse is not None else None,
             'pageSize': page_size}.items() if v is not None}
         params.update({_StringUtil.to_pascal_case(k): v for k, v in kwargs.items() if v is not None})
-        tuples = [(k, v) for k, v in params.items()]
+        tuples = list(params.items())
         if series:
             if isinstance(series, list):
                 tuples += [('series', s) for s in series]
@@ -748,7 +748,7 @@ class CumulocityResource:
         return tuples
 
     def _prepare_query(self, resource: str = None, expression: str = None, **kwargs):
-        encoded = _QueryUtil.encode_expression(expression) if expression else urlencode(self._map_params(**kwargs))
+        encoded = expression or urlencode(self._map_params(**kwargs))
         if not encoded:
             return resource or self.resource
         return (resource or self.resource) + '?' + encoded
