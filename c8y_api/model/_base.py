@@ -525,11 +525,16 @@ class ComplexObject(SimpleObject):
         segments = path.split('.')
         value = self
         for segment in segments:
-            if segment in value:
+            # try to drill down (assuming dict-like)
+            try:
                 value = value[segment]
                 continue
+            except (KeyError, TypeError):
+                pass
+            # if the segment is an actual attribute it should be the target
             if hasattr(value, segment):
                 return value.__getattribute__(segment)
+            # otherwise use the default
             return default
         return value
 
