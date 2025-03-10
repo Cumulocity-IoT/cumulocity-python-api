@@ -6,11 +6,11 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Generator, List, BinaryIO, Any
+from typing import Generator, List, BinaryIO
 
 from c8y_api._base_api import CumulocityRestApi
-from c8y_api.model._base import CumulocityResource, SimpleObject, ComplexObject, get_all_by_path
-from c8y_api.model._parser import ComplexObjectParser
+from c8y_api.model._base import CumulocityResource, SimpleObject, ComplexObject
+from c8y_api.model._parser import as_tuples as parse_as_tuples, ComplexObjectParser
 from c8y_api.model._util import _DateUtil
 
 
@@ -264,7 +264,7 @@ class Events(CumulocityResource):
                reverse: bool = False, limit: int = None,
                with_source_assets: bool = None, with_source_devices: bool = None,
                page_size: int = 1000, page_number: int = None,
-               as_tuples: list[str] | dict[str, Any] = None,
+               as_tuples: str | tuple | list[str|tuple] = None,
                **kwargs) -> Generator[Event]:
         """Query the database for events and iterate over the results.
 
@@ -315,10 +315,10 @@ class Events(CumulocityResource):
                 parsed in one chunk). This is a performance related setting.
             page_number (int): Pull a specific page; this effectively disables
                 automatic follow-up page retrieval.
-            as_tuples: (list[str] or dict[str, Any]):  Don't parse Events, but
-                extract the values at certain JSON paths as tuples; If the
-                path is not defined in a result, None is used; Specify a
-                dictionary to define proper default values for each path.
+            as_tuples: (*str|tuple):  Don't parse objects, but directly extract
+                the values at certain JSON paths as tuples; If the path is not
+                defined in a result, None is used; Specify a tuple to define
+                a proper default value for each path.
 
         Returns:
             Generator for Event objects
@@ -344,7 +344,8 @@ class Events(CumulocityResource):
             base_query,
             page_number,
             limit,
-            Event.from_json if not as_tuples else (lambda x: get_all_by_path(x, as_tuples)))
+            Event.from_json if not as_tuples else
+            lambda x: parse_as_tuples(x, *([as_tuples] if isinstance(as_tuples, str) else as_tuples)))
 
     def get_all(
             self,
@@ -361,7 +362,7 @@ class Events(CumulocityResource):
             reverse: bool = False, limit: int = None,
             with_source_assets: bool = None, with_source_devices: bool = None,
             page_size: int = 1000, page_number: int = None,
-            as_tuples: list[str] | dict[str, Any] = None,
+            as_tuples: str | tuple | list[str|tuple] = None,
             **kwargs) -> List[Event]:
         """Query the database for events and return the results as list.
 

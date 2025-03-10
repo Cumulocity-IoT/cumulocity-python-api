@@ -111,8 +111,7 @@ def test_select_as_tuples(inventory_class):
     ]
 
     c8y.get = Mock(side_effect=[{'managedObjects': data}, {'managedObjects': []}])
-    result = inventory.get_all(as_tuples={'name': None, 'type': None,
-                                          'test_Fragment.key': None, 'test_Fragment.key2': '-'})
+    result = inventory.get_all(as_tuples=['name', 'type', 'test_Fragment.key', ('test_Fragment.key2', '-')])
     assert result == [
         ('n1', 't1', 'value1', 'value2'),
         ('n2', 't2', 'value2', '-'),

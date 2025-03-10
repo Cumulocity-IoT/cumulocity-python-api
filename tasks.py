@@ -56,10 +56,13 @@ def lint(c, scope='all'):
     'scope': "Which tests to run, e.g. 'tests.model'"
              "Default: 'tests'",
     'python': ("Whether to run tests within a docker container and which"
-               "Python version to use - 3.7 or 3.11. Default: None")
+               "Python version to use - 3.7 or 3.11. Default: None"),
+    'coverage': "Whether to include coverage analysis.",
 })
-def test(c, scope='tests', python=None):
+def test(c, scope='tests', python=None, coverage=False):
     """Run test."""
+
+    cov_option = '--cov=c8y_api' if coverage else ''
 
     docker_name = None
     if python == '3.7':
@@ -74,11 +77,14 @@ def test(c, scope='tests', python=None):
         cmd_run = (f'docker run --rm -it -v $(pwd):/code {docker_name} '
                    'bash -c "cd /code '
                    '&& export PYTHONPATH="/code:${PYTHONPATH}" '
-                   f'&& pytest -W ignore::DeprecationWarning {scope}"')
+                   f'&& pytest -W ignore::DeprecationWarning {cov_option} {scope}"')
         print(f"Executing '{cmd_run}' ...")
         c.run(cmd_run, pty=True)
     else:
-        c.run(f"pytest -W ignore::DeprecationWarning {scope}")
+        c.run(f"pytest -W ignore::DeprecationWarning {cov_option} {scope}")
+
+    if coverage:
+        c.run(f"coverage html -d coverage --data-file .coverage")
 
 
 @task

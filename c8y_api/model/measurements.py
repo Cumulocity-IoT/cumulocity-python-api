@@ -9,7 +9,7 @@ from typing import Type, List, Generator, Sequence
 from c8y_api._base_api import CumulocityRestApi
 
 from c8y_api.model._base import CumulocityResource, ComplexObject
-from c8y_api.model._parser import ComplexObjectParser
+from c8y_api.model._parser import as_tuples as parse_as_tuples, ComplexObjectParser
 from c8y_api.model._base import _DictWrapper
 from c8y_api.model._util import _DateUtil
 
@@ -495,6 +495,7 @@ class Measurements(CumulocityResource):
             limit: int = None,
             page_size: int = 1000,
             page_number: int = None,
+            as_tuples: str | tuple | list[str|tuple] = None,
             **kwargs
     ) -> Generator[Measurement]:
         """ Query the database for measurements and iterate over the results.
@@ -538,6 +539,10 @@ class Measurements(CumulocityResource):
                 related setting.
             page_number (int): Pull a specific page; this effectively disables
                 automatic follow-up page retrieval.
+            as_tuples: (*str|tuple):  Don't parse objects, but directly extract
+                the values at certain JSON paths as tuples; If the path is not
+                defined in a result, None is used; Specify a tuple to define
+                a proper default value for each path.
 
         Returns:
             Generator[Measurement]: Iterable of matching Measurement objects
@@ -559,7 +564,12 @@ class Measurements(CumulocityResource):
             page_size=page_size,
             **kwargs
         )
-        return super()._iterate(base_query, page_number, limit, Measurement.from_json)
+        return super()._iterate(
+            base_query,
+            page_number,
+            limit,
+            Measurement.from_json if not as_tuples else
+            lambda x: parse_as_tuples(x, *([as_tuples] if isinstance(as_tuples, str) else as_tuples)))
 
     def get_all(
             self,
@@ -579,6 +589,7 @@ class Measurements(CumulocityResource):
             limit: int = None,
             page_size: int = 1000,
             page_number: int = None,
+            as_tuples: str | tuple | list[str|tuple] = None,
             **kwargs
     ) -> List[Measurement]:
         """ Query the database for measurements and return the results
@@ -607,6 +618,7 @@ class Measurements(CumulocityResource):
             limit=limit,
             page_size=page_size,
             page_number=page_number,
+            as_tuples=as_tuples,
             **kwargs))
 
     def get_last(

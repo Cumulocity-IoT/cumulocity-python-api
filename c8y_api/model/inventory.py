@@ -5,7 +5,8 @@ from __future__ import annotations
 
 from typing import Any, Generator, List
 
-from c8y_api.model._base import CumulocityResource, get_all_by_path
+from c8y_api.model._base import CumulocityResource
+from c8y_api.model._parser import as_tuples as parse_as_tuples
 from c8y_api.model._util import _QueryUtil
 from c8y_api.model.managedobjects import ManagedObjectUtil, ManagedObject, Device, Availability, DeviceGroup
 
@@ -61,7 +62,7 @@ class Inventory(CumulocityResource):
             reverse: bool = None,
             limit: int = None,
             page_size: int = 1000,
-            as_tuples: list[str] | dict[str, Any] = None,
+            as_tuples: str | tuple | list[str|tuple] = None,
             **kwargs) -> List[ManagedObject]:
         """ Query the database for managed objects and return the results
         as list.
@@ -156,7 +157,7 @@ class Inventory(CumulocityResource):
             limit: int = None,
             page_size: int = 1000,
             page_number: int = None,
-            as_tuples: list[str] | dict[str, Any] = None,
+            as_tuples: str | tuple | list[str|tuple] = None,
             **kwargs) -> Generator[ManagedObject]:
         """ Query the database for managed objects and iterate over the
         results.
@@ -208,10 +209,10 @@ class Inventory(CumulocityResource):
                 parsed in one chunk). This is a performance related setting.
             page_number (int): Pull a specific page; this effectively disables
                 automatic follow-up page retrieval.
-            as_tuples: (list[str] or dict[str, Any]):  Don't parse ManagedObjects,
-                but extract the values at certain JSON paths as tuples; If the path
-                is not defined in a result, None is used; Specify a dictionary to
-                define proper default values for each path.
+            as_tuples: (*str|tuple):  Don't parse objects, but directly extract
+                the values at certain JSON paths as tuples; If the path is not
+                defined in a result, None is used; Specify a tuple to define
+                a proper default value for each path.
 
         Returns:
             Generator for ManagedObject instances
@@ -351,7 +352,8 @@ class Inventory(CumulocityResource):
             base_query,
             page_number,
             limit,
-            parse_fun if not as_tuples else (lambda x: get_all_by_path(x, as_tuples)))
+            parse_fun if not as_tuples else
+            lambda x: parse_as_tuples(x, *([as_tuples] if isinstance(as_tuples, str) else as_tuples)))
 
     def create(self, *objects: ManagedObject):
         """Create managed objects within the database.
@@ -501,7 +503,7 @@ class DeviceInventory(Inventory):
             limit: int = None,
             page_size: int = 100,
             page_number: int = None,
-            as_tuples: list[str] | dict[str, Any] = None,
+            as_tuples: str | tuple | list[str|tuple] = None,
             **kwargs,) -> Generator[Device]:
         # pylint: disable=arguments-differ, arguments-renamed
         """ Query the database for devices and iterate over the results.
@@ -556,10 +558,10 @@ class DeviceInventory(Inventory):
                 parsed in one chunk). This is a performance related setting.
             page_number (int): Pull a specific page; this effectively disables
                 automatic follow-up page retrieval.
-            as_tuples: (list[str] or dict[str, Any]):  Don't parse Device objects,
-                but extract the values at certain JSON paths as tuples; If the path
-                is not defined in a result, None is used; Specify a dictionary to
-                define proper default values for each path.
+            as_tuples: (*str|tuple):  Don't parse objects, but directly extract
+                the values at certain JSON paths as tuples; If the path is not
+                defined in a result, None is used; Specify a tuple to define
+                a proper default value for each path.
 
         Returns:
             Generator for Device objects
@@ -614,7 +616,7 @@ class DeviceInventory(Inventory):
             limit: int = None,
             page_size: int = 100,
             page_number: int = None,
-            as_tuples: list[str] | dict[str, Any] = None,
+            as_tuples: str | tuple | list[str|tuple] = None,
             **kwargs) -> List[Device]:
         # pylint: disable=arguments-differ, arguments-renamed
         """ Query the database for devices and return the results as list.
@@ -754,7 +756,7 @@ class DeviceGroupInventory(Inventory):
             limit: int = None,
             page_size: int = 100,
             page_number: int = None,
-            as_tuples: list[str] | dict[str, Any] = None,
+            as_tuples: str | tuple | list[str|tuple] = None,
             **kwargs) -> Generator[DeviceGroup]:
         # pylint: disable=arguments-differ, arguments-renamed
         """ Select device groups by various parameters.
@@ -812,11 +814,10 @@ class DeviceGroupInventory(Inventory):
                 parsed in one chunk). This is a performance related setting.
             page_number (int): Pull a specific page; this effectively disables
                 automatic follow-up page retrieval.
-            as_tuples: (list[str] or dict[str, Any]):  Don't parse DeviceGroup
-                objects, but extract the values at certain JSON paths as
-                tuples; If the path is not defined in a result, None is used;
-                Specify a dictionary to define proper default values for each
-                path.
+            as_tuples: (*str|tuple):  Don't parse objects, but directly extract
+                the values at certain JSON paths as tuples; If the path is not
+                defined in a result, None is used; Specify a tuple to define
+                a proper default value for each path.
 
         Returns:
             Generator of DeviceGroup instances
@@ -923,7 +924,7 @@ class DeviceGroupInventory(Inventory):
             limit: int = None,
             page_size: int = 100,
             page_number: int = None,
-            as_tuples: list[str] | dict[str, Any] = None,
+            as_tuples: str | tuple | list[str|tuple] = None,
             **kwargs ) -> List[DeviceGroup]:
         # pylint: disable=arguments-differ, arguments-renamed
         """ Select managed objects by various parameters.
