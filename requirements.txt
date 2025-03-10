@@ -6,6 +6,7 @@ requests
 Deprecated
 pytest
 pytest-asyncio
+pytest-cov
 responses
 python-dotenv
 invoke

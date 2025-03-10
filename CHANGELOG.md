@@ -1,5 +1,6 @@
 # Changelog
 
+* Added code coverage reporting to `test` target for _invoke_.
 * Updated `as_tuple` for  complex objects as well as the `as_tuples` parameter for `select`
   and `get_all` functions to work with strings or 2-tuples. The use of a dictionary
   was removed as dictionaries don't define an order.
