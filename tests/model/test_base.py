@@ -20,7 +20,7 @@ from c8y_api.model._base import (
     _DictWrapper,
     _ListWrapper,
 )
-from c8y_api.model._parser import SimpleObjectParser, ComplexObjectParser
+from c8y_api.model._parser import SimpleObjectParser, ComplexObjectParser, as_tuples
 
 
 class SimpleTestObject(SimpleObject):
@@ -62,6 +62,63 @@ class ComplexTestObject(ComplexObject):
 def test_get_by_path(json, path, default, expected):
     """Verify that get by path works as expected."""
     assert get_by_path(json, path, default) == expected
+
+
+@pytest.mark.parametrize("paths, expected", [
+    (['x'], (None,)),
+    (['a'], (1,)),
+    (['bb.b1'], (True,)),
+    (['bb.b2'], (False,)),
+    (['ccc.c1'], ([],)),
+    (['ccc.c2'], ([1, 2, 3],)),
+    (['ccc.c3'], (None,)),
+    (['snake_case'], ('v',)),
+    (['pascalCase'], ('v',)),
+    (['pascal_case'], ('v',)),
+    (['mixed_case.caseMixed'], ('v',)),
+    (['mixed_case.case_mixed'], ('v',)),
+    (['a', 'bb.b1', 'ccc.c2'], (1, True, [1, 2, 3])),
+    (['bb.b2', 'ccc.c3'], (False, None)),
+    (['a', 'bb.b3', 'ccc.c2'], (1, None, [1, 2, 3])),
+    (['a', ('bb.b3', '-'), 'ccc.c2'], (1, '-', [1, 2, 3])),
+
+], ids=[
+    'none',
+    'int',
+    'nested_True',
+    'nested_False',
+    'nested_empty',
+    'nested_list',
+    'nested_None',
+    'snake_case',
+    'pascal_case_1',
+    'pascal_case_2',
+    'mixed_case_1',
+    'mixed_case_2',
+    'multi_1',
+    'multi_2',
+    'multi_default_1',
+    'multi_default_2',
+])
+def test_as_tuples(paths, expected):
+    """Verify that the as_tuples function works as expected."""
+    json = {
+        # types
+        'a': 1,
+        'bb' : {
+            'b1': True,
+            'b2': False },
+        'ccc': {
+            'c1': [],
+            'c2': [1, 2, 3],
+            'c3': None,
+        },
+        'snake_case': 'v',
+        'pascalCase': 'v',
+        'mixed_case': {'caseMixed': 'v'}
+    }
+
+    assert as_tuples(json, *paths) == expected
 
 
 def test_simpleobject_instantiation_and_formatting():
@@ -413,16 +470,20 @@ path_options = [
     (('c8y_complex.a', True), 'valueA'),
     (('c8y_complex.a', False), 'valueA'),
     (('c8y_complex.a', []), 'valueA'),
+    (('c8y_complex.a.not', '-'), '-'),
+    (('c8y_complex.d.d', '-'), '-'),
     ('c8y_complex.b', []),
     (('c8y_complex.b', None), []),
     (('c8y_complex.b', True), []),
     (('c8y_complex.b', False), []),
     (('c8y_complex.b', []), []),
+    (('c8y_complex.b.not', '-'), '-'),
     ('c8y_complex.c', False),
     (('c8y_complex.c', None), False),
     (('c8y_complex.c', True), False),
     (('c8y_complex.c', False), False),
     (('c8y_complex.c', []), False),
+    (('c8y_complex.c.not', '-'), '-'),
     ('c8y_complex.not', None),
     (('c8y_complex.not', None), None),
     (('c8y_complex.not', '-'), '-'),
@@ -443,7 +504,7 @@ def test_complex_object_as_tuples(f1, e1, f2, e2, f3, e3):
         empty=[],
         true=True,
         false=False,
-        c8y_complex={'a': 'valueA', 'b': [], 'c': False},
+        c8y_complex={'a': 'valueA', 'b': [], 'c': False, 'd': {'d1': 'valueD1'}},
     )
 
     # multiple values

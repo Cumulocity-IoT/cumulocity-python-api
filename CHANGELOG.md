@@ -1,5 +1,9 @@
 # Changelog
 
+* Updated `as_tuple` for  complex objects as well as the `as_tuples` parameter for `select`
+  and `get_all` functions to work with strings or 2-tuples. The use of a dictionary
+  was removed as dictionaries don't define an order.
+* Added `as_tuples` parameter to the Measurements API `select` and `get_all` functions.
 * Adding `c8y_tk.analytics` package with `to_numpy`, `to_series` and `to_data_frame` functions to
   ease incorporating Cumulocity data into standard analytics pipelines.
 

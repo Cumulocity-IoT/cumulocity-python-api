@@ -100,7 +100,7 @@ def test_select_as_tuples():
     ]
 
     api.c8y.get = Mock(side_effect=[{'alarms': jsons}, {'alarms': []}])
-    result = api.get_all(as_tuples={'type': None, 'text': None, 'test_Fragment.key': None, 'test_Fragment.key2': '-'})
+    result = api.get_all(as_tuples=['type', 'text', 'test_Fragment.key', ('test_Fragment.key2', '-')])
     assert result == [
         ('type1', 'text1', 'value1', 'value2'),
         ('type2', 'text2', 'value2', '-'),
