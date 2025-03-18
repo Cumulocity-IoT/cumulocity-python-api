@@ -9,7 +9,7 @@ from typing import Generator, List
 
 from c8y_api._base_api import CumulocityRestApi, AccessDeniedError
 from c8y_api.model._base import CumulocityResource, SimpleObject
-from c8y_api.model._parser import SimpleObjectParser, ComplexObjectParser
+from c8y_api.model._parser import SimpleObjectParser, ComplexObjectParser, as_tuples as parse_as_tuples
 from c8y_api.model._util import _DateUtil
 
 
@@ -1067,6 +1067,7 @@ class Users(CumulocityResource):
             limit: int = None,
             page_size: int = 5,
             page_number: int = None,
+            as_tuples: str | tuple | list[str | tuple] = None,
             **kwargs
     ) -> Generator[User]:
         """Lazily select and yield User instances.
@@ -1091,6 +1092,10 @@ class Users(CumulocityResource):
                 parsed in one chunk). This is a performance related setting.
             page_number (int): Pull a specific page; this effectively disables
                 automatic follow-up page retrieval.
+            as_tuples: (*str|tuple):  Don't parse objects, but directly extract
+                the values at certain JSON paths as tuples; If the path is not
+                defined in a result, None is used; Specify a tuple to define
+                a proper default value for each path.
 
         Returns:
             Generator of User instances
@@ -1120,10 +1125,14 @@ class Users(CumulocityResource):
             only_devices=only_devices,
             with_subusers_count=with_subusers_count,
             page_size=page_size,
-
             **kwargs
         )
-        return super()._iterate(base_query, page_number, limit, User.from_json)
+        return super()._iterate(
+            base_query,
+            page_number,
+            limit,
+            User.from_json if not as_tuples else
+            lambda x: parse_as_tuples(x, as_tuples))
 
     def get_all(
             self,
@@ -1133,6 +1142,7 @@ class Users(CumulocityResource):
             only_devices: bool = None,
             with_subusers_count: bool = None,
             page_size: int = 1000,
+            as_tuples: str | tuple | list[str|tuple] = None,
             **kwargs
     ) -> list[User]:
         """Select and retrieve User instances as list.
@@ -1151,6 +1161,7 @@ class Users(CumulocityResource):
             only_devices=only_devices,
             with_subusers_count=with_subusers_count,
             page_size=page_size,
+            as_tuples=as_tuples,
             **kwargs))
 
     def create(self, *users):

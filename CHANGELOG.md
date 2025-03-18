@@ -1,5 +1,7 @@
 # Changelog
 
+* Added `as_tuples` parameter to `get_all` and `select` functions of the Inventory, DeviceInventory,
+  DeviceGroupInventory, Events, Alarms, Users, Operations, and AuditRecords API.
 * Added code coverage reporting to `test` target for _invoke_.
 * Updated `as_tuple` for  complex objects as well as the `as_tuples` parameter for `select`
   and `get_all` functions to work with strings or 2-tuples. The use of a dictionary

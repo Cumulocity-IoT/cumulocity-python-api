@@ -5,7 +5,8 @@ from urllib.parse import unquote_plus
 
 import pytest
 
-from c8y_api import CumulocityApi
+from c8y_api import CumulocityApi, CumulocityRestApi
+from c8y_api.model import Users
 from tests.utils import isolate_last_call_arg
 
 
@@ -40,3 +41,47 @@ def test_select_users(params, expected, not_expected):
         assert e in resource
     for ne in not_expected:
         assert ne not in resource
+
+
+def test_select_as_tuples():
+    """Verify that select as tuples works as expected."""
+    jsons = [
+        {'userName': 'user1',
+         'enabled': True,
+         'applications': [],
+         'customProperties': {'p1': 'v1', 'p2': 'v2'}},
+        {'userName': 'user2',
+         'enabled': False,
+         'applications': [{'a': 1}, {'b': 2}],
+         'customProperties': {'p1': 'v2'},
+         'phone': '+123'},
+    ]
+
+    c8y = CumulocityRestApi(base_url='base', tenant_id='t123', username='u', password='p')
+    api = Users(c8y)
+    api.c8y.get = Mock(side_effect=[{'users': jsons}, {'users': []}])
+    result = api.get_all(as_tuples=[
+        'user_name', 'enabled', 'applications', 'customProperties.p1', 'customProperties.p2', 'phone'])
+    assert result == [
+        ('user1', True, [], 'v1', 'v2', None),
+        ('user2', False, [{'a': 1}, {'b': 2}], 'v2', None, '+123'),
+    ]
+
+    c8y = CumulocityRestApi(base_url='base', tenant_id='t123', username='u', password='p')
+    api = Users(c8y)
+    api.c8y.get = Mock(side_effect=[{'users': jsons}, {'users': []}])
+    result = api.get_all(as_tuples=[
+        'userName', 'enabled', 'applications', 'custom_properties.p1', ('customProperties.p2', 'v3'), ('phone', '')])
+    assert result == [
+        ('user1', True, [], 'v1', 'v2', ''),
+        ('user2', False, [{'a': 1}, {'b': 2}], 'v2', 'v3', '+123'),
+    ]
+
+    c8y = CumulocityRestApi(base_url='base', tenant_id='t123', username='u', password='p')
+    api = Users(c8y)
+    api.c8y.get = Mock(side_effect=[{'users': jsons}, {'users': []}])
+    result = api.get_all(as_tuples='enabled')
+    assert result == [
+        (True, ),
+        (False, ),
+    ]

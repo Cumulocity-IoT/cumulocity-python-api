@@ -353,7 +353,7 @@ class Inventory(CumulocityResource):
             page_number,
             limit,
             parse_fun if not as_tuples else
-            lambda x: parse_as_tuples(x, *([as_tuples] if isinstance(as_tuples, str) else as_tuples)))
+            lambda x: parse_as_tuples(x, as_tuples))
 
     def create(self, *objects: ManagedObject):
         """Create managed objects within the database.

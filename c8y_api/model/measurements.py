@@ -569,7 +569,7 @@ class Measurements(CumulocityResource):
             page_number,
             limit,
             Measurement.from_json if not as_tuples else
-            lambda x: parse_as_tuples(x, *([as_tuples] if isinstance(as_tuples, str) else as_tuples)))
+            lambda x: parse_as_tuples(x, as_tuples))
 
     def get_all(
             self,

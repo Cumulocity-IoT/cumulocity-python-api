@@ -62,6 +62,45 @@ def test_select(fun, params, expected, not_expected):
         assert ne not in resource
 
 
+def test_select_as_tuples():
+    """Verify that select as tuples works as expected."""
+    jsons = [
+        {'type': 'type1',
+         'creationTime': 'time1',
+         'deviceId': 'source1',
+         'c8y_Command': {'text': 'value1', 'key2': 'value2'}},
+        {'type': 'type2',
+         'creationTime': 'time2',
+         'deviceId': 'source2',
+         'c8y_Command': {'text': 'value2'},
+         'description': 'description'},
+    ]
+
+    api = Operations(c8y=Mock())
+    api.c8y.get = Mock(side_effect=[{'operations': jsons}, {'operations': []}])
+    result = api.get_all(as_tuples=[
+        'type', 'creation_time', 'c8y_Command.text', 'c8y_Command.key2', 'description'])
+    assert result == [
+        ('type1', 'time1', 'value1', 'value2', None),
+        ('type2', 'time2', 'value2', None, 'description'),
+    ]
+
+    api.c8y.get = Mock(side_effect=[{'operations': jsons}, {'operations': []}])
+    result = api.get_all(as_tuples=[
+        'type', 'creation_time', 'c8y_Command.text', 'c8y_Command.key2', ('description', '-')])
+    assert result == [
+        ('type1', 'time1', 'value1', 'value2', '-'),
+        ('type2', 'time2', 'value2', None, 'description'),
+    ]
+
+    api.c8y.get = Mock(side_effect=[{'operations': jsons}, {'operations': []}])
+    result = api.get_all(as_tuples='type')
+    assert result == [
+        ('type1', ),
+        ('type2', ),
+    ]
+
+
 @pytest.mark.parametrize('fun', [
     Operations.get_all,
     Operations.get_last,

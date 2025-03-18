@@ -118,7 +118,7 @@ def test_as_tuples(paths, expected):
         'mixed_case': {'caseMixed': 'v'}
     }
 
-    assert as_tuples(json, *paths) == expected
+    assert as_tuples(json, paths) == expected
 
 
 def test_simpleobject_instantiation_and_formatting():

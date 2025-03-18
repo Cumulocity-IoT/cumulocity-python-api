@@ -8,12 +8,12 @@ from c8y_api.model._base import ComplexObject
 from c8y_api.model._util import _StringUtil
 
 
-def as_tuples(json_data, *path: str | tuple):
+def as_tuples(json_data, paths: str | tuple | list[str|tuple]):
     """Parse a JSON structure as tuples from paths.
 
     Args:
         json_data (dict):  A JSON structure as Python dict
-        path (*str|tuple):  Path(s) to extract from
+        paths (list[str|tuple]):  Path(s) to extract from
             the structure; Use dots to separate JSON levels; Arrays are not
             supported.
 
@@ -39,7 +39,9 @@ def as_tuples(json_data, *path: str | tuple):
         return json_level.get(segments[-1], json_level.get(_StringUtil.to_pascal_case(segments[-1]), default))
 
     # each p in path(s) can be a string or a tuple
-    return tuple(resolve(p[0].split('.'), p[1]) if isinstance(p, tuple) else resolve(p.split('.')) for p in path )
+    return tuple(
+        resolve(p[0].split('.'), p[1]) if isinstance(p, tuple)
+        else resolve(p.split('.')) for p in ([paths] if isinstance(paths, (str, tuple)) else paths))
 
 class SimpleObjectParser(object):
     """A parser for simple (without fragments) Cumulocity database objects.
