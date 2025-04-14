@@ -27,7 +27,7 @@ class SubscriptionListener:
     def __init__(
             self,
             app: MultiTenantCumulocityApp,
-            callback: Callable[[str], None] = None,
+            callback: Callable[[list[str]], None] = None,
             max_threads: int = 5,
             blocking: bool = True,
             polling_interval: float = 3600,
@@ -107,25 +107,29 @@ class SubscriptionListener:
         if when == 'added':
             self.callbacks_on_add.append((callback, blocking))
             return self
-        elif when == 'removed':
+        if when == 'removed':
             self.callbacks_on_remove.append((callback, blocking))
             return self
-        else:
-            raise ValueError(f"Invalid activation mode: {when}")
+        raise ValueError(f"Invalid activation mode: {when}")
 
     def listen(self):
+        """Start the listener.
+
+        This is blocking.
+
+        """
         # invoke a callback function
-        def run(callback, is_blocking, tid):
-            def safe_run(t):
+        def invoke_callback(callback, is_blocking, arg):
+            def safe_invoke(a):
                 try:
-                    callback(t)
+                    callback(a)
                 except Exception as error:
                     print(f"Uncaught exception in callback: {error}")
                     self._log.error(f"Uncaught exception in callback: {error}", exc_info=error)
             if is_blocking:
-                safe_run(tid)
+                safe_invoke(arg)
             else:
-                future = self._executor.submit(safe_run, tid)
+                future = self._executor.submit(safe_invoke, arg)
                 future.add_done_callback(self._cleanup_future)
                 self._callback_futures.add(future)
 
@@ -148,17 +152,17 @@ class SubscriptionListener:
             # run 'removed' callbacks
             for tenant_id in removed:
                 for fun, blocking in self.callbacks_on_remove:
-                    run(fun, blocking, tenant_id)
+                    invoke_callback(fun, blocking, tenant_id)
             # wait remaining time for startup delay
             if added and self.startup_delay:
                 time.sleep(time.monotonic() - now + self.startup_delay)
             # run 'added' callbacks
             for tenant_id in added:
                 for fun, blocking in self.callbacks_on_add:
-                    run(fun, blocking, tenant_id)
+                    invoke_callback(fun, blocking, tenant_id)
             # run 'any' callbacks
             for fun, blocking in self.callbacks:
-                    run(fun, blocking, current_subscribers)
+                    invoke_callback(fun, blocking, current_subscribers)
             # set new baseline
             last_subscribers = current_subscribers
             # schedule next run, skip if already exceeded
@@ -169,10 +173,11 @@ class SubscriptionListener:
         if self._executor:
             self._executor.shutdown(wait=False)
 
-    def close(self):
+    def stop(self):
         self._is_closed = True
 
     def get_callback_threads(self):
+        # pylint: disable=protected-access
         return [t for t in self._executor._threads if t.is_alive()]
 
     def await_callback_threads(self, timeout: int = None):

@@ -27,7 +27,7 @@ def test_sub_setting():
         nonlocal listener
         removed.add(tenant_id)
         if tenant_id == 't2':
-            listener.close()
+            listener.stop()
 
     always = []
     def always_fun(tenant_ids):
@@ -68,7 +68,7 @@ def test_callback_threads():
     # mock-wrap cleanup function for monitoring
     listener._cleanup_future = Mock(side_effect=lambda future: SubscriptionListener._cleanup_future(listener, future))
     added_fun = Mock()
-    removed_fun = Mock(side_effect=lambda _: listener.close())
+    removed_fun = Mock(side_effect=lambda _: listener.stop())
 
     app.get_subscribers = Mock(side_effect=[
         ['t1'],  # add
@@ -100,7 +100,7 @@ def test_long_running_callback_threads():
     # mock-wrap cleanup function for monitoring
     listener._cleanup_future = Mock(side_effect=lambda future: SubscriptionListener._cleanup_future(listener, future))
 
-    added_fun = Mock(side_effect=Mock(side_effect=lambda _: (listener.close(), time.sleep(1))))
+    added_fun = Mock(side_effect=Mock(side_effect=lambda _: (listener.stop(), time.sleep(1))))
     listener.add_callback(added_fun, when='added', blocking=False)
 
     # ensure there is a set of added subscribers
@@ -147,7 +147,7 @@ def test_startup_delay():
     def added_fun(_):
         nonlocal t1, listener
         t1 = time.monotonic()
-        listener.close()
+        listener.stop()
 
     listener.add_callback(added_fun, when='added')
 
