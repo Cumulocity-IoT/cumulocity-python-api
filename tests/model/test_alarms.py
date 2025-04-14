@@ -84,8 +84,8 @@ def test_select(fun, params, expected, not_expected):
         assert ne not in resource
 
 
-def test_select_as_tuples():
-    """Verify that select as tuples works as expected."""
+def test_select_as_values():
+    """Verify that select as values works as expected."""
     jsons = [
         {'type': 'type1', 'text': 'text1', 'source': 'source1', 'test_Fragment': {'key': 'value1', 'key2': 'value2'}},
         {'type': 'type2', 'text': 'text2', 'source': 'source2', 'test_Fragment': {'key': 'value2'}},
@@ -93,14 +93,14 @@ def test_select_as_tuples():
 
     api = Alarms(c8y=Mock())
     api.c8y.get = Mock(side_effect=[{'alarms': jsons}, {'alarms': []}])
-    result = api.get_all(as_tuples=['type', 'text', 'test_Fragment.key', 'test_Fragment.key2'])
+    result = api.get_all(as_values=['type', 'text', 'test_Fragment.key', 'test_Fragment.key2'])
     assert result == [
         ('type1', 'text1', 'value1', 'value2'),
         ('type2', 'text2', 'value2', None),
     ]
 
     api.c8y.get = Mock(side_effect=[{'alarms': jsons}, {'alarms': []}])
-    result = api.get_all(as_tuples=['type', 'text', 'test_Fragment.key', ('test_Fragment.key2', '-')])
+    result = api.get_all(as_values=['type', 'text', 'test_Fragment.key', ('test_Fragment.key2', '-')])
     assert result == [
         ('type1', 'text1', 'value1', 'value2'),
         ('type2', 'text2', 'value2', '-'),

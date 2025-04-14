@@ -8,8 +8,8 @@ from c8y_api.model._base import ComplexObject
 from c8y_api.model._util import _StringUtil
 
 
-def as_tuples(json_data, paths: str | tuple | list[str|tuple]):
-    """Parse a JSON structure as tuples from paths.
+def as_values(json_data, paths: str | tuple | list[str | tuple]):
+    """Parse a JSON structure as value(s) from paths.
 
     Args:
         json_data (dict):  A JSON structure as Python dict
@@ -23,7 +23,8 @@ def as_tuples(json_data, paths: str | tuple | list[str|tuple]):
 
     Returns:
         A tuple with `len(path)` elements containing the values as-is defined
-        in the JSON structure; an invalid path will result in None.
+        in the JSON structure or a single value if `len(path) == 1` ; an
+        invalid path will result in None.
     """
     def resolve(segments, default=None):
         json_level = json_data
@@ -39,9 +40,13 @@ def as_tuples(json_data, paths: str | tuple | list[str|tuple]):
         return json_level.get(segments[-1], json_level.get(_StringUtil.to_pascal_case(segments[-1]), default))
 
     # each p in path(s) can be a string or a tuple
+    if isinstance(paths, str):
+        return resolve(paths.split('.'))
+    if isinstance(paths, tuple):
+        return resolve(paths[0].split('.'), paths[1])
     return tuple(
         resolve(p[0].split('.'), p[1]) if isinstance(p, tuple)
-        else resolve(p.split('.')) for p in ([paths] if isinstance(paths, (str, tuple)) else paths))
+        else resolve(p.split('.')) for p in paths)
 
 class SimpleObjectParser(object):
     """A parser for simple (without fragments) Cumulocity database objects.
