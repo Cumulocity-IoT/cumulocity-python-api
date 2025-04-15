@@ -433,7 +433,7 @@ class Events(CumulocityResource):
             min_age=min_age, max_age=max_age,
             reverse=reverse,
             with_source_devices=with_source_devices, with_source_assets=with_source_assets,
-            limit=limit, page_size=1,
+            limit=limit,
             **kwargs
         )
         return self._get_count(base_query)

@@ -130,7 +130,6 @@ class Inventory(CumulocityResource):
             fragments=fragments,
             query=query,
             ids=ids,
-            page_size=1,
             **kwargs)
         return self._get_count(base_query)
 
@@ -685,7 +684,6 @@ class DeviceInventory(Inventory):
             name=name,
             owner=owner,
             text=text,
-            page_size=1,
             **kwargs))
 
     def delete(self, *devices: Device) -> None:
@@ -898,7 +896,6 @@ class DeviceGroupInventory(Inventory):
             name=name,
             owner=owner,
             text=text,
-            page_size=1,
             **kwargs)
         return self._get_count(base_query)
 

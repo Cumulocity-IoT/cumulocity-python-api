@@ -159,6 +159,7 @@ class Operations(CumulocityResource):
             bulk_id: str = None, fragment: str = None,
             before: str | datetime = None, after: str | datetime = None,
             min_age: timedelta = None, max_age: timedelta = None,
+            date_from: str | datetime = None, date_to: str | datetime = None,
             reverse: bool = False, limit: int = None,
             page_size: int = 1000, page_number: int = None,
             as_values: str | tuple | list[str | tuple] = None,
@@ -192,6 +193,8 @@ class Operations(CumulocityResource):
                 at least this age are returned.
             max_age (timedelta):  Timedelta object. Only operations with
                 at most this age are returned.
+            date_from (str|datetime): Same as `after`
+            date_to (str|datetime): Same as `before`
             reverse (bool):  Invert the order of results, starting with the
                 most recent one.
             limit (int):  Limit the number of results to this number.
@@ -212,7 +215,9 @@ class Operations(CumulocityResource):
             expression=expression,
             agent_id=agent_id, device_id=device_id, status=status, bulk_id=bulk_id,
             fragment=fragment,
-            before=before, after=after, min_age=min_age, max_age=max_age,
+            before=before, after=after,
+            min_age=min_age, max_age=max_age,
+            date_from=date_from, date_to=date_to,
             reverse=reverse, page_size=page_size,
             **kwargs
         )
@@ -230,6 +235,7 @@ class Operations(CumulocityResource):
             bulk_id: str = None, fragment: str = None,
             before: str | datetime = None, after: str | datetime = None,
             min_age: timedelta = None, max_age: timedelta = None,
+            date_from: str | datetime = None, date_to: str | datetime = None,
             reverse: bool = False, limit: int = None,
             page_size: int = 1000, page_number: int = None,
             as_values: str | tuple | list[str | tuple] = None,
@@ -247,8 +253,15 @@ class Operations(CumulocityResource):
         return list(self.select(
             expression=expression,
             agent_id=agent_id, device_id=device_id, status=status, bulk_id=bulk_id,
-            fragment=fragment, before=before, after=after, min_age=min_age, max_age=max_age,
-            reverse=reverse, limit=limit, page_size=page_size, page_number=page_number, as_values=as_values,
+            fragment=fragment,
+            before=before, after=after,
+            min_age=min_age, max_age=max_age,
+            date_from=date_from, date_to=date_to,
+            reverse=reverse,
+            limit=limit,
+            page_size=page_size,
+            page_number=page_number,
+            as_values=as_values,
             **kwargs
         ))
 
@@ -286,6 +299,34 @@ class Operations(CumulocityResource):
         m = Operation.from_json(self._get_page(base_query, 1)[0])
         m.c8y = self.c8y  # inject c8y connection into instance
         return m
+
+    def get_count(
+            self,
+            expression: str = None,
+            agent_id: str = None, device_id: str = None, status: str = None,
+            bulk_id: str = None, fragment: str = None,
+            before: str | datetime = None, after: str | datetime = None,
+            min_age: timedelta = None, max_age: timedelta = None,
+            date_from: str | datetime = None, date_to: str | datetime = None,
+            **kwargs
+    ) -> int:
+        """Calculate the number of potential results of a database query.
+
+        This function uses the same parameters as the `select` function.
+
+        Returns:
+            Number of potential results
+        """
+        base_query = self._prepare_query(
+            expression=expression,
+            agent_id=agent_id, device_id=device_id, status=status,
+            bulk_id=bulk_id, fragment=fragment,
+            date_from=date_from, date_to=date_to,
+            before=before, after=after,
+            min_age=min_age, max_age=max_age,
+            **kwargs
+        )
+        return self._get_count(base_query)
 
     def delete_by(
             self,
