@@ -20,7 +20,7 @@ from c8y_api.model._base import (
     _DictWrapper,
     _ListWrapper,
 )
-from c8y_api.model._parser import SimpleObjectParser, ComplexObjectParser, as_tuples
+from c8y_api.model._parser import SimpleObjectParser, ComplexObjectParser, as_values
 
 
 class SimpleTestObject(SimpleObject):
@@ -65,6 +65,9 @@ def test_get_by_path(json, path, default, expected):
 
 
 @pytest.mark.parametrize("paths, expected", [
+    ('x', None),
+    ('a', 1),
+    (('x', '-'), '-'),
     (['x'], (None,)),
     (['a'], (1,)),
     (['bb.b1'], (True,)),
@@ -83,6 +86,9 @@ def test_get_by_path(json, path, default, expected):
     (['a', ('bb.b3', '-'), 'ccc.c2'], (1, '-', [1, 2, 3])),
 
 ], ids=[
+    'single_none',
+    'single_int',
+    'single_default',
     'none',
     'int',
     'nested_True',
@@ -100,8 +106,8 @@ def test_get_by_path(json, path, default, expected):
     'multi_default_1',
     'multi_default_2',
 ])
-def test_as_tuples(paths, expected):
-    """Verify that the as_tuples function works as expected."""
+def test_as_values(paths, expected):
+    """Verify that the as_values function works as expected."""
     json = {
         # types
         'a': 1,
@@ -118,7 +124,7 @@ def test_as_tuples(paths, expected):
         'mixed_case': {'caseMixed': 'v'}
     }
 
-    assert as_tuples(json, paths) == expected
+    assert as_values(json, paths) == expected
 
 
 def test_simpleobject_instantiation_and_formatting():
@@ -496,8 +502,8 @@ path_options = [
 @pytest.mark.parametrize('f1, e1', random.sample(path_options, 10))
 @pytest.mark.parametrize('f2, e2', random.sample(path_options, 10))
 @pytest.mark.parametrize('f3, e3', random.sample(path_options, 10))
-def test_complex_object_as_tuples(f1, e1, f2, e2, f3, e3):
-    """Verify that the as_tuples function works as expected."""
+def test_complex_object_as_tuple(f1, e1, f2, e2, f3, e3):
+    """Verify that the as_tuple function works as expected."""
 
     obj = ComplexTestObject(
         value='value',

@@ -94,8 +94,8 @@ def test_select_by_name_plus():
 
 
 @pytest.mark.parametrize('inventory_class', [Inventory, DeviceInventory, DeviceGroupInventory])
-def test_select_as_tuples(inventory_class):
-    """Verify that select as tuples works as expected."""
+def test_select_as_values(inventory_class):
+    """Verify that select as values works as expected."""
     data = [
         {'name': 'n1', 'type': 't1', 'test_Fragment': {'key': 'value1', 'key2': 'value2'}},
         {'name': 'n2', 'type': 't2', 'test_Fragment': {'key': 'value2'}},
@@ -104,14 +104,14 @@ def test_select_as_tuples(inventory_class):
 
     inventory = inventory_class(c8y)
     c8y.get = Mock(side_effect=[{'managedObjects': data}, {'managedObjects': []}])
-    result = inventory.get_all(as_tuples=['name', 'type', 'test_Fragment.key', 'test_Fragment.key2'])
+    result = inventory.get_all(as_values=['name', 'type', 'test_Fragment.key', 'test_Fragment.key2'])
     assert result == [
         ('n1', 't1', 'value1', 'value2'),
         ('n2', 't2', 'value2', None),
     ]
 
     c8y.get = Mock(side_effect=[{'managedObjects': data}, {'managedObjects': []}])
-    result = inventory.get_all(as_tuples=['name', 'type', 'test_Fragment.key', ('test_Fragment.key2', '-')])
+    result = inventory.get_all(as_values=['name', 'type', 'test_Fragment.key', ('test_Fragment.key2', '-')])
     assert result == [
         ('n1', 't1', 'value1', 'value2'),
         ('n2', 't2', 'value2', '-'),
