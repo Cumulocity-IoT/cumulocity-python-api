@@ -1,5 +1,6 @@
 # Changelog
 
+* Added `get_count` function to `Operations` API.
 * Added `as_values` parameter to `get_all` and `select` functions of the Inventory, DeviceInventory,
   DeviceGroupInventory, Events, Alarms, Users, Operations, and AuditRecords API.
 * Added code coverage reporting to `test` target for _invoke_.
