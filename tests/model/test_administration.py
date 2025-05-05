@@ -43,8 +43,8 @@ def test_select_users(params, expected, not_expected):
         assert ne not in resource
 
 
-def test_select_as_tuples():
-    """Verify that select as tuples works as expected."""
+def test_select_as_values():
+    """Verify that select as values works as expected."""
     jsons = [
         {'userName': 'user1',
          'enabled': True,
@@ -60,7 +60,7 @@ def test_select_as_tuples():
     c8y = CumulocityRestApi(base_url='base', tenant_id='t123', username='u', password='p')
     api = Users(c8y)
     api.c8y.get = Mock(side_effect=[{'users': jsons}, {'users': []}])
-    result = api.get_all(as_tuples=[
+    result = api.get_all(as_values=[
         'user_name', 'enabled', 'applications', 'customProperties.p1', 'customProperties.p2', 'phone'])
     assert result == [
         ('user1', True, [], 'v1', 'v2', None),
@@ -70,7 +70,7 @@ def test_select_as_tuples():
     c8y = CumulocityRestApi(base_url='base', tenant_id='t123', username='u', password='p')
     api = Users(c8y)
     api.c8y.get = Mock(side_effect=[{'users': jsons}, {'users': []}])
-    result = api.get_all(as_tuples=[
+    result = api.get_all(as_values=[
         'userName', 'enabled', 'applications', 'custom_properties.p1', ('customProperties.p2', 'v3'), ('phone', '')])
     assert result == [
         ('user1', True, [], 'v1', 'v2', ''),
@@ -80,8 +80,8 @@ def test_select_as_tuples():
     c8y = CumulocityRestApi(base_url='base', tenant_id='t123', username='u', password='p')
     api = Users(c8y)
     api.c8y.get = Mock(side_effect=[{'users': jsons}, {'users': []}])
-    result = api.get_all(as_tuples='enabled')
+    result = api.get_all(as_values='enabled')
     assert result == [
-        (True, ),
-        (False, ),
+        True,
+        False,
     ]

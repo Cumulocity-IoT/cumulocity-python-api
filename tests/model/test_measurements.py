@@ -41,8 +41,8 @@ def test_measurement_parsing():
     assert m.to_full_json() == expected_full_json
 
 
-def test_measurement_parsing_as_tuples():
-    """Verify that parsing Measurements directly as tuples works as expected."""
+def test_measurement_parsing_as_values():
+    """Verify that parsing Measurements directly as values works as expected."""
     measurements_json = {
         'measurements': [
             {
@@ -64,7 +64,7 @@ def test_measurement_parsing_as_tuples():
     }
     c8y = CumulocityApi(base_url='base', tenant_id='t12345', username='user', password='pass')
     c8y.get = Mock(side_effect=(measurements_json, {'measurements': []}))
-    result = c8y.measurements.get_all(as_tuples=['id', 'type', 'time', 'c8y_Measurement.c8y_temperature.value'])
+    result = c8y.measurements.get_all(as_values=['id', 'type', 'time', 'c8y_Measurement.c8y_temperature.value'])
 
     assert result == [
         ('12345', 'c8y_Measurement', '2020-31-12T22:33:44,567Z', 12.3),

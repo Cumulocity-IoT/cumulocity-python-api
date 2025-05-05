@@ -8,7 +8,7 @@ from typing import Type, List, Generator
 from c8y_api._base_api import CumulocityRestApi
 
 from c8y_api.model._base import CumulocityResource, ComplexObject, SimpleObject, _DictWrapper
-from c8y_api.model._parser import ComplexObjectParser, as_tuples as parse_as_tuples
+from c8y_api.model._parser import ComplexObjectParser, as_values as parse_as_values
 from c8y_api.model._util import _DateUtil
 
 
@@ -159,9 +159,10 @@ class Operations(CumulocityResource):
             bulk_id: str = None, fragment: str = None,
             before: str | datetime = None, after: str | datetime = None,
             min_age: timedelta = None, max_age: timedelta = None,
+            date_from: str | datetime = None, date_to: str | datetime = None,
             reverse: bool = False, limit: int = None,
             page_size: int = 1000, page_number: int = None,
-            as_tuples: str | tuple | list[str|tuple] = None,
+            as_values: str | tuple | list[str | tuple] = None,
             **kwargs
     ) -> Generator[Operation]:
         """ Query the database for operations and iterate over the results.
@@ -192,6 +193,8 @@ class Operations(CumulocityResource):
                 at least this age are returned.
             max_age (timedelta):  Timedelta object. Only operations with
                 at most this age are returned.
+            date_from (str|datetime): Same as `after`
+            date_to (str|datetime): Same as `before`
             reverse (bool):  Invert the order of results, starting with the
                 most recent one.
             limit (int):  Limit the number of results to this number.
@@ -200,7 +203,7 @@ class Operations(CumulocityResource):
                 related setting.
             page_number (int): Pull a specific page; this effectively disables
                 automatic follow-up page retrieval.
-            as_tuples: (*str|tuple):  Don't parse objects, but directly extract
+            as_values: (*str|tuple):  Don't parse objects, but directly extract
                 the values at certain JSON paths as tuples; If the path is not
                 defined in a result, None is used; Specify a tuple to define
                 a proper default value for each path.
@@ -212,7 +215,9 @@ class Operations(CumulocityResource):
             expression=expression,
             agent_id=agent_id, device_id=device_id, status=status, bulk_id=bulk_id,
             fragment=fragment,
-            before=before, after=after, min_age=min_age, max_age=max_age,
+            before=before, after=after,
+            min_age=min_age, max_age=max_age,
+            date_from=date_from, date_to=date_to,
             reverse=reverse, page_size=page_size,
             **kwargs
         )
@@ -220,8 +225,8 @@ class Operations(CumulocityResource):
             base_query,
             page_number,
             limit,
-            Operation.from_json if not as_tuples else
-            lambda x: parse_as_tuples(x, as_tuples))
+            Operation.from_json if not as_values else
+            lambda x: parse_as_values(x, as_values))
 
     def get_all(
             self,
@@ -230,9 +235,10 @@ class Operations(CumulocityResource):
             bulk_id: str = None, fragment: str = None,
             before: str | datetime = None, after: str | datetime = None,
             min_age: timedelta = None, max_age: timedelta = None,
+            date_from: str | datetime = None, date_to: str | datetime = None,
             reverse: bool = False, limit: int = None,
             page_size: int = 1000, page_number: int = None,
-            as_tuples: str | tuple | list[str|tuple] = None,
+            as_values: str | tuple | list[str | tuple] = None,
             **kwargs
     ) -> List[Operation]:
         """ Query the database for operations and return the results
@@ -247,8 +253,15 @@ class Operations(CumulocityResource):
         return list(self.select(
             expression=expression,
             agent_id=agent_id, device_id=device_id, status=status, bulk_id=bulk_id,
-            fragment=fragment, before=before, after=after, min_age=min_age, max_age=max_age,
-            reverse=reverse, limit=limit, page_size=page_size, page_number=page_number, as_tuples=as_tuples,
+            fragment=fragment,
+            before=before, after=after,
+            min_age=min_age, max_age=max_age,
+            date_from=date_from, date_to=date_to,
+            reverse=reverse,
+            limit=limit,
+            page_size=page_size,
+            page_number=page_number,
+            as_values=as_values,
             **kwargs
         ))
 
@@ -286,6 +299,34 @@ class Operations(CumulocityResource):
         m = Operation.from_json(self._get_page(base_query, 1)[0])
         m.c8y = self.c8y  # inject c8y connection into instance
         return m
+
+    def get_count(
+            self,
+            expression: str = None,
+            agent_id: str = None, device_id: str = None, status: str = None,
+            bulk_id: str = None, fragment: str = None,
+            before: str | datetime = None, after: str | datetime = None,
+            min_age: timedelta = None, max_age: timedelta = None,
+            date_from: str | datetime = None, date_to: str | datetime = None,
+            **kwargs
+    ) -> int:
+        """Calculate the number of potential results of a database query.
+
+        This function uses the same parameters as the `select` function.
+
+        Returns:
+            Number of potential results
+        """
+        base_query = self._prepare_query(
+            expression=expression,
+            agent_id=agent_id, device_id=device_id, status=status,
+            bulk_id=bulk_id, fragment=fragment,
+            date_from=date_from, date_to=date_to,
+            before=before, after=after,
+            min_age=min_age, max_age=max_age,
+            **kwargs
+        )
+        return self._get_count(base_query)
 
     def delete_by(
             self,

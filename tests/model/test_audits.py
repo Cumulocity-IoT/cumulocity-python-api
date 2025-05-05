@@ -79,8 +79,8 @@ def test_select_invalid_combinations(fun, args, errors):
     assert all(e in str(error) for e in errors)
 
 
-def test_select_as_tuples():
-    """Verify that select as tuples works as expected."""
+def test_select_as_values():
+    """Verify that select as values works as expected."""
     changes = [
         {'attribute': 'status11', 'type': 'change'},
         {'attribute': 'status12', 'type': 'change'}
@@ -92,22 +92,22 @@ def test_select_as_tuples():
     #
     api = AuditRecords(c8y=Mock())
     api.c8y.get = Mock(side_effect=[{'auditRecords': jsons}, {'auditRecords': []}])
-    result = api.get_all(as_tuples=['id', 'creation_time', 'severity', 'source.id', 'changes', 'text'])
+    result = api.get_all(as_values=['id', 'creation_time', 'severity', 'source.id', 'changes', 'text'])
     assert result == [
         ('id1', 'time1', 'CRITICAL', 'source1', changes, None),
         ('id2', 'time2', 'NORMAL', 'source2', None, 'text'),
     ]
 
     api.c8y.get = Mock(side_effect=[{'auditRecords': jsons}, {'auditRecords': []}])
-    result = api.get_all(as_tuples=['id', 'creation_time', 'severity', 'source.id', ('changes', []), ('text', '')])
+    result = api.get_all(as_values=['id', 'creation_time', 'severity', 'source.id', ('changes', []), ('text', '')])
     assert result == [
         ('id1', 'time1', 'CRITICAL', 'source1', changes, ''),
         ('id2', 'time2', 'NORMAL', 'source2', [], 'text'),
     ]
 
     api.c8y.get = Mock(side_effect=[{'auditRecords': jsons}, {'auditRecords': []}])
-    result = api.get_all(as_tuples=('text', '-'))
+    result = api.get_all(as_values=('text', '-'))
     assert result == [
-        ('-',),
-        ('text',),
+        '-',
+        'text',
     ]

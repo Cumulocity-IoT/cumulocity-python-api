@@ -57,6 +57,7 @@ def test_CRU(live_c8y: CumulocityApi, sample_device):  # noqa
                                    BulkOperation.GeneralStatus.FAILED]
     assert bulk.progress.all == 1
     assert bulk.progress.failed == 1
+    assert live_c8y.operations.get_count(bulk_id=bulk.id) == 1
 
     # (6) cleanup
     #     The bulk operation cannot be deleted physically

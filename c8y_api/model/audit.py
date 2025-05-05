@@ -8,7 +8,7 @@ from typing import Generator, List, ClassVar
 
 from c8y_api._base_api import CumulocityRestApi
 from c8y_api.model._base import CumulocityResource, ComplexObject
-from c8y_api.model._parser import ComplexObjectParser, SimpleObjectParser, as_tuples as parse_as_tuples
+from c8y_api.model._parser import ComplexObjectParser, SimpleObjectParser, as_values as parse_as_values
 from c8y_api.model._util import _DateUtil
 
 
@@ -207,7 +207,7 @@ class AuditRecords(CumulocityResource):
             min_age: timedelta = None, max_age: timedelta = None,
             reverse: bool = False, limit: int = None,
             page_size: int = 1000, page_number: int = None,
-            as_tuples: str | tuple | list[str | tuple] = None,
+            as_values: str | tuple | list[str | tuple] = None,
             **kwargs
     ) -> Generator[AuditRecord]:
         """Query the database for audit records and iterate over the results.
@@ -240,7 +240,7 @@ class AuditRecords(CumulocityResource):
                 parsed in one chunk). This is a performance related setting.
             page_number (int): Pull a specific page; this effectively disables
                 automatic follow-up page retrieval.
-            as_tuples: (*str|tuple):  Don't parse objects, but directly extract
+            as_values: (*str|tuple):  Don't parse objects, but directly extract
                 the values at certain JSON paths as tuples; If the path is not
                 defined in a result, None is used; Specify a tuple to define
                 a proper default value for each path.
@@ -259,8 +259,8 @@ class AuditRecords(CumulocityResource):
             base_query,
             page_number,
             limit,
-            AuditRecord.from_json if not as_tuples else
-            lambda x: parse_as_tuples(x, as_tuples))
+            AuditRecord.from_json if not as_values else
+            lambda x: parse_as_values(x, as_values))
 
     def get_all(
             self,
@@ -270,7 +270,7 @@ class AuditRecords(CumulocityResource):
             min_age: timedelta = None, max_age: timedelta = None,
             reverse: bool = False, limit: int = None,
             page_size: int = 1000, page_number: int = None,
-            as_tuples: str | tuple | list[str | tuple] = None,
+            as_values: str | tuple | list[str | tuple] = None,
             **kwargs
     ) -> List[AuditRecord]:
         """Query the database for audit records and return the results as list.
@@ -289,7 +289,7 @@ class AuditRecords(CumulocityResource):
             before=before, after=after,
             min_age=min_age, max_age=max_age,
             reverse=reverse, limit=limit, page_size=page_size, page_number=page_number,
-            as_tuples=as_tuples,
+            as_values=as_values,
             **kwargs,
         ))
 
