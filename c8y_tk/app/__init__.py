@@ -1,8 +1,9 @@
 # Copyright (c) 2025 Cumulocity GmbH
 
 import logging
+import threading
 import time
-from concurrent.futures import wait
+from concurrent.futures import wait, Future
 from concurrent.futures.thread import ThreadPoolExecutor
 from typing import Callable, Union
 
@@ -54,7 +55,8 @@ class SubscriptionListener:
 
         """
         self._n = self._n + 1
-        self._instance_name = f"{__name__}.{type(self).__name__}[{self._n}]"
+        self._instance_name = f"{__name__}.{type(self).__name__}[{self._n}]"\
+            if self._n > 1 else f"{__name__}.{type(self).__name__}"
         self.app = app
         self.max_threads = max_threads
         self.startup_delay = startup_delay
@@ -65,6 +67,7 @@ class SubscriptionListener:
         self._log = logging.Logger(self._instance_name)
         self._executor = None
         self._callback_futures = set()
+        self._listen_thread = None
         self._is_closed = False
 
     def _cleanup_future(self, future):
@@ -116,25 +119,28 @@ class SubscriptionListener:
         """Start the listener.
 
         This is blocking.
-
         """
-        # invoke a callback function
+        # safely invoke a callback function blocking or non-blocking
         def invoke_callback(callback, is_blocking, arg):
             def safe_invoke(a):
+                # pylint: disable=broad-exception-caught
                 try:
                     callback(a)
                 except Exception as error:
-                    print(f"Uncaught exception in callback: {error}")
                     self._log.error(f"Uncaught exception in callback: {error}", exc_info=error)
             if is_blocking:
                 safe_invoke(arg)
             else:
                 future = self._executor.submit(safe_invoke, arg)
-                future.add_done_callback(self._cleanup_future)
                 self._callback_futures.add(future)
+                future.add_done_callback(self._cleanup_future)
 
-        if any(not x[1] for x in (*self.callbacks_on_add, *self.callbacks_on_remove)):
-            self._executor = ThreadPoolExecutor(max_workers=self.max_threads, thread_name_prefix=self._instance_name)
+        # create an executor if there are non-blocking callbacks
+        if any(not x[1] for x in (*self.callbacks, *self.callbacks_on_add, *self.callbacks_on_remove)):
+            self._executor = ThreadPoolExecutor(
+                max_workers=self.max_threads,
+                thread_name_prefix=self._instance_name)
+
         last_subscribers = set()
         next_run = 0
         while not self._is_closed:
@@ -142,43 +148,125 @@ class SubscriptionListener:
             now = time.monotonic()
             if not now > next_run:
                 time.sleep(next_run - now)
-            # read subscribers
+            # read & check current subscribers
             current_subscribers = set(self.app.get_subscribers())
             added = current_subscribers - last_subscribers
             removed = last_subscribers - current_subscribers
-            # # clean threads
-            # if self._running_threads:
-            #     self._running_threads = [t for t in self._running_threads if t.is_alive()]
             # run 'removed' callbacks
             for tenant_id in removed:
+                self._log.info(f"Tenant subscription removed: ${tenant_id}.")
                 for fun, blocking in self.callbacks_on_remove:
                     invoke_callback(fun, blocking, tenant_id)
             # wait remaining time for startup delay
             if added and self.startup_delay:
-                time.sleep(time.monotonic() - now + self.startup_delay)
+                min_startup_delay = self.startup_delay - (time.monotonic() - now)
+                if min_startup_delay > 0:
+                    time.sleep(min_startup_delay)
             # run 'added' callbacks
             for tenant_id in added:
+                self._log.info(f"Tenant subscription added: ${tenant_id}.")
                 for fun, blocking in self.callbacks_on_add:
                     invoke_callback(fun, blocking, tenant_id)
             # run 'any' callbacks
-            for fun, blocking in self.callbacks:
+            if added or removed:
+                for fun, blocking in self.callbacks:
                     invoke_callback(fun, blocking, current_subscribers)
             # set new baseline
             last_subscribers = current_subscribers
             # schedule next run, skip if already exceeded
             next_run = time.monotonic() + self.polling_interval
+            self._log.debug(f"Next run: ${next_run}.")
             # release GIL
             time.sleep(0.1)
 
+        # shutdown executor, but don't wait for the callbacks
         if self._executor:
-            self._executor.shutdown(wait=False)
+            self._executor.shutdown(wait=False, cancel_futures=False)
+
+    def start(self) -> threading.Thread:
+        """Start the listener in a separate thread.
+
+        This function will return immediately. The listening can be stopped
+        using the `shutdown` function.
+
+        Returns:
+            The created Thread.
+        """
+        self._listen_thread = threading.Thread(target=self.listen, name=f"{self._instance_name}Main")
+        self._listen_thread.start()
+        return self._listen_thread
 
     def stop(self):
+        """Signal to stop the listening thread.
+
+        This function returns immediately; neither the completion of the
+        `listen` function, nor potentially running callbacks are awaited.
+        Use this, if the `listen` function is running in a thread managed
+        by your code.
+
+        See also:
+            Function `await_callbacks`, to await the completion of potentially
+            running callback functions.
+            Functions `start` and `shutdown` if you don't want to manage the
+            listening thread on your own.
+        """
         self._is_closed = True
 
-    def get_callback_threads(self):
-        # pylint: disable=protected-access
-        return [t for t in self._executor._threads if t.is_alive()]
+    def shutdown(self, timeout: float = None):
+        """Shutdown the listener thread and wait for it to finish.
 
-    def await_callback_threads(self, timeout: int = None):
+        This function can only be invoked if the listener thread was started
+        using the `start` function (i.e. the thread is managed by this class).
+        Otherwise, the `stop` function should be used.
+
+        Args:
+            timeout (float):  Maximum wait time (None to wait indefinitely).
+
+        Raises:
+            TimeoutError, if the shutdown could not complete within the
+                specified timeout. The shutdown procedure is not interrupted
+                by this and will complete eventually.
+        """
+        if not self._listen_thread:
+            raise RuntimeError("Listener thread is maintained elsewhere. Nothing to do.")
+        self.stop()
+        # wait for listen thread
+        start = time.monotonic()
+        self._listen_thread.join(timeout=timeout)
+        # wait for callbacks if there is time
+        if not timeout:
+            self.await_callbacks()
+        else:
+            remaining = timeout - (time.monotonic() - start)
+            if remaining > 0:
+                self.await_callbacks(timeout=remaining)
+        # raise timeout error if not complete
+        if self._listen_thread.is_alive() or (
+                self._executor and self.get_callbacks()):
+            raise TimeoutError(f"Listener thread did not close within the specified timeout ({timeout}s).")
+
+    def get_callbacks(self) -> list[Future]:
+        """Get currently running callbacks.
+
+        This function can be used to gain direct access to the currently
+        running callback threads. Usually, this is not necessary.
+
+        See also:
+             Function `await_callbacks` to await the completion of all
+             currently running callback threads.
+        """
+        return [f for f in self._callback_futures if f.running()]
+
+    def await_callbacks(self, timeout: float = None):
+        """Await running callbacks.
+
+        Args:
+            timeout (float): Maximum wait time (None to wait indefinitely)
+
+        Raises:
+            TimeoutError, if there are still running callbacks after the
+                specified timeout.
+        """
         wait(self._callback_futures, timeout=timeout)
+        if self.get_callbacks():
+            raise TimeoutError(f"Callback functions did not complete within the specified timeout ({timeout}s).")
