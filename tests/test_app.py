@@ -25,15 +25,16 @@ env_per_tenant = {
     'C8Y_BASEURL': 'http://baseurl',
     'C8Y_TENANT': 'tenant_id',
     'C8Y_USER': 'tenant_user',
-    'C8Y_PASSWORD': 'tenant_password'
+    'C8Y_PASSWORD': 'tenant_password',
+    'APPLICATION_KEY': 'application_key',
 }
 
 env_multi_tenant = {
     'C8Y_BASEURL': 'http://baseurl',
     'C8Y_BOOTSTRAP_TENANT': 'tenant_id',
     'C8Y_BOOTSTRAP_USER': 'tenant_user',
-    'C8Y_BOOTSTRAP_PASSWORD': 'tenant_password'
-
+    'C8Y_BOOTSTRAP_PASSWORD': 'tenant_password',
+    'APPLICATION_KEY': 'application_key',
 }
 
 
@@ -55,6 +56,7 @@ def test_per_tenant():
     assert c8y.username == env_per_tenant['C8Y_USER']
     assert isinstance(c8y.auth, HTTPBasicAuth)
     assert c8y.auth.password == env_per_tenant['C8Y_PASSWORD']
+    assert c8y.application_key == env_per_tenant['APPLICATION_KEY']
 
     # -> requests will be prepended with the base url
     with responses.RequestsMock() as rsps:
@@ -71,7 +73,6 @@ def test_per_tenant__user_instances():
     for single-tenant apps."""
 
     c8y = SimpleCumulocityApp(
-        application_key='app-key',
         processing_mode='proc-mode',
         cache_ttl=2,
     )
@@ -106,13 +107,29 @@ def test_per_tenant__user_instances():
     assert c8y_3 is not c8y_1
 
 
+@mock.patch.dict(os.environ, env_per_tenant, clear=True)
+def test_per_tenant_application_key():
+    """Verify that the application key from environment can be overwritten."""
+
+    # manually setting application
+    c8y = SimpleCumulocityApp(application_key='app_key')
+    # -> application key from environment overridden
+    assert c8y.application_key == 'app_key'
+
+    # create user instance from HTTP headers
+    headers = build_basic_auth('user', 'pass')
+    c8y_user = c8y.get_user_instance(headers)
+    # -> application key inherited
+    assert c8y_user.application_key == c8y.application_key
+
+
 @mock.patch.dict(os.environ, env_multi_tenant, clear=True)
 def test_multi_tenant__bootstrap_instance():
     """Verify that the bootstrap instance will be created properly within a
     multi-tenant environment."""
 
     c8y = MultiTenantCumulocityApp(
-        application_key='app-key',
+        # application_key='app-key',
         processing_mode='proc-mode',
     ).bootstrap_instance
 
@@ -121,8 +138,8 @@ def test_multi_tenant__bootstrap_instance():
     assert c8y.username == env_multi_tenant['C8Y_BOOTSTRAP_USER']
     assert isinstance(c8y.auth, HTTPBasicAuth)
     assert c8y.auth.password == env_multi_tenant['C8Y_BOOTSTRAP_PASSWORD']
+    assert c8y.application_key == env_multi_tenant['APPLICATION_KEY']
     # -> properties are inherited
-    assert c8y.application_key == 'app-key'
     assert c8y.processing_mode == 'proc-mode'
 
     # -> requests will be prepended with the base url
@@ -248,6 +265,7 @@ def test_multi_tenant__build_from_subscriptions():
         assert c8y.username == 'username'
         assert isinstance(c8y.auth, HTTPBasicAuth)
         assert c8y.auth.password == 'password'
+        assert c8y.application_key == c8y_factory.application_key
 
         # using the same tenant ID again
         read_subscriptions.reset_mock()
@@ -264,6 +282,30 @@ def test_multi_tenant__build_from_subscriptions():
         assert c8y3 is not c8y
         # -> subscriptions are not read again because they are cached
         read_subscriptions.assert_not_called()
+
+
+@mock.patch.dict(os.environ, env_multi_tenant, clear=True)
+def test_multi_tenant__override_application_key():
+    """Verify that the application key from environment can be overwritten."""
+
+    # manually setting application
+    c8y = MultiTenantCumulocityApp(application_key='app_key')
+    # -> application key from environment overridden
+    assert c8y.application_key == 'app_key'
+
+    # create user instance from HTTP headers
+    headers = build_basic_auth('t12345/user', 'pass')
+    c8y_user = c8y.get_user_instance(headers)
+    # -> application key inherited
+    assert c8y_user.application_key == c8y.application_key
+
+    # create tenant instance
+    with patch.object(MultiTenantCumulocityApp, '_read_subscription_auths') as read_subscriptions:
+        # we mock _read_subscriptions so that we don't need an actual
+        # connection and have a proper return value
+        read_subscriptions.return_value = {'t12345': HTTPBasicAuth('username', 'password')}
+        c8y_tenant = c8y.get_tenant_instance('t12345')
+        assert c8y_tenant.application_key == c8y.application_key
 
 
 @mock.patch.dict(os.environ, env_multi_tenant, clear=True)

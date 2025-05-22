@@ -1,5 +1,7 @@
 # Changelog
 
+* Single and multi tenant applications now automatically set the `application_key` property from the standard
+  `APPLICATION_KEY` environment variable. 
 * Added `get_count` function to `Operations` API.
 * Added `as_values` parameter to `get_all` and `select` functions of the Inventory, DeviceInventory,
   DeviceGroupInventory, Events, Alarms, Users, Operations, and AuditRecords API.
