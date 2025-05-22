@@ -144,7 +144,8 @@ class SimpleCumulocityApp(_CumulocityAppBase, CumulocityApi):
 
         Args:
             application_key (str|None): An application key to include in
-                all requests for tracking purposes.
+                all requests for tracking purposes; this will be read from
+                the environment (APPLICATION_KEY) if not defined.
             processing_mode (str);  Connection processing mode (see also
                 https://cumulocity.com/api/core/#processing-mode)
             cache_size (int|None): The maximum number of cached user
@@ -165,6 +166,8 @@ class SimpleCumulocityApp(_CumulocityAppBase, CumulocityApi):
             username = self._get_env('C8Y_USER')
             password = self._get_env('C8Y_PASSWORD')
             auth = HTTPBasicAuth(f'{tenant_id}/{username}', password)
+        if not application_key:
+            application_key = self._get_env('APPLICATION_KEY')
         super().__init__(log=self._log, cache_size=cache_size, cache_ttl=cache_ttl,
                          base_url=baseurl, tenant_id=tenant_id, auth=auth,
                          application_key=application_key, processing_mode=processing_mode)
@@ -205,7 +208,8 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
 
         Args:
             application_key (str|None): An application key to include in
-                all requests for tracking purposes.
+                all requests for tracking purposes; this will be read from
+                the environment (APPLICATION_KEY) if not defined.
             processing_mode (str);  Connection processing mode (see also
                 https://cumulocity.com/api/core/#processing-mode)
             cache_size (int|None): The maximum number of cached tenant
@@ -217,13 +221,13 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
             A new MultiTenantCumulocityApp instance
         """
         super().__init__(log=self._log, cache_size=cache_size, cache_ttl=cache_ttl)
-        self.application_key = application_key
+        self.application_key = application_key or self._get_env('APPLICATION_KEY')
         self.processing_mode = processing_mode
         self.cache_size = cache_size
         self.cache_ttl = cache_ttl
         self.bootstrap_instance = self._create_bootstrap_instance(
-            application_key=application_key,
-            processing_mode=processing_mode,
+            application_key=self.application_key,
+            processing_mode=self.processing_mode,
         )
         self._subscribed_auths = TTLCache(maxsize=cache_size, ttl=cache_ttl)
         self._tenant_instances = TTLCache(maxsize=cache_size, ttl=cache_ttl)
