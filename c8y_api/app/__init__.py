@@ -14,6 +14,9 @@ from c8y_api._main_api import CumulocityApi
 from c8y_api._util import c8y_keys
 
 
+_sentinel = object()
+
+
 class _CumulocityAppBase(object):
     """Internal class, base for both Per Tenant and Multi Tenant specific
     implementation."""
@@ -96,11 +99,12 @@ class _CumulocityAppBase(object):
         return info
 
     @staticmethod
-    def _get_env(name: str) -> str:
+    def _get_env(name: str, default: str | None = _sentinel) -> str:
         """Try to read a specific Cumulocity environment variable.
 
         Args:
             name (str):  Environment variable key
+            default (str):  Default value to use if key is not defined
 
         Returns:
             The value of the environment variable.
@@ -111,6 +115,8 @@ class _CumulocityAppBase(object):
         try:
             return os.environ[name]
         except KeyError as e:
+            if default is not _sentinel:
+                return default
             keys = ', '.join(c8y_keys()) or "none"
             raise ValueError(f"Missing environment variable: {name}. Found {keys}.") from e
 
@@ -168,7 +174,7 @@ class SimpleCumulocityApp(_CumulocityAppBase, CumulocityApi):
             password = self._get_env('C8Y_PASSWORD')
             auth = HTTPBasicAuth(f'{tenant_id}/{username}', password)
         if not application_key:
-            application_key = self._get_env('APPLICATION_KEY')
+            application_key = self._get_env('APPLICATION_KEY', default=None)
         super().__init__(log=self._log, cache_size=cache_size, cache_ttl=cache_ttl,
                          base_url=baseurl, tenant_id=tenant_id, auth=auth,
                          application_key=application_key, processing_mode=processing_mode)
@@ -222,7 +228,7 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
             A new MultiTenantCumulocityApp instance
         """
         super().__init__(log=self._log, cache_size=cache_size, cache_ttl=cache_ttl)
-        self.application_key = application_key or self._get_env('APPLICATION_KEY')
+        self.application_key = application_key or self._get_env('APPLICATION_KEY', default=None)
         self.processing_mode = processing_mode
         self.cache_size = cache_size
         self.cache_ttl = cache_ttl
