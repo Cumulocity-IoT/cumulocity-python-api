@@ -107,7 +107,7 @@ def test_per_tenant__user_instances():
     assert c8y_3 is not c8y_1
 
 
-def test_per_tenant_application_key2():
+def test_per_tenant_application_key():
     """Verify that the application key from environment can be overwritten."""
 
     env= {
