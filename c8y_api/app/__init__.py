@@ -4,6 +4,7 @@ from __future__ import annotations
 from abc import abstractmethod
 import logging
 import os
+from typing import Mapping
 
 from cachetools import TTLCache
 from requests.auth import HTTPBasicAuth, AuthBase
@@ -26,7 +27,7 @@ class _CumulocityAppBase(object):
     def _build_user_instance(self, auth: AuthBase) -> CumulocityApi:
         """This must be defined by the implementing classes."""
 
-    def get_user_instance(self, headers: dict = None, cookies: dict = None) -> CumulocityApi:
+    def get_user_instance(self, headers: Mapping[str, str] = None, cookies: Mapping[str, str] = None) -> CumulocityApi:
         """Return a user-specific CumulocityApi instance.
 
         The instance will have user access, based on the Authorization header
@@ -35,9 +36,9 @@ class _CumulocityAppBase(object):
         are cached.
 
         Args:
-            headers (dict): A dictionary of HTTP header entries. The user
+            headers (Mapping): A dictionary of HTTP header entries. The user
                 access is based on the Authorization header within.
-            cookies (dict): A dictionary of HTTP Cookie entries. The user
+            cookies (Mapping): A dictionary of HTTP Cookie entries. The user
                 access is based on an authorization cookie as provided by
                 Cumulocity.
         Returns:
@@ -71,7 +72,7 @@ class _CumulocityAppBase(object):
                     self.log.info(f"User '{username}' cleared from cache.")
 
     @staticmethod
-    def _get_auth_header(headers: dict = None, cookies: dict = None) -> str:
+    def _get_auth_header(headers: Mapping[str, str] = None, cookies: Mapping[str, str] = None) -> str:
         """Extract the authorization information from headers and cookies."""
         headers = headers or {}
         cookies = cookies or {}
@@ -302,15 +303,16 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
         return CumulocityApi(base_url=self.bootstrap_instance.base_url, tenant_id=tenant_id, auth=auth,
                              application_key=self.application_key, processing_mode=self.processing_mode)
 
-    def get_tenant_instance(self, tenant_id: str = None, headers: dict = None, cookies: dict = None) -> CumulocityApi:
+    def get_tenant_instance(self, tenant_id: str = None,
+                            headers: Mapping[str, str] = None, cookies: Mapping[str, str] = None) -> CumulocityApi:
         """Provide access to a tenant-specific instance in a multi-tenant
         application setup.
 
         Args:
             tenant_id (str):  ID of the tenant to get access to
-            headers (dict):  Inbound request headers, the tenant ID
+            headers (Mapping):  Inbound request headers, the tenant ID
                 is resolved from the Authorization header
-            cookies (dict): A dictionary of HTTP Cookie entries. The user
+            cookies (Mapping): A dictionary of HTTP Cookie entries. The user
                 access is based on an authorization cookie as provided by
                 Cumulocity.
 
