@@ -50,6 +50,7 @@ class _QueryUtil(object):
         encoded_quotes = sub('\'', '\'\'', value)
         return encoded_quotes if " " not in encoded_quotes else f"'{encoded_quotes}'"
 
+
 class _DateUtil(object):
 
     @staticmethod
