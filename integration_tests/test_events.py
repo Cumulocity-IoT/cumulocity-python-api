@@ -1,9 +1,10 @@
 # Copyright (c) 2025 Cumulocity GmbH
 
-# pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name, protected-access
 
 from __future__ import annotations
 
+import datetime as dt
 import logging
 import os
 import tempfile
@@ -14,6 +15,7 @@ import pytest
 
 from c8y_api import CumulocityApi
 from c8y_api.model import Event, Device
+from c8y_api.model._util import _DateUtil
 from util.testing_util import RandomNameGenerator
 
 
@@ -37,9 +39,10 @@ def sample_events(factory, sample_device) -> List[Event]:
     be removed after the test function."""
     typename = RandomNameGenerator.random_name()
     result = []
+    now = _DateUtil.now()
     for i in range(1, 6):
         event = Event(type=f'{typename}_{i}', text=f'{typename} text', source=sample_device.id,
-                      time='2020-12-31T11:33:55Z')
+                      time=now + dt.timedelta(minutes=i))
         result.append(factory(event))
     return result
 
@@ -151,19 +154,23 @@ def test_filter_by_update_time(live_c8y: CumulocityApi, sample_device, sample_ev
     pivot = updated_datetimes[len(updated_datetimes)//2]
 
     before_events = live_c8y.events.get_all(source=event.source, updated_before=pivot)
-    after_events = live_c8y.events.get_all(source=event.source, updated_after=pivot)
+    after_events = live_c8y.events.get_all(source=event.source, updated_after=pivot, reverse=True)
+    last_event_before = live_c8y.events.get_last(source=event.source, updated_before=pivot)
+    last_event_after = live_c8y.events.get_last(source=event.source, updated_after=pivot)
 
     # -> selected events should match the update times from 'before'
     # upper boundary, i.e. before/to timestamp is exclusive -> does not include pivot
     before_datetimes = list(filter(lambda x: x < pivot, updated_datetimes))
     result_datetimes = [a.updated_datetime for a in before_events]
     assert sorted(result_datetimes) == sorted(before_datetimes)
+    assert last_event_before.updated_datetime == max(before_datetimes)
 
     # -> selected events should match the update times from 'after'
     # lower boundary, i.e. after/from timestamp is inclusive -> includes pivot
     after_datetimes = list(filter(lambda x: x >= pivot, updated_datetimes))
     result_datetimes = [a.updated_datetime for a in after_events]
     assert sorted(result_datetimes) == sorted(after_datetimes)
+    assert last_event_after.updated_datetime == max(after_datetimes)
 
 
 def test_CRUD_attachments(live_c8y: CumulocityApi, sample_device: Device, sample_events: List[Event]):  # noqa (case)

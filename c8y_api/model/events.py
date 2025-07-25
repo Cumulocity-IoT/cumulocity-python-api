@@ -250,6 +250,16 @@ class Events(CumulocityResource):
         if fragment_value and not (fragment_type or fragment):
             raise ValueError("Fragment value filter also needs 'fragment_type' or 'fragment' filter.")
 
+    def _prepare_base_query(
+            self,
+            fragment: str = None,
+            fragment_type: str = None,
+            fragment_value: str = None,
+            **kwargs) -> str:
+        Events._check_params(fragment, fragment_type, fragment_value)
+        base_query = self._prepare_query(**kwargs)
+        return base_query
+
     def select(self,
                expression: str = None,
                type: str = None, source: str = None, fragment: str = None,  # noqa (type)
@@ -323,22 +333,26 @@ class Events(CumulocityResource):
         Returns:
             Generator for Event objects
         """
-        Events._check_params(fragment, fragment_type, fragment_value)
-
-        base_query = self._prepare_query(
+        base_query = self._prepare_base_query(
             expression=expression,
-            type=type, source=source, fragment=fragment,
-            fragment_type=fragment_type, fragment_value=fragment_value,
-            before=before, after=after,
-            date_from=date_from, date_to=date_to,
-            created_before=created_before, created_after=created_after,
-            created_from=created_from, created_to=created_to,
-            updated_before=updated_before, updated_after=updated_after,
-            last_updated_from=last_updated_from, last_updated_to=last_updated_to,
-            min_age=min_age, max_age=max_age,
+            type=type,
+            source=source,
+            fragment=fragment,
+            fragment_type=fragment_type,
+            fragment_value=fragment_value,
+            before=before,
+            after=after,
+            created_before=created_before,
+            created_after=created_after,
+            updated_before=updated_before,
+            updated_after=updated_after,
+            min_age=min_age,
+            max_age=max_age,
+            date_from=date_from,
+            date_to=date_to,
             reverse=reverse,
-            with_source_devices=with_source_devices, with_source_assets=with_source_assets,
-            page_size=page_size,
+            with_source_assets=with_source_assets,
+            with_source_devices=with_source_devices,
             **kwargs)
         return super()._iterate(
             base_query,
@@ -415,28 +429,72 @@ class Events(CumulocityResource):
         Returns:
             Number of potential results
         """
-        Events._check_params(
+        base_query = self._prepare_base_query(
+            expression=expression,
+            type=type,
+            source=source,
             fragment=fragment,
             fragment_type=fragment_type,
             fragment_value=fragment_value,
-        )
-        base_query = self._prepare_query(
-            expression=expression,
-            type=type, source=source, fragment=fragment,
-            fragment_type=fragment_type, fragment_value=fragment_value,
-            before=before, after=after,
-            date_from=date_from, date_to=date_to,
-            created_before=created_before, created_after=created_after,
-            created_from=created_from, created_to=created_to,
-            updated_before=updated_before, updated_after=updated_after,
-            last_updated_from=last_updated_from, last_updated_to=last_updated_to,
-            min_age=min_age, max_age=max_age,
+            before=before,
+            after=after,
+            created_before=created_before,
+            created_after=created_after,
+            updated_before=updated_before,
+            updated_after=updated_after,
+            min_age=min_age,
+            max_age=max_age,
+            date_from=date_from,
+            date_to=date_to,
             reverse=reverse,
-            with_source_devices=with_source_devices, with_source_assets=with_source_assets,
-            limit=limit,
-            **kwargs
-        )
+            with_source_assets=with_source_assets,
+            with_source_devices=with_source_devices,
+            **kwargs)
         return self._get_count(base_query)
+
+    def get_last(
+            self,
+            expression: str = None,
+            type: str = None, source: str = None, fragment: str = None,  # noqa (type)
+            fragment_type: str = None, fragment_value: str = None,
+            before: str | datetime = None, date_to: str | datetime = None,
+            created_before: str | datetime = None, created_to: str | datetime = None,
+            updated_before: str | datetime = None, last_updated_to: str | datetime = None,
+            min_age: timedelta = None,
+            with_source_assets: bool = None,
+            with_source_devices: bool = None,
+            **kwargs
+        ) -> Event | None:
+        """Retrieve the most recent event.
+        """
+        after = None
+        if not before and not date_to and not min_age:
+            after = '1970-01-01'
+        base_query = self._prepare_base_query(
+            expression=expression,
+            type=type,
+            source=source,
+            fragment=fragment,
+            fragment_type=fragment_type,
+            fragment_value=fragment_value,
+            before=before,
+            date_to=date_to,
+            after=after, # fallback if no other is defined
+            created_before=created_before,
+            created_to=created_to,
+            updated_before=updated_before,
+            last_updated_to=last_updated_to,
+            min_age=min_age,
+            reverse=False,  # newest first (non-standard)
+            with_source_assets=with_source_assets,
+            with_source_devices=with_source_devices,
+            **kwargs)
+        r = self._get_page(base_query, 1)
+        if not r:
+            return None
+        e = Event.from_json(r[0])
+        e.c8y = self.c8y  # inject c8y connection into instance
+        return e
 
     def create(self, *events: Event):
         """Create event objects within the database.

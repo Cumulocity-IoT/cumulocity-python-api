@@ -274,14 +274,14 @@ class Operations(CumulocityResource):
             before: str | datetime = None,
             min_age: timedelta = None,
             **kwargs
-    ) -> Operation:
+    ) -> Operation|None:
         """ Query the database and return the last matching operation.
 
         This function is a special variant of the select function. Only
         the last matching result is returned.
 
         Returns:
-            Last matching Operation object
+            Last matching Operation object or None
         """
         # at least one date qualifier is required for this query to function,
         # so we enforce the 'after' filter if nothing else is specified
@@ -296,9 +296,12 @@ class Operations(CumulocityResource):
             reverse=True, page_size=1,
             **kwargs
         )
-        m = Operation.from_json(self._get_page(base_query, 1)[0])
-        m.c8y = self.c8y  # inject c8y connection into instance
-        return m
+        r = self._get_page(base_query, 1)
+        if not r:
+            return None
+        o = Operation.from_json(r[0])
+        o.c8y = self.c8y  # inject c8y connection into instance
+        return o
 
     def get_count(
             self,

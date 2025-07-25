@@ -1,6 +1,5 @@
 # Copyright (c) 2025 Cumulocity GmbH
 
-
 from c8y_api import CumulocityApi
 from c8y_api.model import Operation
 
@@ -18,12 +17,12 @@ def test_CRUD(live_c8y: CumulocityApi, sample_device):
     operation = operation.create()
 
     # -> operation should have been created and in PENDING state
-    operations = live_c8y.operations.get_all(agent_id=sample_device.id, status=Operation.Status.PENDING)
+    operations = live_c8y.operations.get_all(device_id=sample_device.id, status=Operation.Status.PENDING)
     assert len(operations) == 1
     assert operations[0].id == operation.id
 
     # -> same result with get_last
-    operation2 = live_c8y.operations.get_last(agent_id=sample_device.id, status=Operation.Status.PENDING)
+    operation2 = live_c8y.operations.get_last(device_id=sample_device.id, status=Operation.Status.PENDING)
     assert operation2.id == operation.id
 
     # (2) update operation
@@ -45,3 +44,49 @@ def test_CRUD(live_c8y: CumulocityApi, sample_device):
 
     # -> cannot be found anymore
     assert not live_c8y.operations.get_all(device_id=sample_device.id)
+
+
+def test_get(live_c8y: CumulocityApi, sample_device):
+    """Verify that query-like retrieval works as expected."""
+    # (1) create operations
+    operations = [
+        Operation(live_c8y, sample_device.id, description=f'Description {i}',
+                  c8y_Command={'text': 'Command text'}).create()
+        for i in range(5)
+    ]
+
+    # (2) all should have been created an in PENDING state
+    result = live_c8y.operations.get_all(device_id=sample_device.id, status=Operation.Status.PENDING)
+    assert len(result) == 5
+    assert all(o.device_id == sample_device.id for o in result)
+
+    # (3) get last
+    result = live_c8y.operations.get_last(device_id=sample_device.id)
+    assert isinstance(result, Operation)
+    assert result.device_id == sample_device.id
+
+    # (4) retrieving subsets
+    operations[0].status = Operation.Status.EXECUTING
+    operations[1].status = Operation.Status.EXECUTING
+    operations[0].update()
+    operations[1].update()
+
+    result = live_c8y.operations.get_all(device_id=sample_device.id, status=Operation.Status.PENDING)
+    assert len(result) == 3
+    result = live_c8y.operations.get_last(device_id=sample_device.id, status=Operation.Status.PENDING)
+    assert result.status == Operation.Status.PENDING
+    assert result.device_id == sample_device.id
+
+    result = live_c8y.operations.get_all(device_id=sample_device.id, status=Operation.Status.EXECUTING)
+    assert len(result) == 2
+    result = live_c8y.operations.get_last(device_id=sample_device.id, status=Operation.Status.EXECUTING)
+    assert result.status == Operation.Status.EXECUTING
+    assert result.device_id == sample_device.id
+
+    # (5) deleting subsets
+    live_c8y.operations.delete_by(device_id=sample_device.id, status=Operation.Status.EXECUTING)
+    assert live_c8y.operations.get_all(device_id=sample_device.id, status=Operation.Status.EXECUTING) == []
+    assert len(live_c8y.operations.get_all(device_id=sample_device.id, status=Operation.Status.PENDING)) == 3
+
+    # (6) no match with get_last
+    assert live_c8y.operations.get_last(device_id=sample_device.id, status=Operation.Status.EXECUTING) is None

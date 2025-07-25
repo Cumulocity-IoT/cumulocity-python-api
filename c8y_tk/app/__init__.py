@@ -51,8 +51,6 @@ class SubscriptionListener:
             startup_delay (float):  A minimum delay before a newly added
                 microservice is considered to be "added" (the callback
                 invocation will be delayed by this).
-
-
         """
         self._n = self._n + 1
         self._instance_name = f"{__name__}.{type(self).__name__}[{self._n}]"\
@@ -64,7 +62,7 @@ class SubscriptionListener:
         self.callbacks = [(callback, blocking)] if callback else []
         self.callbacks_on_add = []
         self.callbacks_on_remove = []
-        self._log = logging.Logger(self._instance_name)
+        self._log = logging.getLogger(self._instance_name)
         self._executor = None
         self._callback_futures = set()
         self._listen_thread = None
@@ -121,10 +119,11 @@ class SubscriptionListener:
         This is blocking.
         """
         # safely invoke a callback function blocking or non-blocking
-        def invoke_callback(callback, is_blocking, arg):
+        def invoke_callback(callback, is_blocking, _, arg):
             def safe_invoke(a):
                 # pylint: disable=broad-exception-caught
                 try:
+                    self._log.debug(f"Invoking callback: {callback}")
                     callback(a)
                 except Exception as error:
                     self._log.error(f"Uncaught exception in callback: {error}", exc_info=error)
@@ -154,9 +153,9 @@ class SubscriptionListener:
             removed = last_subscribers - current_subscribers
             # run 'removed' callbacks
             for tenant_id in removed:
-                self._log.info(f"Tenant subscription removed: ${tenant_id}.")
+                self._log.info(f"Tenant subscription removed: {tenant_id}.")
                 for fun, blocking in self.callbacks_on_remove:
-                    invoke_callback(fun, blocking, tenant_id)
+                    invoke_callback(fun, blocking, 'Removed', tenant_id)
             # wait remaining time for startup delay
             if added and self.startup_delay:
                 min_startup_delay = self.startup_delay - (time.monotonic() - now)
@@ -164,13 +163,14 @@ class SubscriptionListener:
                     time.sleep(min_startup_delay)
             # run 'added' callbacks
             for tenant_id in added:
-                self._log.info(f"Tenant subscription added: ${tenant_id}.")
+                self._log.info(f"Tenant subscription added: {tenant_id}.")
                 for fun, blocking in self.callbacks_on_add:
-                    invoke_callback(fun, blocking, tenant_id)
+                    invoke_callback(fun, blocking, 'Added', tenant_id)
             # run 'any' callbacks
             if added or removed:
+                self._log.info(f"Tenant subscriptions changed: {current_subscribers}.")
                 for fun, blocking in self.callbacks:
-                    invoke_callback(fun, blocking, current_subscribers)
+                    invoke_callback(fun, blocking, None, current_subscribers)
             # set new baseline
             last_subscribers = current_subscribers
             # schedule next run, skip if already exceeded
