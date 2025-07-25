@@ -93,9 +93,9 @@ class _CumulocityAppBase(object):
             info = get_item('Authorization', headers)
 
         if not info:
-
             keys = ", ".join([*headers.keys(), *cookies.keys()]) or "None"
             raise KeyError(f"Unable to resolve Authorization information. Found keys: {keys}.")
+
         return info
 
     @staticmethod
