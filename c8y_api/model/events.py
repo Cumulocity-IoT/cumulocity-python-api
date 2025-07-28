@@ -250,14 +250,18 @@ class Events(CumulocityResource):
         if fragment_value and not (fragment_type or fragment):
             raise ValueError("Fragment value filter also needs 'fragment_type' or 'fragment' filter.")
 
-    def _prepare_base_query(
+    def _prepare_event_query(
             self,
             fragment: str = None,
             fragment_type: str = None,
             fragment_value: str = None,
             **kwargs) -> str:
         Events._check_params(fragment, fragment_type, fragment_value)
-        base_query = self._prepare_query(**kwargs)
+        base_query = self._prepare_query(
+            fragment=fragment,
+            fragment_type=fragment_type,
+            fragment_value=fragment_value,
+            **kwargs)
         return base_query
 
     def select(self,
@@ -333,7 +337,7 @@ class Events(CumulocityResource):
         Returns:
             Generator for Event objects
         """
-        base_query = self._prepare_base_query(
+        base_query = self._prepare_event_query(
             expression=expression,
             type=type,
             source=source,
@@ -344,8 +348,12 @@ class Events(CumulocityResource):
             after=after,
             created_before=created_before,
             created_after=created_after,
+            created_from=created_from,
+            created_to=created_to,
             updated_before=updated_before,
             updated_after=updated_after,
+            last_updated_from=last_updated_from,
+            last_updated_to=last_updated_to,
             min_age=min_age,
             max_age=max_age,
             date_from=date_from,
@@ -429,7 +437,7 @@ class Events(CumulocityResource):
         Returns:
             Number of potential results
         """
-        base_query = self._prepare_base_query(
+        base_query = self._prepare_event_query(
             expression=expression,
             type=type,
             source=source,
@@ -440,8 +448,12 @@ class Events(CumulocityResource):
             after=after,
             created_before=created_before,
             created_after=created_after,
+            created_from=created_from,
+            created_to=created_to,
             updated_before=updated_before,
             updated_after=updated_after,
+            last_updated_from=last_updated_from,
+            last_updated_to=last_updated_to,
             min_age=min_age,
             max_age=max_age,
             date_from=date_from,
@@ -470,7 +482,7 @@ class Events(CumulocityResource):
         after = None
         if not before and not date_to and not min_age:
             after = '1970-01-01'
-        base_query = self._prepare_base_query(
+        base_query = self._prepare_event_query(
             expression=expression,
             type=type,
             source=source,
