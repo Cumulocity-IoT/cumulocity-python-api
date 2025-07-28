@@ -11,29 +11,6 @@ from c8y_api.model import Series
 from c8y_tk.analytics import to_data_frame, to_numpy, to_series
 
 
-@pytest.mark.parametrize('names, values, expected',[
-    (['type'], ['min'], ['type']),
-    (['type.name'], ['max'], ['type_name']),
-    (['type.name'], ['min', 'max'], ['type_name_min', 'type_name_max']),
-    (['one', 'two'], ['min'], ['one', 'two']),
-    (['one', 'two'], ['min', 'max'], ['one_min', 'one_max', 'two_min', 'two_max']),
-    (['one name', 'two'], ['min', 'max'], ['one_name_min', 'one_name_max', 'two_min', 'two_max']),
-    (['a.b c_d', 'a_1.b_.c'], ['x'], ['a_b_c_d', 'a_1_b__c']),
-], ids=[
-    'simple',
-    'dot',
-    'dot_min_max',
-    'multi',
-    'multi_space',
-    'multi_mix_min_max',
-    'characters',
-])
-@pytest.mark.skip("No longer necessary?")
-def test_build_columns(names, values, expected):
-    """Verify that column name encoding works as expected."""
-    pass
-
-
 @pytest.fixture(name='sample_series')
 def fix_sample_series():
     """Create sample series (a single and a multi series as tuple.)"""
