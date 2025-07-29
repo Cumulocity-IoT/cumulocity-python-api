@@ -21,3 +21,4 @@ PyOTP
 hatchling
 hatch-vcs
 importlib_metadata; python_version < '3.8'
+tenacity
