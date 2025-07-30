@@ -29,6 +29,7 @@ dependencies = [
     "PyYAML",
     "requests",
     "websockets",
+    "certifi",
     "importlib_metadata; python_version < '3.8'"
 ]
 
