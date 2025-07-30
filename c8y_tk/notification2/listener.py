@@ -3,8 +3,12 @@
 import asyncio
 import json as js
 import logging
+import ssl
 import time
 from typing import Callable, Awaitable
+
+import certifi
+from urllib3.exceptions import SSLError
 
 try:
     import websockets.asyncio.client as ws_client
@@ -113,9 +117,15 @@ class AsyncListener(object):
                                 self.subscriber_name or 'default')
             try:
                 self._log.debug("Connecting ...")
-                self._connection = await ws_client.connect(self._current_uri,
-                                                    ping_interval=AsyncListener.ping_interval,
-                                                    ping_timeout=AsyncListener.ping_timeout)
+                # ensure that the SSL context uses certifi
+                ssl_context = ssl.create_default_context()
+                ssl_context.load_verify_locations(certifi.where())
+                self._connection = await ws_client.connect(
+                    uri=self._current_uri,
+                    ping_interval=AsyncListener.ping_interval,
+                    ping_timeout=AsyncListener.ping_timeout,
+                    ssl=ssl_context,
+                )
                 self._log.info("Websocket connection established for subscription %s, %s",
                                self.subscription_name,
                                self.subscriber_name or 'default')
@@ -165,6 +175,9 @@ class AsyncListener(object):
                 self._log.info("Websocket connection failed: %s", e)
             except ConnectionClosed as e:
                 self._log.info("Websocket connection closed: %s", e)
+            except SSLError as e:
+                self._log.error("SSL connection failed: %s", e, exc_info=e)
+                raise e
 
     async def send(self, payload: str):
         """Send a custom message.
