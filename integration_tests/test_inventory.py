@@ -14,44 +14,14 @@ from util.testing_util import RandomNameGenerator
 from tests.utils import get_ids
 
 
-@pytest.fixture(scope='session')
-def object_factory(logger, live_c8y: CumulocityApi):
-    """Provides a generic factory function which creates given ManagedObject
-    instances within the database and cleans up afterwards.
-
-    This fixture is supposed to be used by other fixtures.
-    """
-
-    created_objs = []
-
-    def factory_fun(*objs: ManagedObject):
-        logger.info(f"Creating {len(objs)} ManagedObject instances in live Cumulocity instance ...")
-        new_objects = []
-        for obj in objs:  # noqa
-            obj.c8y = live_c8y
-            created_obj = obj.create()
-            new_objects.append(created_obj)
-            logger.info(f'Created ManagedObject: #{created_obj.id}, name: {obj.name}, type: {obj.type}')
-        created_objs.extend(new_objects)
-        return new_objects
-
-    yield factory_fun
-
-    logger.info("Removing previously created ManagedObject instances ...")
-    for obj in created_objs:
-        obj.delete()
-        logger.info(f"Deleted ManagedObject: #{obj.id}")
-
-
 @pytest.fixture(scope='function')
-def mutable_object(object_factory) -> ManagedObject:
+def mutable_object(module_factory) -> ManagedObject:
     """Provide a single managed object ready to be changed during a test."""
 
     name = RandomNameGenerator.random_name(2)
-    typename = name
-
-    mo = ManagedObject(name=name, type=typename, **{name: {'key': 'value'}})
-    return object_factory(mo)[0]
+    return module_factory(
+        ManagedObject(name=name, type=name, **{name: {'key': 'value'}})
+    )
 
 
 def test_update(mutable_object: ManagedObject):
@@ -69,8 +39,8 @@ def test_update(mutable_object: ManagedObject):
     assert updated_object.new_fragment.key == 'value'
 
 
-@pytest.fixture(scope='session')
-def similar_objects(object_factory) -> List[ManagedObject]:
+@pytest.fixture(scope='module')
+def similar_objects(module_factory) -> List[ManagedObject]:
     """Provide a list of similar ManagedObjects (different name, everything
     else identical).  These are not to be changed."""
 
@@ -78,8 +48,12 @@ def similar_objects(object_factory) -> List[ManagedObject]:
     basename = RandomNameGenerator.random_name(2)
     typename = basename
 
-    mos = [ManagedObject(name=f'{basename}_{i}', type=typename, **{f'{typename}_fragment': {}}) for i in range(1, n+1)]
-    return object_factory(*mos)
+    return [
+        module_factory(
+            ManagedObject(name=f'{basename}_{i}', type=typename, **{f'{typename}_fragment': {}})
+        )
+        for i in range(1, n + 1)
+    ]
 
 
 def test_get_all(live_c8y: CumulocityApi):
@@ -124,20 +98,20 @@ def test_get_by_query(live_c8y: CumulocityApi, similar_objects: List[ManagedObje
     assert live_c8y.inventory.get_count(query=query) == len(similar_objects)
 
 
-def test_get_availability(live_c8y: CumulocityApi, sample_device: Device):
+def test_get_availability(live_c8y: CumulocityApi, session_device: Device):
     """Verify that the latest availability can be retrieved."""
     # set a required update interval
-    sample_device['c8y_RequiredAvailability'] = {'responseInterval': 10}
-    sample_device.update()
+    session_device['c8y_RequiredAvailability'] = {'responseInterval': 10}
+    session_device.update()
     # create an event to trigger update
-    live_c8y.events.create(Event(type='c8y_TestEvent', time='now', source=sample_device.id, text='Event!'))
+    live_c8y.events.create(Event(type='c8y_TestEvent', time='now', source=session_device.id, text='Event!'))
     # verify availability information is defined
     # -> the information is updated asynchronously, hence this may be delayed
     availability = None
     for i in range(1, 8):
         time.sleep(pow(2, i))
         try:
-            availability = live_c8y.inventory.get_latest_availability(sample_device.id)
+            availability = live_c8y.inventory.get_latest_availability(session_device.id)
             assert availability.last_message_date
             break
         except KeyError:
@@ -170,7 +144,7 @@ def test_reload(live_c8y):
     assert 'c8y_AdditionalFragment' not in obj2.fragments
 
 
-def test_deletion(live_c8y: CumulocityApi, register_object):
+def test_deletion(live_c8y: CumulocityApi, safe_create):
     """Verify that deletion works as expected.
 
     This test creates a managed object tree (root plus child asset, child device and child addition).
@@ -178,10 +152,10 @@ def test_deletion(live_c8y: CumulocityApi, register_object):
     (using the delete_tree function).
     """
     name = RandomNameGenerator.random_name()
-    obj = register_object(ManagedObject(live_c8y, name=f'Root-{name}', type=f'Root-{name}').create())
-    addition = register_object(ManagedObject(live_c8y, name=f'Addition-{name}', type=f'Addition-{name}').create())
-    asset = register_object(ManagedObject(live_c8y, name=f'Asset-{name}', type=f'Asset-{name}').create())
-    device = register_object(Device(live_c8y, name=f'Device-{name}', type=f'Device-{name}').create())
+    obj = safe_create(ManagedObject(name=f'Root-{name}', type=f'Root-{name}'))
+    addition = safe_create(ManagedObject(name=f'Addition-{name}', type=f'Addition-{name}'))
+    asset = safe_create(ManagedObject(name=f'Asset-{name}', type=f'Asset-{name}'))
+    device = safe_create(Device(name=f'Device-{name}', type=f'Device-{name}'))
     obj.add_child_addition(addition)
     obj.add_child_asset(asset)
     obj.add_child_device(device)
@@ -202,7 +176,7 @@ def test_deletion(live_c8y: CumulocityApi, register_object):
     device.reload()
 
     # assign to a new root
-    obj = register_object(ManagedObject(live_c8y, name=f'Root-{name}', type=f'Root-{name}').create())
+    obj = safe_create(ManagedObject(name=f'Root-{name}', type=f'Root-{name}'))
     obj.add_child_addition(addition)
     obj.add_child_asset(asset)
     obj.add_child_device(device)
@@ -217,7 +191,7 @@ def test_deletion(live_c8y: CumulocityApi, register_object):
         device.reload()
 
 
-def test_device_deletion(live_c8y: CumulocityApi, register_object):
+def test_device_deletion(live_c8y: CumulocityApi, safe_create):
     """Verify that device deletion works as expected.
 
     This test creates a device tree (root plus child asset, child device and child addition).
@@ -225,10 +199,10 @@ def test_device_deletion(live_c8y: CumulocityApi, register_object):
     (using the delete_tree function).
     """
     name = RandomNameGenerator.random_name()
-    obj = register_object(Device(live_c8y, name=f'Root-{name}', type=f'Root-{name}').create())
-    addition = register_object(ManagedObject(live_c8y, name=f'Addition-{name}', type=f'Addition-{name}').create())
-    asset = register_object(ManagedObject(live_c8y, name=f'Asset-{name}', type=f'Asset-{name}').create())
-    device = register_object(Device(live_c8y, name=f'Device-{name}', type=f'Device-{name}').create())
+    obj = safe_create(Device(name=f'Root-{name}', type=f'Root-{name}'))
+    addition = safe_create(ManagedObject(name=f'Addition-{name}', type=f'Addition-{name}'))
+    asset = safe_create(ManagedObject(name=f'Asset-{name}', type=f'Asset-{name}'))
+    device = safe_create(Device(name=f'Device-{name}', type=f'Device-{name}'))
     obj.add_child_addition(addition)
     obj.add_child_asset(asset)
     obj.add_child_device(device)
@@ -249,7 +223,7 @@ def test_device_deletion(live_c8y: CumulocityApi, register_object):
     device.reload()
 
     # assign to a new root
-    obj = register_object(Device(live_c8y, name=f'Root-{name}', type=f'Root-{name}').create())
+    obj = safe_create(Device(name=f'Root-{name}', type=f'Root-{name}'))
     obj.add_child_addition(addition)
     obj.add_child_asset(asset)
     obj.add_child_device(device)

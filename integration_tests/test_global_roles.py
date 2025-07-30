@@ -60,12 +60,15 @@ def test_select(live_c8y: CumulocityApi):
     for role in live_c8y.global_roles.get_all(username=username):
         assert role.id in [x.id for x in selected_roles]
 
+    # Cleanup
+    user.delete()
 
-def test_updating_users(live_c8y: CumulocityApi, factory):
+
+def test_updating_users(live_c8y: CumulocityApi, safe_create):
     """Verify that users can be added/removed to/from a global role."""
 
     rolename = RandomNameGenerator.random_name()
-    role: GlobalRole = factory(GlobalRole(c8y=live_c8y, name=rolename, description=f'{rolename} description'))
+    role: GlobalRole = safe_create(GlobalRole(c8y=live_c8y, name=rolename, description=f'{rolename} description'))
 
     # -> initially the current user should not have this global role
     assert role.id not in live_c8y.users.get(live_c8y.username).global_role_ids
@@ -80,12 +83,15 @@ def test_updating_users(live_c8y: CumulocityApi, factory):
     # -> user should not have this global role anymore
     assert role.id not in live_c8y.users.get(live_c8y.username).global_role_ids
 
+    # Cleanup
+    # role.delete()
 
-def test_updating_permissions(live_c8y: CumulocityApi, factory):
+
+def test_updating_permissions(live_c8y: CumulocityApi, module_factory):
     """Verify that permissions can be added/removed to/from a global role."""
 
     rolename = RandomNameGenerator.random_name()
-    role: GlobalRole = factory(GlobalRole(c8y=live_c8y, name=rolename, description=f'{rolename} description'))
+    role: GlobalRole = module_factory(GlobalRole(c8y=live_c8y, name=rolename, description=f'{rolename} description'))
 
     # -> initially there should be no permissions
     assert not role.permission_ids

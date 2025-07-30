@@ -8,7 +8,6 @@ import datetime as dt
 import logging
 import os
 import tempfile
-from logging import Logger
 from typing import List
 
 import pytest
@@ -19,39 +18,26 @@ from c8y_api.model._util import _DateUtil
 from util.testing_util import RandomNameGenerator
 
 
-@pytest.fixture(scope='session')
-def sample_device(logger: Logger, live_c8y: CumulocityApi) -> Device:
-    """Provide an sample device, just for testing purposes."""
-
+@pytest.fixture(scope='module')
+def sample_events(live_c8y, session_device, module_factory) -> List[Event]:
+    """Provide a set of sample Event instances."""
     typename = RandomNameGenerator.random_name()
-    device = Device(live_c8y, type=typename, name=typename).create()
-    logger.info(f"Created test device #{device.id}, name={device.name}")
-
-    yield device
-
-    device.delete()
-    logger.info(f"Deleted test device #{device.id}")
-
-
-@pytest.fixture(scope='session')
-def sample_events(factory, sample_device) -> List[Event]:
-    """Provide a set of sample Event instances that will automatically
-    be removed after the test function."""
-    typename = RandomNameGenerator.random_name()
-    result = []
     now = _DateUtil.now()
-    for i in range(1, 6):
-        event = Event(type=f'{typename}_{i}', text=f'{typename} text', source=sample_device.id,
-                      time=now + dt.timedelta(minutes=i))
-        result.append(factory(event))
-    return result
+
+    return [
+        module_factory(
+            Event(type=f'{typename}_{i}', text=f'{typename} text', source=session_device.id,
+            time=now + dt.timedelta(minutes=i))
+        )
+        for i in range(1, 6)
+    ]
 
 
-def test_CRUD(live_c8y: CumulocityApi, sample_device: Device):  # noqa (case)
+def test_CRUD(live_c8y: CumulocityApi, session_device: Device):  # noqa (case)
     """Verify that basic CRUD functionality works."""
 
     typename = RandomNameGenerator.random_name()
-    event = Event(c8y=live_c8y, type=typename, text=f'{typename} text', time='now', source=sample_device.id)
+    event = Event(c8y=live_c8y, type=typename, text=f'{typename} text', time='now', source=session_device.id)
 
     created_event = event.create()
     try:
@@ -84,12 +70,12 @@ def test_CRUD(live_c8y: CumulocityApi, sample_device: Device):  # noqa (case)
         assert created_event.id in str(e)
 
 
-def test_CRUD_2(live_c8y: CumulocityApi, sample_device: Device):  # noqa (case)
+def test_CRUD_2(live_c8y: CumulocityApi, session_device: Device):  # noqa (case)
     """Verify that basic CRUD functionality via the API works."""
 
     typename = RandomNameGenerator.random_name()
-    event1 = Event(c8y=live_c8y, type=typename, text=f'{typename} text', source=sample_device.id)
-    event2 = Event(c8y=live_c8y, type=typename, text=f'{typename} text', source=sample_device.id)
+    event1 = Event(c8y=live_c8y, type=typename, text=f'{typename} text', source=session_device.id)
+    event2 = Event(c8y=live_c8y, type=typename, text=f'{typename} text', source=session_device.id)
 
     # 1) create multiple events and read from Cumulocity
     live_c8y.events.create(event1, event2)
@@ -142,7 +128,7 @@ def test_CRUD_2(live_c8y: CumulocityApi, sample_device: Device):  # noqa (case)
     assert not live_c8y.events.get_all(type=typename)
 
 
-def test_filter_by_update_time(live_c8y: CumulocityApi, sample_device, sample_events: List[Event]):
+def test_filter_by_update_time(live_c8y: CumulocityApi, session_device, sample_events: List[Event]):
     """Verify that filtering by lastUpdatedTime works as expected."""
 
     event = sample_events[0]
@@ -173,7 +159,7 @@ def test_filter_by_update_time(live_c8y: CumulocityApi, sample_device, sample_ev
     assert last_event_after.updated_datetime == max(after_datetimes)
 
 
-def test_CRUD_attachments(live_c8y: CumulocityApi, sample_device: Device, sample_events: List[Event]):  # noqa (case)
+def test_CRUD_attachments(live_c8y: CumulocityApi, session_device: Device, sample_events: List[Event]):  # noqa (case)
     """Verify that creating, reading, updating and deleting of an
     event attachment works as expected."""
 
@@ -216,7 +202,7 @@ def test_CRUD_attachments(live_c8y: CumulocityApi, sample_device: Device, sample
     assert not event.has_attachment()
 
 
-def test_CRUD_attachments_2(live_c8y: CumulocityApi, sample_device: Device, sample_events: List[Event]):  # noqa (case)
+def test_CRUD_attachments_2(live_c8y: CumulocityApi, session_device: Device, sample_events: List[Event]):  # noqa (case)
     """Verify that creating, reading, updating and deleting of an
     event attachment works as expected."""
 

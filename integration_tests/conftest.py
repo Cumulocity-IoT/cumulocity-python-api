@@ -4,7 +4,8 @@
 
 import logging
 import os
-from typing import List, Callable, Any
+import sys
+from typing import List, Callable, Any, Generator
 
 import pytest
 from dotenv import load_dotenv
@@ -29,6 +30,17 @@ logging.getLogger('c8y_api').setLevel(logging.DEBUG)
 def random_name():
     """Conveniently provide a random name."""
     return RandomNameGenerator().random_name()
+
+
+@pytest.fixture(scope='session')
+def logger():
+    """Provide a logger for testing."""
+    handler = logging.StreamHandler(sys.__stderr__)
+    logger = logging.getLogger('c8y_api.test')
+    logger.setLevel(logging.INFO)
+    logger.addHandler(handler)
+    logger.propagate = False
+    return logger
 
 
 @pytest.fixture(scope='session')
@@ -74,60 +86,6 @@ def auto_delete(logger):
 
 
 @pytest.fixture(scope='session')
-def register_object(logger):
-    """Wrap a created Cumulocity object so that it will automatically be deleted
-    after a test regardless of an exception or failure."""
-
-    objects = []
-
-    def register(obj) -> Any:
-        objects.append(obj)
-        return obj
-
-    yield register
-
-    for o in objects:
-        try:
-            # Deletion should through a KeyError if object was already deleted
-            o.delete()
-            logger.warning(f"Object #{o.id} was not deleted by test.")
-        except KeyError:
-            pass
-        except BaseException as e:
-            logger.warning(f"Caught exception ignored due to safe call: {e}")
-
-
-@pytest.fixture(scope='session')
-def safe_create(logger):
-    """Wrap a created Cumulocity object so that it will automatically be deleted
-    after a test regardless of an exception or failure."""
-
-    objects = []
-
-    def create_and_register(obj) -> Any:
-        o = obj.create()
-        objects.append(o)
-        return o
-
-    yield create_and_register
-
-    for o in objects:
-        try:
-            # Deletion should through a KeyError if object was already deleted
-            o.delete()
-            logger.warning(f"Object #{o.id} was not deleted by test.")
-        except KeyError:
-            pass
-        except BaseException as e:
-            logger.warning(f"Caught exception ignored due to safe call: {e}")
-
-@pytest.fixture(scope='session')
-def logger():
-    """Provide a logger for testing."""
-    return logging.getLogger('c8y_api.test')
-
-
-@pytest.fixture(scope='session')
 def test_environment(logger):
     """Prepare the environment, i.e. read a .env file if found."""
 
@@ -154,8 +112,94 @@ def live_c8y(test_environment) -> CumulocityApi:
     return SimpleCumulocityApp()
 
 
+
+
+
+#
+#
+# @pytest.fixture(scope='session')
+# def register_object(logger):
+#     """Wrap a created Cumulocity object so that it will automatically be deleted
+#     after a test regardless of an exception or failure."""
+#
+#     objects = []
+#
+#     def register(obj) -> Any:
+#         objects.append(obj)
+#         return obj
+#
+#     yield register
+#
+#     for o in objects:
+#         try:
+#             # Deletion should through a KeyError if object was already deleted
+#             o.delete()
+#             logger.warning(f"Object #{o.id} was not deleted by test.")
+#         except KeyError:
+#             pass
+#         except BaseException as e:
+#             logger.warning(f"Caught exception ignored due to safe call: {e}")
+
+
+@pytest.fixture(scope='function')
+def safe_create(logger, live_c8y, request):
+    """Wrap a created Cumulocity object so that it will automatically be deleted
+    after a test regardless of an exception or failure.
+
+    Deletion is still expected by the test, so this will log a warning if the
+    object was not deleted and needed to be cleaned up."""
+    objects_with_node = []
+
+    def create_and_register(obj) -> Any:
+        if not obj.c8y:
+            obj.c8y = live_c8y
+        o = obj.create()
+        objects_with_node.append((o, request.node.name))
+        return o
+
+    yield create_and_register
+
+    for o, node in objects_with_node:
+        try:
+            # Deletion should through a KeyError if object was already deleted
+            o.delete()
+            logger.warning(f"{type(o).__name__} object #{o.id} was not deleted by test '{node}'.")
+        except KeyError:
+            pass
+        except BaseException as e:
+            logger.error(f"Caught exception ignored due to safe call: {e} (node: {node})")
+
+
+@pytest.fixture(scope='module')
+def module_factory(logger, live_c8y: CumulocityApi, request):
+    """Provides a generic object factory function which ensures that created
+    objects are removed after the module testing.
+
+    Deletion is _not_ expected by the test code."""
+
+    created = []
+
+    def factory_fun(obj):
+        if not obj.c8y:
+            obj.c8y = live_c8y
+        o = obj.create()
+        node = request.module.__name__
+        logger.info(f"Created {o.__class__.__name__} object #{o.id} in module {node}.")
+        created.append((o, node))
+        return o
+
+    yield factory_fun
+
+    for o, node in created:
+        try:
+            o.delete()
+            logger.info(f"Removed {o.__class__.__name__} #{o.id} from module {node}.")
+        except KeyError:
+            logger.warning(f"{o.__class__.__name__} object #{o.id} (module {node}) could not be removed (not found).")
+
+
 @pytest.fixture(scope='session')
-def app_factory(live_c8y) -> Callable[[str, List[str]], CumulocityApi]:
+def app_factory(logger, live_c8y) -> Generator[Callable[[str, List[str]], CumulocityApi], None, None]:
     """Provide a application (microservice) factory which creates a
     microservice application within Cumulocity, registers itself as
     subscribed tenant and returns the application's bootstrap user.
@@ -165,6 +209,7 @@ def app_factory(live_c8y) -> Callable[[str, List[str]], CumulocityApi]:
     names within the entire test session.
 
     Args:
+        logger:  (injected) test logger.
         live_c8y:  (injected) connection to a live Cumulocity instance; the
             user must be allowed to create microservice applications.
 
@@ -195,7 +240,8 @@ def app_factory(live_c8y) -> Callable[[str, List[str]], CumulocityApi]:
         # (3) Subscribe to newly created microservice
         subscription_json = {'application': {'self': f'{live_c8y.base_url}/application/applications/{app.id}'}}
         live_c8y.post(f'/tenant/tenants/{live_c8y.tenant_id}/applications', json=subscription_json)
-        print(f"Microservice application '{name}' (ID {app.id}) created. Tenant '{live_c8y.tenant_id}' subscribed.")
+        logger.info(f"Microservice application '{name}' (ID {app.id}) created. "
+                    f"Tenant '{live_c8y.tenant_id}' subscribed.")
 
         # (4) read bootstrap user details
         bootstrap_user_json = live_c8y.get(f'/application/applications/{app.id}/bootstrapUser')
@@ -204,7 +250,7 @@ def app_factory(live_c8y) -> Callable[[str, List[str]], CumulocityApi]:
         bootstrap_c8y = CumulocityApi(base_url=live_c8y.base_url,
                                       tenant_id=bootstrap_user_json['tenant'],
                                       auth=HTTPBasicAuth(bootstrap_user_json['name'], bootstrap_user_json['password']))
-        print(f"Bootstrap instance created.  Tenant {bootstrap_c8y.tenant_id}, "
+        logger.info(f"Bootstrap instance created.  Tenant {bootstrap_c8y.tenant_id}, "
               f"User: {bootstrap_c8y.auth.username}, "
               f"Password: {bootstrap_c8y.auth.password}")
 
@@ -214,34 +260,11 @@ def app_factory(live_c8y) -> Callable[[str, List[str]], CumulocityApi]:
 
     # unregister application
     for a in created:
-        live_c8y.applications.delete(a.id)
-        print(f"Microservice application '{a.name}' (ID {a.id}) deleted.")
-
-
-@pytest.fixture(scope='session')
-def factory(logger, live_c8y: CumulocityApi):
-    """Provides a generic object factory function which ensures that created
-    objects are removed after testing."""
-
-    created = []
-
-    def factory_fun(obj):
-        if not obj.c8y:
-            obj.c8y = live_c8y
-        o = obj.create()
-        logger.info(f"Created object #{o.id}, ({o.__class__.__name__})")
-        created.append(o)
-        return o
-
-    yield factory_fun
-
-    for c in created:
         try:
-            c.delete()
-            logger.info(f"Removed object #{c.id}, ({c.__class__.__name__})")
+            live_c8y.applications.delete(a.id)
+            logger.info(f"Microservice application '{a.name}' (ID {a.id}) deleted.")
         except KeyError:
-            logger.warning(f"Object #{c.id}, ({c.__class__.__name__}) could not be removed (not found).")
-
+            logger.warning(f"Application #{a.id} could not be removed (not found).")
 
 
 @pytest.fixture(scope='function')
@@ -253,7 +276,7 @@ def sample_object(logger, live_c8y, random_name, auto_delete):
 
 
 @pytest.fixture(scope='session')
-def sample_device(logger: logging.Logger, live_c8y: CumulocityApi):
+def session_device(logger: logging.Logger, live_c8y: CumulocityApi):
     """Provide an sample device, just for testing purposes."""
 
     typename = RandomNameGenerator.random_name()

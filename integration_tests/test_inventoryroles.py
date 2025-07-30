@@ -82,7 +82,7 @@ def test_select_inventory_roles(live_c8y: CumulocityApi):
     assert live_c8y.inventory_roles.get_all()
 
 
-def test_assignments(live_c8y, sample_device, factory):
+def test_assignments(live_c8y, session_device, module_factory):
     """Verify that inventory roles can be assigned, retrieved and unassigned."""
     email = 'user_' + RandomNameGenerator.random_name(2) + '@test.com'
     role1_name = 'role_' + RandomNameGenerator.random_name(2)
@@ -90,20 +90,20 @@ def test_assignments(live_c8y, sample_device, factory):
 
     # create a user
     user = User(username=email, email=email)
-    user = factory(user)
+    user = module_factory(user)
 
     # create inventory roles
     role1 = InventoryRole(name=role1_name, permissions=[
         ReadPermission(scope=Permission.Scope.ALARM),
         WritePermission(scope=Permission.Scope.AUDIT)])
-    role1 = factory(role1)
+    role1 = module_factory(role1)
     role2 = InventoryRole(name=role2_name, permissions=[
         ReadPermission(scope=Permission.Scope.ANY),
         WritePermission(scope=Permission.Scope.MEASUREMENT)])
-    role2 = factory(role2)
+    role2 = module_factory(role2)
 
     # assign inventory roles
-    user.assign_inventory_roles(sample_device.id, role1, role2)
+    user.assign_inventory_roles(session_device.id, role1, role2)
 
     # verify that roles are assigned
     assigned_roles = user.retrieve_inventory_role_assignments()

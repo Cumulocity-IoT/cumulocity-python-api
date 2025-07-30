@@ -180,27 +180,27 @@ def test_single_page_select(live_c8y: CumulocityApi, measurement_factory):
 
 
 @pytest.fixture(scope='session', name='sample_series_device')
-def fix_sample_series_device(live_c8y: CumulocityApi, sample_device: Device) -> Device:
+def fix_sample_series_device(live_c8y: CumulocityApi, session_device: Device) -> Device:
     """Add measurement series to the sample device."""
     # create 12K measurements, 2 every minute
     start_time = datetime.fromisoformat('2020-01-01 00:00:00+00:00')
     ms_iter = [Measurement(type='c8y_TestMeasurement',
-                      source=sample_device.id,
-                      time=start_time + (i * timedelta(seconds=30)),
-                      c8y_Iteration={'c8y_Counter': Count(i)},
-                      ) for i in range(0, 5000)]
+                           source=session_device.id,
+                           time=start_time + (i * timedelta(seconds=30)),
+                           c8y_Iteration={'c8y_Counter': Count(i)},
+                           ) for i in range(0, 5000)]
     ms_temps = [Measurement(type='c8y_TestMeasurement',
-                      source=sample_device.id,
-                      time=start_time + (i * timedelta(seconds=100)),
-                      c8y_Temperature={'c8y_AverageTemperature': Kelvin(i * 0.2)},
-                      ) for i in range(0, 1000)]
+                            source=session_device.id,
+                            time=start_time + (i * timedelta(seconds=100)),
+                            c8y_Temperature={'c8y_AverageTemperature': Kelvin(i * 0.2)},
+                            ) for i in range(0, 1000)]
     live_c8y.measurements.create(*ms_iter)
     live_c8y.measurements.create(*ms_temps)
 
-    sample_device['c8y_SupportedSeries'] = [
+    session_device['c8y_SupportedSeries'] = [
         'c8y_Temperature.c8y_AverageTemperature',
         'c8y_Iteration.c8y_Counter']
-    return sample_device.update()
+    return session_device.update()
 
 
 @pytest.fixture(scope='session')

@@ -7,6 +7,7 @@ from __future__ import annotations
 from typing import List
 
 import pytest
+from tenacity import Retrying, stop_after_attempt, wait_exponential
 
 from c8y_api import CumulocityApi
 from c8y_api.model import Device, Alarm
@@ -14,11 +15,11 @@ from c8y_api.model import Device, Alarm
 from util.testing_util import RandomNameGenerator
 
 
-def test_CRUD(live_c8y: CumulocityApi, sample_device: Device):  # noqa (case)
+def test_CRUD(live_c8y: CumulocityApi, session_device: Device):  # noqa (case)
     """Verify that basic CRUD functionality works."""
 
     typename = RandomNameGenerator.random_name()
-    alarm = Alarm(c8y=live_c8y, type=typename, text=f'{typename} text', source=sample_device.id,
+    alarm = Alarm(c8y=live_c8y, type=typename, text=f'{typename} text', source=session_device.id,
                   time='now', severity=Alarm.Severity.MAJOR)
 
     created_alarm = alarm.create()
@@ -60,19 +61,19 @@ def test_CRUD(live_c8y: CumulocityApi, sample_device: Device):  # noqa (case)
         assert created_alarm.id in str(e)
 
 
-def test_CRUD_2(live_c8y: CumulocityApi, sample_device: Device):  # noqa (case)
+def test_CRUD_2(live_c8y: CumulocityApi, session_device: Device):  # noqa (case)
     """Verify that basic CRUD functionality via the API works."""
 
     typename = RandomNameGenerator.random_name()
     time = '1970-01-01T11:22:33Z'
-    alarm1 = Alarm(c8y=live_c8y, type=typename + '_1', text=f'{typename} text', source=sample_device.id,
+    alarm1 = Alarm(c8y=live_c8y, type=typename + '_1', text=f'{typename} text', source=session_device.id,
                    time=time, severity=Alarm.Severity.MINOR)
-    alarm2 = Alarm(c8y=live_c8y, type=typename + '_2', text=f'{typename} text', source=sample_device.id,
+    alarm2 = Alarm(c8y=live_c8y, type=typename + '_2', text=f'{typename} text', source=session_device.id,
                    time=time, severity=Alarm.Severity.MINOR)
 
     # 1) create multiple events and read from Cumulocity
     live_c8y.alarms.create(alarm1, alarm2)
-    get_filter = {'source': sample_device.id,
+    get_filter = {'source': session_device.id,
                   'before': '1970-01-02',
                   'after': '1970-01-01'}
 
@@ -120,28 +121,33 @@ def test_CRUD_2(live_c8y: CumulocityApi, sample_device: Device):  # noqa (case)
         live_c8y.alarms.delete_by(**get_filter)
 
     # 6) assert deletion
-    assert not live_c8y.alarms.get_all(**get_filter)
+    for attempt in Retrying(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=0.5), reraise=True):
+        with attempt:
+            assert not live_c8y.alarms.get_all(**get_filter)
 
 
-@pytest.fixture(scope='session')
-def sample_alarms(factory, sample_device) -> List[Alarm]:
+@pytest.fixture(scope='module')
+def sample_alarms(session_device, module_factory) -> List[Alarm]:
     """Provide a set of sample Alarm instances that will automatically
-    be removed after the test function."""
+    be removed after this test module."""
+
     typename = RandomNameGenerator.random_name()
-    result = []
-    for i in range(1, 6):
-        alarm = Alarm(type=f'{typename}_{i}', text=f'{typename} text', source=sample_device.id,
-                      time='2020-12-31T11:33:55Z', severity=Alarm.Severity.WARNING, status=Alarm.Status.ACKNOWLEDGED)
-        result.append(factory(alarm))
-    return result
+    return [
+        module_factory(
+            Alarm(type=f'{typename}_{i}', text=f'{typename} text', source=session_device.id,
+                  time='2020-12-31T11:33:55Z', severity=Alarm.Severity.WARNING, status=Alarm.Status.ACKNOWLEDGED)
+        )
+        for i in range(1, 6)
+    ]
 
 
-def test_apply_by(live_c8y: CumulocityApi, sample_device: Device):
+
+def test_apply_by(live_c8y: CumulocityApi, session_device: Device):
     """Verify that the apply_by function works."""
 
     num_alarms = 5
     name = RandomNameGenerator.random_name(1)
-    alarms = [Alarm(live_c8y, type=f'{name}_{i}', text=f'{name} text', source=sample_device.id,
+    alarms = [Alarm(live_c8y, type=f'{name}_{i}', text=f'{name} text', source=session_device.id,
                     time='2021-06-22T11:33:55Z', severity=Alarm.Severity.CRITICAL).create()
               for i in range(1, num_alarms+1)]
     alarm = alarms[0]
@@ -169,7 +175,7 @@ def test_count(live_c8y: CumulocityApi, sample_alarms: List[Alarm]):
     assert count == len(sample_alarms)
 
 
-def test_filter_by_update_time(live_c8y: CumulocityApi, sample_device, sample_alarms: List[Alarm]):
+def test_filter_by_update_time(live_c8y: CumulocityApi, session_device, sample_alarms: List[Alarm]):
     """Verify that filtering by lastUpdatedTime works as expected."""
 
     alarm = sample_alarms[0]

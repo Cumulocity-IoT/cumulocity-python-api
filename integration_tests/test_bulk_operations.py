@@ -6,14 +6,14 @@ from c8y_api import CumulocityApi
 from c8y_api.model import BulkOperation, DeviceGroup, Operation
 
 
-def test_CRU(live_c8y: CumulocityApi, sample_device):  # noqa
+def test_CRU(live_c8y: CumulocityApi, session_device):  # noqa
     """Verify that basic creation, lookup and update of Operations works as expected."""
 
     # (1) Create a device group for the sample device
     group:DeviceGroup = DeviceGroup(live_c8y,
                                     root=True,
-                                    name=sample_device.name + '_Group').create()
-    group.add_child_asset(sample_device)
+                                    name=session_device.name + '_Group').create()
+    group.add_child_asset(session_device)
 
 
     # (2) create bulk operation
