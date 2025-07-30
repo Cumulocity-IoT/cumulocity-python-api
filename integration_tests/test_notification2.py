@@ -1,10 +1,12 @@
 # Copyright (c) 2025 Cumulocity GmbH
 
 import asyncio
+import queue
 import threading
 import time
 
 import pytest
+from tenacity import stop_after_attempt, wait_exponential, Retrying
 
 from c8y_api import CumulocityApi
 from c8y_api.model import Device, ManagedObject, Subscription
@@ -13,10 +15,10 @@ from c8y_tk.notification2 import AsyncListener, Listener
 from util.testing_util import RandomNameGenerator
 
 
-def test_subscription_deletion(live_c8y, register_object):
+def test_subscription_deletion(live_c8y, safe_create):
     """Verify that a subscription is removed with the corresponding managed object."""
     mo_name = RandomNameGenerator.random_name(3)
-    mo = register_object(ManagedObject(live_c8y, name=f'{mo_name}1', type=f'test_{mo_name}').create())
+    mo = safe_create(ManagedObject(name=f'{mo_name}1', type=f'test_{mo_name}'))
 
     Subscription(live_c8y, name=f'{mo_name.replace("_", "")}Subscription',
                  context=Subscription.Context.MANAGED_OBJECT, source_id=mo.id).create()
@@ -62,9 +64,9 @@ def test_object_update_and_deletion(live_c8y: CumulocityApi, sample_object):
                        fragments=['test_AwaitedFragment'],
                        source_id=mo.id,).create()
 
-    notifications:list[Listener.Message] = []
+    notifications = queue.Queue()
     def receive_notification(m:Listener.Message):
-        notifications.append(m)
+        notifications.put(m)
         m.ack()
 
     # (1) Create listener and start listening
@@ -75,41 +77,39 @@ def test_object_update_and_deletion(live_c8y: CumulocityApi, sample_object):
 
     # (2) apply first change, expected fragment
     mo.apply({'test_AwaitedFragment': {'num': 42}})
-    time.sleep(5)  # ensure processing
     # -> notification should appear
-    assert len(notifications) == 1
-    assert mo.id in notifications[0].source
-    assert notifications[0].action == "UPDATE"
+    m = notifications.get(timeout=5)
+    assert notifications.empty()
+    assert mo.id in m.source
+    assert m.action == "UPDATE"
     # -> basic data AND expected fragment in payload
-    assert notifications[0].json['id'] == mo.id
-    assert notifications[0].json['name'] == mo.name
-    assert notifications[0].json['type'] == mo.type
-    assert notifications[0].json['test_AwaitedFragment']['num'] == 42
+    assert m.json['id'] == mo.id
+    assert m.json['name'] == mo.name
+    assert m.json['type'] == mo.type
+    assert m.json['test_AwaitedFragment']['num'] == 42
 
     # (3) Apply 2nd change, different fragment
-    notifications = []
     mo.apply({'test_DifferentFragment': {'num': 42}})
-    time.sleep(5)  # ensure processing
     # -> notification should appear
-    assert len(notifications) == 1
-    assert mo.id in notifications[0].source
-    assert notifications[0].action == "UPDATE"
+    m = notifications.get(timeout=5)
+    assert notifications.empty()
+    assert mo.id in m.source
+    assert m.action == "UPDATE"
     # -> basic data in payload
-    assert notifications[0].json['id'] == mo.id
-    assert notifications[0].json['name'] == mo.name
-    assert notifications[0].json['type'] == mo.type
+    assert m.json['id'] == mo.id
+    assert m.json['name'] == mo.name
+    assert m.json['type'] == mo.type
     # -> other fragment not in payload
-    assert 'test_AwaitedFragment' in notifications[0].json
-    assert 'test_DifferentFragment' not in notifications[0].json
+    assert 'test_AwaitedFragment' in m.json
+    assert 'test_DifferentFragment' not in m.json
 
     # (4) delete object tree
-    notifications = []
     mo.delete_tree()
-    time.sleep(5)  # ensure processing
     # -> notification should appear
-    assert len(notifications) == 1
-    assert mo.id in notifications[0].source
-    assert notifications[0].action == "DELETE"
+    m = notifications.get(timeout=5)
+    assert notifications.empty()
+    assert mo.id in m.source
+    assert m.action == "DELETE"
 
     # (99) cleanup
     listener.close()
@@ -117,7 +117,7 @@ def test_object_update_and_deletion(live_c8y: CumulocityApi, sample_object):
 
 
 @pytest.mark.asyncio(loop_scope='function')
-async def test_asyncio_object_update_and_deletion(live_c8y: CumulocityApi, safe_create):
+async def test_asyncio_object_update_and_deletion(logger, live_c8y: CumulocityApi, safe_create):
     """Verify that we can subscribe to managed object changes and they are received.
 
     This test creates a simple managed object and a corresponding subscription; the subscription
@@ -134,9 +134,9 @@ async def test_asyncio_object_update_and_deletion(live_c8y: CumulocityApi, safe_
                        fragments=['test_AwaitedFragment'],
                        source_id=mo.id,).create()
 
-    notifications:list[AsyncListener.Message] = []
+    notifications = asyncio.Queue()
     async def receive_notification(m:AsyncListener.Message):
-        notifications.append(m)
+        await notifications.put(m)
         await m.ack()
 
     listener = AsyncListener(live_c8y, subscription_name=sub.name)
@@ -145,41 +145,39 @@ async def test_asyncio_object_update_and_deletion(live_c8y: CumulocityApi, safe_
 
     # (1) apply first change, expected fragment
     mo.apply({'test_AwaitedFragment': {'num': 42}})
-    await asyncio.sleep(5)  # ensure processing
     # -> notification should appear
-    assert len(notifications) == 1
-    assert mo.id in notifications[0].source
-    assert notifications[0].action == "UPDATE"
+    m = await notifications.get()
+    assert notifications.empty()
+    assert mo.id in m.source
+    assert m.action == "UPDATE"
     # -> basic data AND expected fragment in payload
-    assert notifications[0].json['id'] == mo.id
-    assert notifications[0].json['name'] == mo.name
-    assert notifications[0].json['type'] == mo.type
-    assert notifications[0].json['test_AwaitedFragment']['num'] == 42
+    assert m.json['id'] == mo.id
+    assert m.json['name'] == mo.name
+    assert m.json['type'] == mo.type
+    assert m.json['test_AwaitedFragment']['num'] == 42
 
     # (2) Apply 2nd change, different fragment
-    notifications = []
     mo.apply({'test_DifferentFragment': {'num': 42}})
-    await asyncio.sleep(5)  # ensure processing
     # -> notification should appear
-    assert len(notifications) == 1
-    assert mo.id in notifications[0].source
-    assert notifications[0].action == "UPDATE"
+    m = await notifications.get()
+    assert notifications.empty()
+    assert mo.id in m.source
+    assert m.action == "UPDATE"
     # -> basic data in payload
-    assert notifications[0].json['id'] == mo.id
-    assert notifications[0].json['name'] == mo.name
-    assert notifications[0].json['type'] == mo.type
+    assert m.json['id'] == mo.id
+    assert m.json['name'] == mo.name
+    assert m.json['type'] == mo.type
     # -> other fragment not in payload
-    assert 'test_AwaitedFragment' in notifications[0].json
-    assert 'test_DifferentFragment' not in notifications[0].json
+    assert 'test_AwaitedFragment' in m.json
+    assert 'test_DifferentFragment' not in m.json
 
     # (3) delete object tree
-    notifications = []
     mo.delete_tree()
-    await asyncio.sleep(5)  # ensure processing
     # -> notification should appear
-    assert len(notifications) == 1
-    assert mo.id in notifications[0].source
-    assert notifications[0].action == "DELETE"
+    m = await notifications.get()
+    assert notifications.empty()
+    assert mo.id in m.source
+    assert m.action == "DELETE"
 
     # (99) cleanup
     await listener.close()
@@ -197,9 +195,9 @@ def test_child_updates(live_c8y: CumulocityApi, object_tree_builder):
     ).create()
 
     # prepare listener
-    notifications:list[Listener.Message] = []
+    notified = threading.Event()
     def receive_notification(m:Listener.Message):
-        notifications.append(m)
+        notified.set()
         m.ack()
 
     listener = Listener(live_c8y, subscription_name=root_subscription.name)
@@ -215,7 +213,7 @@ def test_child_updates(live_c8y: CumulocityApi, object_tree_builder):
         *[x.id for x in root.child_additions],
     )
 
-    assert not notifications
+    assert not notified.is_set()
 
     # (99) cleanup
     listener.close()
@@ -375,7 +373,7 @@ def test_multiple_subscribers(live_c8y: CumulocityApi, sample_object):
     time.sleep(5)  # ensure processing
     # -> all received notifications are identical
     assert len(notifications) == 3
-    assert all(n.raw == notifications[0].raw for n in notifications)
+    assert len({n.raw for n in notifications}) == 1
 
     # (99) cleanup
     for l in listeners:
@@ -413,7 +411,7 @@ async def test_asyncio_multiple_subscribers(live_c8y: CumulocityApi, sample_obje
     await asyncio.sleep(5)  # ensure processing
     # -> all received notifications are identical
     assert len(notifications) == 3
-    assert all(n.raw == notifications[0].raw for n in notifications)
+    assert len({n.raw for n in notifications}) == 1
 
     # (99) cleanup
     await asyncio.gather(*[l.close() for l in listeners])
