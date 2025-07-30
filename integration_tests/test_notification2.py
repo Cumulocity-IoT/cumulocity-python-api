@@ -6,7 +6,6 @@ import threading
 import time
 
 import pytest
-from tenacity import stop_after_attempt, wait_exponential, Retrying
 
 from c8y_api import CumulocityApi
 from c8y_api.model import Device, ManagedObject, Subscription
