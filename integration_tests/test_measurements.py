@@ -63,11 +63,6 @@ def fix_measurement_factory(live_c8y: CumulocityApi):
 def test_select(live_c8y: CumulocityApi, measurement_factory):
     """Verify that selection works as expected."""
     # pylint: disable=too-many-statements)
-    logging.basicConfig()
-    logging.getLogger().setLevel(logging.DEBUG)
-    requests_log = logging.getLogger("requests.packages.urllib3")
-    requests_log.setLevel(logging.DEBUG)
-    requests_log.propagate = True
 
     name = RandomNameGenerator.random_name(2)
     other_name = f'other_{name}'
