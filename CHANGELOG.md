@@ -1,5 +1,6 @@
 # Changelog
 
+* Added `get_by` function to inventory API to return a single object by query.
 * Single and multi tenant applications now automatically set the `application_key` property from the standard
   `APPLICATION_KEY` environment variable. 
 * Added `get_count` function to `Operations` API.
