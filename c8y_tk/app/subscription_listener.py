@@ -53,8 +53,9 @@ class SubscriptionListener:
                 microservice is considered to be "added" (the callback
                 invocation will be delayed by this).
         """
+        instance_id = f'[{self._n}]' if self._n > 1 else ''
         self._n = self._n + 1
-        self._instance_name = type(self).__name__ + (f'[{self._n}]' if self._n > 1 else '')
+        self._instance_name = type(self).__name__ + instance_id
         self.app = app
         self.max_threads = max_threads
         self.startup_delay = startup_delay
@@ -62,7 +63,7 @@ class SubscriptionListener:
         self.callbacks = [(callback, blocking)] if callback else []
         self.callbacks_on_add = []
         self.callbacks_on_remove = []
-        self._log = logging.getLogger(f'{__name__}.{self._instance_name}')
+        self._log = logging.getLogger(__name__ + instance_id)
         self._executor = None
         self._callback_futures = set()
         self._listen_thread = None
