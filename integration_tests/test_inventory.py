@@ -98,6 +98,32 @@ def test_get_by_query(live_c8y: CumulocityApi, similar_objects: List[ManagedObje
     assert live_c8y.inventory.get_count(query=query) == len(similar_objects)
 
 
+def test_get_single_by_query(live_c8y: CumulocityApi, module_factory):
+    """Verify that the get_by function works as expected."""
+    basename = RandomNameGenerator.random_name(2)
+    typename = basename
+
+    # create a couple of objects with two types
+    objects = [
+        module_factory(ManagedObject(name=f'{basename}_1', type=f'{typename}_A')),
+        module_factory(ManagedObject(name=f'{basename}_2', type=f'{typename}_A')),
+        module_factory(ManagedObject(name=f'{basename}_3', type=f'{typename}_B')),
+    ]
+
+    # -> single matching query returns expected object
+    assert live_c8y.inventory.get_by(type=f'{typename}_B').id == objects[2].id
+
+    # -> not matching query returns expected object
+    with pytest.raises(ValueError) as error:
+        live_c8y.inventory.get_by(type=f'{typename}_C')
+    assert "no matching object found" in str(error).lower()
+
+    # -> not matching query returns expected object
+    with pytest.raises(ValueError) as error:
+        live_c8y.inventory.get_by(type=f'{typename}_A')
+    assert "ambiguous" in str(error).lower()
+
+
 def test_get_availability(live_c8y: CumulocityApi, session_device: Device):
     """Verify that the latest availability can be retrieved."""
     # set a required update interval

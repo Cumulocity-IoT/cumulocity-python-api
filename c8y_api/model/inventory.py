@@ -98,6 +98,65 @@ class Inventory(CumulocityResource):
             as_values=as_values,
             **kwargs))
 
+    def get_by(
+            self,
+            expression: str = None,
+            query: str = None,
+            ids: list[str | int] = None,
+            order_by: str = None,
+            type: str = None,
+            parent: str = None,
+            fragment: str = None,
+            fragments: list[str] = None,
+            name: str = None,
+            owner: str = None,
+            text: str = None,
+            only_roots: str = None,
+            with_children: bool = None,
+            with_children_count: bool = None,
+            skip_children_names: bool = None,
+            with_groups: bool = None,
+            with_parents: bool = None,
+            with_latest_values: bool = None,
+            as_values: str | tuple | list[str | tuple] = None,
+            **kwargs) -> ManagedObject:
+        """ Query the database for a specific managed object.
+
+        This function is a special version of the `select` function assuming a single
+        result being returned by the query.
+
+        Returns:
+            A ManagedObject instance
+
+        Raises:
+            ValueError:  if the query did not return any or more than one result.
+        """
+        result = list(self.select(
+            expression=expression,
+            query=query,
+            ids=ids,
+            order_by=order_by,
+            type=type,
+            parent=parent,
+            fragment=fragment,
+            fragments=fragments,
+            name=name,
+            owner=owner,
+            text=text,
+            only_roots=only_roots,
+            with_children=with_children,
+            with_children_count=with_children_count,
+            skip_children_names=skip_children_names,
+            with_groups=with_groups,
+            with_parents=with_parents,
+            with_latest_values=with_latest_values,
+            page_size=2,
+            as_values=as_values,
+            **kwargs))
+        if len(result) == 1:
+            return result[0]
+        raise ValueError("No matching object found." if not result else "Ambiguous query; multiple matching objects found.")
+
     def get_count(
             self,
             expression: str = None,
