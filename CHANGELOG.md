@@ -1,5 +1,12 @@
 # Changelog
 
+* Added `CumulocityApp` class to module `c8y_tk.app` which allows working with Cumulocity interactively, e.g. in a
+  Jupyther notebook. It will deal with environment variables just like the other connection helpers but will also
+  ask interactively for missing info, e.g. a second factor with 2FA. It also integrates well with the
+  [c8y-go-cli](https://goc8ycli.netlify.app/) tool.
+* Added `c8y_tk.app` packages with `SubscriptionListener` class to ease development of multi_tenant microservices
+  which need to act on all subscribed tenants or on added/removed subscriptions alike.
+* Adding debug logs to base API as default urllib3 logs are not helpful for our purpose.
 * Single and multi tenant applications now automatically set the `application_key` property from the standard
   `APPLICATION_KEY` environment variable. 
 * Added `get_count` function to `Operations` API.

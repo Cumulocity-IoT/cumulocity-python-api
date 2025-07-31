@@ -11,18 +11,18 @@ from c8y_api import CumulocityApi, UnauthorizedError, MissingTfaError, HTTPBeare
 from c8y_api._jwt import JWT
 
 
-class CumulocityContext(CumulocityApi):
-    """Context manager to be used for interactive sessions.
+class CumulocityApp(CumulocityApi):
+    """Cumulocity API wrapper to be used for interactive sessions.
 
-    The context manager ensures that a valid Cumulocity connection is
+    As a context manager it ensures that a valid Cumulocity connection is
     available at runtime.  It uses standard environment variables when
     defined (C8Y_BASEURL, C8Y_TENANT, C8Y_USER, C8Y_PASSWORD, as well
     as C8Y_TOKEN) and interactively requests updated information in case
     some data is missing.
 
     ```
-    with CumulocityContext() as c8y:
-        alarms = c8y.alarms.get_all(type='cx_MyAlarm'))
+    with CumulocityApp() as c8y:
+        alarms = c8y.alarms.get_all(type='cx_MyAlarm')
         ...
     ```
     """
