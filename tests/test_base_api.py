@@ -4,7 +4,7 @@
 
 import base64
 from typing import Type
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, PropertyMock
 
 import json
 import pytest
@@ -18,6 +18,7 @@ from c8y_api._base_api import (
     AccessDeniedError,
     HttpError
 )
+from tests.utils import isolate_last_call_arg, assert_all_in_any, assert_all_not_in_any
 
 
 @pytest.fixture(scope='function')
@@ -351,3 +352,70 @@ def test_empty_response(mock_c8y: CumulocityRestApi):
                  url=mock_c8y.base_url + '/resource',
                  status=200)
         mock_c8y.put('/resource', json={})
+
+
+@pytest.mark.parametrize(
+    'method, kwargs, expected, not_expected',
+    [
+        ('get', {"params": {"a": 1}}, ['a=1'], ['{']),
+        ('post', {"json": {"b": 2}}, ['{"b": 2}'], []),
+        ('put', {"params": {"a": 1}, "json": {"b": 2}}, ['a=1', '{"b": 2}'], []),
+        ('delete', {"params": {"a": 1}, "json": {"b": 2}}, ['a=1', '{"b": 2}'], []),
+    ],
+    ids=[
+        "get",
+        "post",
+        "put",
+        "delete",
+    ]
+)
+@patch('c8y_api.CumulocityRestApi.session', new_callable=PropertyMock)
+def test_request_logging_simple(session_property_mock, mock_c8y: CumulocityRestApi,
+                                method, kwargs, expected, not_expected):
+    """Verify that requests are logged properly."""
+
+    session_mock = Mock(name='my-session-mock')
+    getattr(session_mock, method).return_value = Mock(status_code=200)
+    session_property_mock.return_value = session_mock
+    mock_c8y.log = Mock(isEnabledFor=Mock(return_value=True))
+
+    getattr(mock_c8y, method)('/resource', **kwargs)
+    mock_c8y.log.debug.assert_called_once()
+    msg = isolate_last_call_arg(mock_c8y.log.debug, 0)
+    assert_all_in_any([method.upper(), '/resource', *expected], msg)
+    assert_all_not_in_any(not_expected, msg)
+
+
+@patch('c8y_api.CumulocityRestApi.session', new_callable=PropertyMock)
+def test_request_logging_file(session_property_mock, mock_c8y: CumulocityRestApi, ):
+    """Verify that requests are logged properly."""
+
+    session_mock = Mock(name='my-session-mock')
+    session_property_mock.return_value = session_mock
+    mock_c8y.log = Mock(isEnabledFor=Mock(return_value=True))
+
+    # GET File
+    session_mock.get.return_value = Mock(status_code=200)
+    mock_c8y.log.debug.reset_mock()
+    mock_c8y.get_file('/resource', params={'a': 1})
+    mock_c8y.log.debug.assert_called_once()
+    msg = isolate_last_call_arg(mock_c8y.log.debug, 0)
+    assert_all_in_any(['/resource', 'GET', 'a=1'], msg)
+
+    # POST File
+    mock_c8y.log.debug.reset_mock()
+    session_mock.post.return_value = Mock(status_code=201)  # posting file should give 201
+    with patch("builtins.open"):
+        mock_c8y.post_file('/resource', file='filename', object={'a': 1})
+    mock_c8y.log.debug.assert_called_once()
+    msg = isolate_last_call_arg(mock_c8y.log.debug, 0)
+    assert_all_in_any(['/resource', 'POST', 'a=1', 'filename'], msg)
+
+    # PUT File
+    mock_c8y.log.debug.reset_mock()
+    session_mock.put.return_value = Mock(status_code=201)  # putting file should give 201
+    with patch("builtins.open"):
+        mock_c8y.put_file('/resource', file='filename')
+    mock_c8y.log.debug.assert_called_once()
+    msg = isolate_last_call_arg(mock_c8y.log.debug, 0)
+    assert_all_in_any(['/resource', 'PUT', 'filename'], msg)

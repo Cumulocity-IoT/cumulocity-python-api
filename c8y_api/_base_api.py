@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json as json_lib
+import logging
 from typing import Union, Dict, BinaryIO
 
 import collections
@@ -74,6 +75,8 @@ class CumulocityRestApi:
     CONTENT_AUDIT_RECORD = 'application/vnd.com.nsn.cumulocity.auditrecord+json'
     CONTENT_MANAGED_OBJECT = 'application/vnd.com.nsn.cumulocity.managedobject+json'
     CONTENT_MEASUREMENT_COLLECTION = 'application/vnd.com.nsn.cumulocity.measurementcollection+json'
+
+    log = logging.getLogger(__name__ + '.CumulocityRestApi')
 
     def __init__(self, base_url: str, tenant_id: str, username: str = None, password: str = None,
                  auth: AuthBase = None, application_key: str = None, processing_mode: str = None):
@@ -204,6 +207,8 @@ class CumulocityRestApi:
         """
         additional_headers = self._prepare_headers(accept=accept)
         r = self.session.get(self.base_url + resource, params=params, headers=additional_headers)
+        if self.log.isEnabledFor(logging.DEBUG):
+            self.log.debug(f'GET {resource} {self._format_params(params)} {r.status_code}')
         if r.status_code == 401:
             raise UnauthorizedError(self.METHOD_GET, self.base_url + resource)
         if r.status_code == 403:
@@ -237,6 +242,8 @@ class CumulocityRestApi:
                 (only 200 is accepted).
         """
         r = self.session.get(self.base_url + resource, params=params)
+        if self.log.isEnabledFor(logging.DEBUG):
+            self.log.debug(f'GET {resource} {self._format_params(params)} {r.status_code}')
         if r.status_code == 401:
             raise UnauthorizedError(self.METHOD_GET, self.base_url + resource)
         if r.status_code == 403:
@@ -273,6 +280,8 @@ class CumulocityRestApi:
         assert isinstance(json, dict)
         additional_headers = self._prepare_headers(accept=accept, content_type=content_type)
         r = self.session.post(self.base_url + resource, json=json, headers=additional_headers)
+        if self.log.isEnabledFor(logging.DEBUG):
+            self.log.debug(f"POST {resource} '{json_lib.dumps(json)}' {r.status_code}")
         if r.status_code == 401:
             raise UnauthorizedError(self.METHOD_POST, self.base_url + resource, message=r.json()['message'])
         if r.status_code == 403:
@@ -324,6 +333,9 @@ class CumulocityRestApi:
         else:
             r = perform_post(file)
 
+        if self.log.isEnabledFor(logging.DEBUG):
+            self.log.debug(f"POST {resource} '{file}' {self._format_params(object)} {r.status_code}")
+
         if r.status_code == 401:
             raise UnauthorizedError(self.METHOD_POST, self.base_url + resource)
         if r.status_code == 403:
@@ -362,6 +374,8 @@ class CumulocityRestApi:
         assert isinstance(json, dict)
         additional_headers = self._prepare_headers(accept=accept, content_type=content_type)
         r = self.session.put(self.base_url + resource, json=json, params=params, headers=additional_headers)
+        if self.log.isEnabledFor(logging.DEBUG):
+            self.log.debug(f"PUT {resource} {self._format_params(params)} '{json_lib.dumps(json)}' {r.status_code}")
         if r.status_code == 401:
             raise UnauthorizedError(self.METHOD_PUT, self.base_url + resource)
         if r.status_code == 403:
@@ -413,6 +427,8 @@ class CumulocityRestApi:
         additional_headers = self._prepare_headers(accept=accept, content_type=content_type)
         data = read_file_data(file)
         r = self.session.put(self.base_url + resource, data=data, headers=additional_headers)
+        if self.log.isEnabledFor(logging.DEBUG):
+            self.log.debug(f"PUT {resource} '{file}' {r.status_code}")
         if r.status_code == 401:
             raise UnauthorizedError(self.METHOD_PUT, self.base_url + resource)
         if r.status_code == 403:
@@ -448,6 +464,8 @@ class CumulocityRestApi:
         if json:
             assert isinstance(json, dict)
         r = self.session.delete(self.base_url + resource, json=json, params=params, headers={'Accept': None})
+        if self.log.isEnabledFor(logging.DEBUG):
+            self.log.debug(f"DELETE {resource} {self._format_params(params)} '{json_lib.dumps(json)}' {r.status_code}")
         if r.status_code == 401:
             raise UnauthorizedError(self.METHOD_DELETE, self.base_url + resource)
         if r.status_code == 403:
@@ -495,6 +513,14 @@ class CumulocityRestApi:
             return None if value == '' else value
 
         return {cls._format_header_key(key): format_value(value) for key, value in kwargs.items() if value is not None}
+
+    @staticmethod
+    def _format_params(params):
+        if not params:
+            return '-'
+        return ', '.join(
+            [f"{k}={v}" for k, v in params.items()]
+        )
 
     @staticmethod
     def _format_header_key(key: str) -> str:
