@@ -7,7 +7,7 @@ import pytest
 import requests
 
 from c8y_api._jwt import JWT
-from c8y_tk.interactive import CumulocityContext
+from c8y_tk.app import CumulocityApp
 
 from tests.test_util import create_jwt_token
 
@@ -37,7 +37,7 @@ def test_with_token(monkeypatch):
     token = create_jwt_token(tenant_id, hostname, username, 60*60+10)
 
     monkeypatch.setenv('C8Y_TOKEN', token)
-    with CumulocityContext() as c8y:
+    with CumulocityApp() as c8y:
         assert c8y.base_url == f'https://{hostname}'
         assert c8y.username == username
         assert c8y.tenant_id == tenant_id
@@ -47,7 +47,7 @@ def test_with_token(monkeypatch):
 
 @pytest.mark.parametrize('token', [60*60-1], indirect=True, ids=['Expired'])
 @patch('c8y_api._base_api.requests.post')
-@patch('c8y_tk.interactive.context.getpass.getpass')
+@patch('c8y_tk.app.interactive.getpass.getpass')
 def test_with_invalid_token(getpass_fun, post_fun, monkeypatch, token: str):
     """Verify that an invalid token is revoked and a new token is generated.
 
@@ -76,7 +76,7 @@ def test_with_invalid_token(getpass_fun, post_fun, monkeypatch, token: str):
     # assume post function to be invoked
     post_fun.return_value = build_auth_response(new_token)
 
-    with CumulocityContext() as c8y:
+    with CumulocityApp() as c8y:
         # new CumulocityApi instance should use new token
         assert c8y.auth.token is new_token
 
@@ -91,8 +91,8 @@ def test_with_invalid_token(getpass_fun, post_fun, monkeypatch, token: str):
 
 
 @patch('c8y_api._base_api.requests.post')
-@patch('c8y_tk.interactive.context.getpass.getpass')
-@patch('c8y_tk.interactive.context.input')
+@patch('c8y_tk.app.interactive.getpass.getpass')
+@patch('c8y_tk.app.interactive.input')
 def test_without_token(input_fun, getpass_fun, post_fun, monkeypatch):
     """Verify that all necessary information is requested from the user if
     no environment variables are defined."""
@@ -112,7 +112,7 @@ def test_without_token(input_fun, getpass_fun, post_fun, monkeypatch):
     # assume post function to be invoked
     post_fun.return_value = build_auth_response(token)
 
-    with CumulocityContext() as c8y:
+    with CumulocityApp() as c8y:
         assert c8y.username == 'some-user'
         assert c8y.tenant_id == 'some-tenant'
         assert c8y.base_url == 'https://some.host.com'
@@ -135,8 +135,8 @@ def test_without_token(input_fun, getpass_fun, post_fun, monkeypatch):
 @pytest.mark.parametrize('have_tenant_id', [True, False], ids=['Tenant', ''])
 @pytest.mark.parametrize('have_base_url', [True, False], ids=['URL', ''])
 @patch('c8y_api._base_api.requests.post')
-@patch('c8y_tk.interactive.context.getpass.getpass')
-@patch('c8y_tk.interactive.context.input')
+@patch('c8y_tk.app.interactive.getpass.getpass')
+@patch('c8y_tk.app.interactive.input')
 def test_environment_use(input_fun, getpass_fun, post_fun,
                          have_base_url, have_tenant_id, have_username, have_password):
     """Verify that standard C8Y_* environment variables are used when provided."""
@@ -156,11 +156,11 @@ def test_environment_use(input_fun, getpass_fun, post_fun,
     token = create_jwt_token('some-tenant', 'some.host.com', username='some-user')
     post_fun.return_value = build_auth_response(token)
     # ensure no passwords are cached
-    CumulocityContext._cached_passwords.clear()
+    CumulocityApp._cached_passwords.clear()
 
     # request connection with given environment
     with patch.dict('os.environ', env, clear=True) as patched_env:
-        with CumulocityContext() as c8y:
+        with CumulocityApp() as c8y:
             assert c8y.auth.token == token
             # token should be written back to environment
             assert patched_env['C8Y_TOKEN'] == token
@@ -180,7 +180,7 @@ def test_environment_use(input_fun, getpass_fun, post_fun,
 
 
 @patch('c8y_api._base_api.requests.post')
-@patch('c8y_tk.interactive.context.getpass.getpass')
+@patch('c8y_tk.app.interactive.getpass.getpass')
 # @patch.dict('os.environ', {}, clear=True)
 def test_dont_ask_password_again(getpass_fun, post_fun):
     """Verify that a password is requested from a user only once.
@@ -199,11 +199,11 @@ def test_dont_ask_password_again(getpass_fun, post_fun):
     post_fun.return_value = build_auth_response(new_token)
 
     # ensure no passwords are cached
-    CumulocityContext._cached_passwords.clear()
+    CumulocityApp._cached_passwords.clear()
 
     # request connection with given environment
     with patch.dict('os.environ', {'C8Y_TOKEN':old_token}, clear=True):
-        with CumulocityContext() as c8y:
+        with CumulocityApp() as c8y:
             assert c8y.auth.token == new_token
         # password should have been read from user
         getpass_fun.assert_called()
@@ -212,14 +212,14 @@ def test_dont_ask_password_again(getpass_fun, post_fun):
     with patch.dict('os.environ', {'C8Y_TOKEN': new_token}, clear=True):
         getpass_fun.reset_mock()
 
-        with CumulocityContext() as c8y:
+        with CumulocityApp() as c8y:
             assert c8y.auth.token == new_token
 
         getpass_fun.assert_not_called()
 
 
 @patch('c8y_api._base_api.requests.post')
-@patch('c8y_tk.interactive.context.getpass.getpass')
+@patch('c8y_tk.app.interactive.getpass.getpass')
 # @patch.dict('os.environ', {}, clear=True)
 def test_refresh_password_on_auth_failure(getpass_fun, post_fun):
     """Verify that a password is requested from a user only once.
@@ -243,23 +243,23 @@ def test_refresh_password_on_auth_failure(getpass_fun, post_fun):
     post_fun.side_effect = [response, build_auth_response(new_token)]
 
     # inject a mock password
-    CumulocityContext._cached_passwords['some-user'] = 'wrong-password'
+    CumulocityApp._cached_passwords['some-user'] = 'wrong-password'
 
     # request connection with given environment
     with patch.dict('os.environ', {'C8Y_TOKEN': old_token}, clear=True) as patched_env:
 
-        with CumulocityContext() as c8y:
+        with CumulocityApp() as c8y:
             assert c8y.auth.token == new_token
 
             # password should have been read from user (once)
             getpass_fun.assert_called_once()
 
-    assert CumulocityContext._cached_passwords['some-user'] == 'some-password'
+    assert CumulocityApp._cached_passwords['some-user'] == 'some-password'
 
 
 @patch('c8y_api._base_api.requests.post')
-@patch('c8y_tk.interactive.context.getpass.getpass')
-@patch('c8y_tk.interactive.context.input')
+@patch('c8y_tk.app.interactive.getpass.getpass')
+@patch('c8y_tk.app.interactive.input')
 # @patch.dict('os.environ', {}, clear=True)
 def test_tfa_support(input_fun, getpass_fun, post_fun):
     """Verify that a password is requested from a user only once.
@@ -283,12 +283,12 @@ def test_tfa_support(input_fun, getpass_fun, post_fun):
     response.json = Mock(return_value={'message': 'TFA'})
     post_fun.side_effect = [response, build_auth_response(new_token)]
 
-    CumulocityContext._cached_passwords['some-user'] = 'good-password'
+    CumulocityApp._cached_passwords['some-user'] = 'good-password'
 
     # request connection with given environment
     with patch.dict('os.environ', {'C8Y_TOKEN': old_token}, clear=True) as patched_env:
 
-        with CumulocityContext() as c8y:
+        with CumulocityApp() as c8y:
             assert c8y.auth.token == new_token
 
             # password should have been read from user (once)
