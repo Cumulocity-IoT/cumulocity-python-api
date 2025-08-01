@@ -141,7 +141,6 @@ def sample_alarms(session_device, module_factory) -> List[Alarm]:
     ]
 
 
-
 def test_apply_by(live_c8y: CumulocityApi, session_device: Device):
     """Verify that the apply_by function works."""
 

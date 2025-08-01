@@ -24,10 +24,22 @@ def assert_not_in_any(string, *strings):
     assert all(string not in s for s in strings), f"'{string}' is in one of {strings}"
 
 
+def assert_all_in(multiple_strings, string):
+    """Assert that multiple strings are in a given string."""
+    for one_string in multiple_strings:
+        assert one_string in string, f"'{one_string}' is not in {string}"
+
+
 def assert_all_in_any(multiple_strings, *strings):
     """Assert that multiple strings are in a given list of strings."""
     for string in multiple_strings:
         assert any(string in s for s in strings), f"'{string}' is not in any of {strings}"
+
+
+def assert_all_not_in(multiple_strings, string):
+    """Assert that multiple strings are not in a given string."""
+    for one_string in multiple_strings:
+        assert one_string not in string, f"'{one_string}' is in {string}"
 
 
 def assert_all_not_in_any(multiple_strings, *strings):

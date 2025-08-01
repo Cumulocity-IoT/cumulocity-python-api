@@ -286,7 +286,6 @@ class ManagedObject(ComplexObject):
         self.update_time = None
         self.child_devices = []
         self.child_assets = []
-        """List of NamedObject references to child assets."""
         self.child_additions = []
         self.parent_devices = []
         self.parent_assets = []
@@ -331,12 +330,16 @@ class ManagedObject(ComplexObject):
             mo.is_device = True
         if 'c8y_IsBinary' in json:
             mo.is_binary = True
-        if 'childDevices' in json:
-            mo.child_devices = cls._parse_references(json['childDevices'])
-        if 'childAssets' in json:
-            mo.child_assets = cls._parse_references(json['childAssets'])
-        if 'childAdditions' in json:
-            mo.child_additions = cls._parse_references(json['childAdditions'])
+        for fragment, field in [
+            ('childDevices', 'child_devices'),
+            ('childAssets', 'child_assets'),
+            ('childAdditions', 'child_additions'),
+            ('deviceParents', 'parent_devices'),
+            ('assetParents', 'parent_assets'),
+            ('additionParents', 'parent_additions'),
+        ]:
+            if fragment in json:
+                mo.__dict__[field] = cls._parse_references(json[fragment])
         return mo
 
     @classmethod

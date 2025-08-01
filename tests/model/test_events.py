@@ -32,10 +32,10 @@ def isolate_call_url(fun, **kwargs):
     ({'expression': 'EX', 'type': 'T'}, ['?EX'], ['type']),
     ({'type': 'T', 'source': 'S', 'fragment': 'F'}, ['type=T', 'source=S', 'fragmentType=F'], []),
     ({'fragment_type': 'T', 'fragment_value': 'V'}, ['fragmentType=T', 'fragmentValue=V'], ['_']),
-    ({'status': 'ST', 'severity': 'SE', 'resolved': False}, ['status=ST', 'severity=SE', 'resolved=False'], []),
+    ({'status': 'ST', 'severity': 'SE', 'resolved': False}, ['status=ST', 'severity=SE', 'resolved=false'], []),
     ({'reverse': False}, ['revert=false'], ['reverse']),
     ({'with_source_assets': False, 'with_source_devices': True, 'source': '123'},
-     ['withSourceAssets=False', 'withSourceDevices=True'],
+     ['withSourceAssets=false', 'withSourceDevices=true'],
      ['_']),
     # data priorities
     ({'date_from': '2020-12-31', 'date_to': '2021-12-31'},

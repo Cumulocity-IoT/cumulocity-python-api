@@ -16,7 +16,7 @@ from tests.utils import isolate_last_call_arg
      ['username=U', 'groups=1,2,3', 'owner=O'],
      []),
     ({'only_devices': False, 'with_subusers_count': True},
-     ['onlyDevices=False', 'withSubusersCount=True'],
+     ['onlyDevices=false', 'withSubusersCount=true'],
      ['_']),
     ({'snake_case': 'SC', 'pascalCase': 'PC'},
      ['snakeCase=SC', 'pascalCase=PC'],

@@ -10,7 +10,7 @@ from c8y_api import CumulocityRestApi, CumulocityApi
 from c8y_api.model import Inventory, DeviceGroupInventory, DeviceInventory
 from c8y_api.model._util import _QueryUtil
 
-from tests.utils import isolate_last_call_arg
+from tests.utils import isolate_last_call_arg, assert_all_in, assert_all_not_in
 
 
 @pytest.mark.parametrize('test, expected', [
@@ -46,6 +46,34 @@ def test_collect_query_params(specified, expected):
     kwargs = {x: x.upper() for x in specified}
     params = Inventory._collate_filter_params(only_devices=False, **kwargs)
     assert params.keys() == set(expected)
+
+
+@pytest.mark.parametrize(
+    'kwargs, expected, not_expected',
+    [
+        ({}, [], ['?', '&']),
+        ({'with_children': True}, ['?withChildren=true'], ['&']),
+        ({'with_children_count': True, 'with_parents': False},
+         ['?', '&', 'withChildrenCount=true', 'withParents=false'], []),
+    ],
+    ids=[
+        'id',
+        'single',
+        'multiple',
+    ]
+)
+def test_get(kwargs, expected, not_expected):
+    """Verify that inventory's get function works as expected."""
+    c8y: CumulocityRestApi = Mock()
+    c8y.get = Mock(return_value={'managedObjects': []})
+
+    inventory = Inventory(c8y)
+    inventory.get('12345', **kwargs)
+
+    assert c8y.get.call_count == 1
+    url = parse.unquote_plus(isolate_last_call_arg(c8y.get, 'resource', 0))
+    assert_all_in(['/12345', *expected], url)
+    assert_all_not_in(not_expected, url)
 
 
 @pytest.mark.parametrize('name, expected', [
@@ -162,17 +190,17 @@ def gen_common_select_cases():
         ({'text': "it's text"}, ["text='it''s text'"], ['$', ' eq ']),
         # other flags don't change the query mode
         # (fragment filters are special and tested per API below)
-        ({'type': 'T', 'with_children': False}, ['type=T', 'withChildren=False'], ['$', 'has']),
-        ({'owner': 'O', 'skip_children_names': False}, ['owner=O', 'skipChildrenNames=False'], ['$', 'has']),
-        ({'text': "it's text", 'with_latest_values': True}, ["text='it''s text'", 'withLatestValues=T'], ['$', ' eq ']),
-        ({'name': "it's name", 'with_groups': False}, ["name eq 'it''s name'", 'withGroups=False'], ['name=']),
+        ({'type': 'T', 'with_children': False}, ['type=T', 'withChildren=false'], ['$', 'has']),
+        ({'owner': 'O', 'skip_children_names': False}, ['owner=O', 'skipChildrenNames=false'], ['$', 'has']),
+        ({'text': "it's text", 'with_latest_values': True}, ["text='it''s text'", 'withLatestValues=true'], ['$', ' eq ']),
+        ({'name': "it's name", 'with_groups': False}, ["name eq 'it''s name'", 'withGroups=false'], ['name=']),
         # test all kinds of known parameters
-        ({'with_children_count': False}, ['withChildrenCount=False'], ['with_children_count']),
-        ({'skip_children_names': False}, ['skipChildrenNames=False'], ['skip_children_names']),
-        ({'with_groups': False}, ['withGroups=False'], ['with_groups']),
-        ({'with_parents': False}, ['withParents=False'], ['with_parents']),
-        ({'with_latest_values': False}, ['withLatestValues=False'], ['with_latest_values']),
-        ({'any_other_param': False}, ['anyOtherParam=False'], ['any_other_param']),
+        ({'with_children_count': False}, ['withChildrenCount=false'], ['with_children_count']),
+        ({'skip_children_names': False}, ['skipChildrenNames=false'], ['skip_children_names']),
+        ({'with_groups': False}, ['withGroups=false'], ['with_groups']),
+        ({'with_parents': False}, ['withParents=false'], ['with_parents']),
+        ({'with_latest_values': False}, ['withLatestValues=false'], ['with_latest_values']),
+        ({'any_other_param': False}, ['anyOtherParam=false'], ['any_other_param']),
         ({'pascalCaseParam': 12}, ['pascalCaseParam=12'], []),
     ]
 

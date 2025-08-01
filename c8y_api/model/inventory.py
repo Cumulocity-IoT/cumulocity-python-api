@@ -23,11 +23,30 @@ class Inventory(CumulocityResource):
     def __init__(self, c8y):
         super().__init__(c8y, 'inventory/managedObjects')
 
-    def get(self, id) -> ManagedObject:  # noqa (id)
+    def get(
+            self,
+            id: str,  # noqa
+            with_children: bool = None,
+            with_children_count: bool = None,
+            skip_children_names: bool = None,
+            with_parents: bool = None,
+            with_latest_values: bool = None,
+            **kwargs) -> ManagedObject:
         """ Retrieve a specific managed object from the database.
 
         Args:
-            ID of the managed object
+            id (str): Cumulocity ID of the managed object
+            with_children (bool):  Whether children with ID and name should be
+                included with each returned object
+            with_children_count (bool): When set to true, the returned result
+                will contain the total number of children in the respective
+                child additions, assets and devices sub fragments.
+            skip_children_names (bool):  If true, returned references of child
+                devices won't contain their names.
+            with_parents (bool): Whether to include a device's parents.
+            with_latest_values (bool):  If true the platform includes the
+                fragment `c8y_LatestMeasurements, which contains the latest
+                measurement values reported by the device to the platform.
 
         Returns:
              A ManagedObject instance
@@ -35,7 +54,15 @@ class Inventory(CumulocityResource):
         Raises:
             KeyError:  if the ID is not defined within the database
         """
-        managed_object = ManagedObject.from_json(self._get_object(id))
+        managed_object = ManagedObject.from_json(self._get_object(
+            id,
+            with_children=with_children,
+            with_children_count=with_children_count,
+            skip_children_names=skip_children_names,
+            with_parents=with_parents,
+            with_latest_values=with_latest_values,
+            **kwargs)
+        )
         managed_object.c8y = self.c8y  # inject c8y connection into instance
         return managed_object
 
@@ -155,7 +182,8 @@ class Inventory(CumulocityResource):
             **kwargs))
         if len(result) == 1:
             return result[0]
-        raise ValueError("No matching object found." if not result else "Ambiguous query; multiple matching objects found.")
+        raise ValueError("No matching object found." if not result
+                         else "Ambiguous query; multiple matching objects found.")
 
     def get_count(
             self,
@@ -514,11 +542,30 @@ class DeviceInventory(Inventory):
         """
         self.c8y.put('/devicecontrol/newDeviceRequests/' + str(id), {'status': 'ACCEPTED'})
 
-    def get(self, id: str) -> Device:  # noqa (id)
+    def get(
+            self,
+            id: str,  # noqa
+            with_children: bool = None,
+            with_children_count: bool = None,
+            skip_children_names: bool = None,
+            with_parents: bool = None,
+            with_latest_values: bool = None,
+            **kwargs) -> Device:
         """ Retrieve a specific device object.
 
         Args:
-            id (str): ID of the device object
+            id (str): Cumulocity ID of the device object
+            with_children (bool):  Whether children with ID and name should be
+                included with each returned object
+            with_children_count (bool): When set to true, the returned result
+                will contain the total number of children in the respective
+                child additions, assets and devices sub fragments.
+            skip_children_names (bool):  If true, returned references of child
+                devices won't contain their names.
+            with_parents (bool): Whether to include a device's parents.
+            with_latest_values (bool):  If true the platform includes the
+                fragment `c8y_LatestMeasurements, which contains the latest
+                measurement values reported by the device to the platform.
 
         Returns:
             A Device instance
@@ -526,7 +573,15 @@ class DeviceInventory(Inventory):
         Raises:
             KeyError:  if the ID is not defined within the database
         """
-        device = Device.from_json(self._get_object(id))
+        device = Device.from_json(self._get_object(
+            id,
+            with_children=with_children,
+            with_children_count=with_children_count,
+            skip_children_names=skip_children_names,
+            with_parents=with_parents,
+            with_latest_values=with_latest_values,
+            **kwargs)
+        )
         device.c8y = self.c8y
         return device
 

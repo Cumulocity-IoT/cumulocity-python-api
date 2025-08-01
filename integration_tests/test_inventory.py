@@ -170,6 +170,99 @@ def test_reload(live_c8y):
     assert 'c8y_AdditionalFragment' not in obj2.fragments
 
 
+@pytest.fixture(name='asset_hierarchy_root_id', scope='module')
+def fix_asset_hierarchy_root_id(module_factory):
+    """Provide a (read-only) sample asset hierarchy for corresponding tests.
+
+    This fixture creates a root object with a child of each kind (asset,
+    device, addition). Each of the children references to another 'addition'
+    child to create a multi-level hierarchy.
+
+    It is automatically cleaned up after testing.
+    """
+    name = RandomNameGenerator.random_name()
+    obj = module_factory(ManagedObject(name=f'Root-{name}', type=f'Root-{name}'))
+
+    addition = module_factory(ManagedObject(name=f'Addition-{name}', type=f'Addition-{name}'))
+    asset = module_factory(ManagedObject(name=f'Asset-{name}', type=f'Asset-{name}'))
+    device = module_factory(Device(name=f'Device-{name}', type=f'Device-{name}'))
+    obj.add_child_addition(addition)
+    obj.add_child_asset(asset)
+    obj.add_child_device(device)
+
+    sub_addition =  module_factory(ManagedObject(name=f'SubAddition-{name}', type=f'Addition-{name}'))
+    addition.add_child_addition(sub_addition)
+    asset.add_child_addition(sub_addition)
+    device.add_child_addition(sub_addition)
+
+    return obj.id
+
+
+def test_references(live_c8y: CumulocityApi, asset_hierarchy_root_id):
+    """Verify that parent references are handles as expected.
+
+    This test uses the "asset_hierarchy" fixture which defines a root
+    with children of each kind.
+    """
+    root_id = asset_hierarchy_root_id
+
+    # (1) ignore children and parents
+    result = live_c8y.inventory.get(root_id, with_children=False)
+    assert not result.child_assets
+    assert not result.child_devices
+    assert not result.child_additions
+    assert not result.parent_assets
+    assert not result.parent_devices
+    assert not result.parent_additions
+
+    # (2) include children, with names
+    result = live_c8y.inventory.get(root_id, with_children=True, skip_children_names=False)
+    # -> the root object references one of each
+    assert len(result.child_assets) == 1
+    assert len(result.child_devices) == 1
+    assert len(result.child_additions) == 1
+    # -> including their names
+    assert result.child_assets[0].name
+    assert result.child_devices[0].name
+    assert result.child_additions[0].name
+    # -> but no parents
+    assert not result.parent_assets
+    assert not result.parent_devices
+    assert not result.parent_additions
+
+    # (3) include children, no names
+    result = live_c8y.inventory.get(root_id, with_children=True, skip_children_names=True)
+    # -> the root object references one of each
+    assert len(result.child_assets) == 1
+    assert len(result.child_devices) == 1
+    assert len(result.child_additions) == 1
+    # -> including their names
+    assert not result.child_assets[0].name
+    assert not result.child_devices[0].name
+    assert not result.child_additions[0].name
+
+
+@pytest.mark.parametrize('child_type', ['asset', 'device', 'addition'])
+def test_parent_references(live_c8y: CumulocityApi, asset_hierarchy_root_id, child_type):
+    """Verify that parent references are handles as expected.
+
+    This test uses the "asset_hierarchy" fixture which defines a root
+    with children of each kind. Each kind has another "addition" child.
+    """
+    root = live_c8y.inventory.get(asset_hierarchy_root_id, with_children=True)
+    child = root.__dict__[f'child_{child_type}s'][0]
+
+    # read child with references
+    result = live_c8y.inventory.get(child.id,  with_children=True, with_parents=True)
+    # parent (root) is linked by the child's type
+    parents = result.__dict__[f'parent_{child_type}s']
+    assert len(parents) == 1
+    assert parents[0].id == root.id
+    assert parents[0].name == root.name
+    # each child as an 'addition' child
+    assert len(result.child_additions) == 1
+
+
 def test_deletion(live_c8y: CumulocityApi, safe_create):
     """Verify that deletion works as expected.
 
