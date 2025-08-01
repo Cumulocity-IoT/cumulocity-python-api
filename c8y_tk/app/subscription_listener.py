@@ -119,6 +119,8 @@ class SubscriptionListener:
 
         This is blocking.
         """
+        # pylint: disable=too-many-branches
+
         # safely invoke a callback function blocking or non-blocking
         def invoke_callback(callback, is_blocking, _, arg):
             def safe_invoke(a):
@@ -128,7 +130,7 @@ class SubscriptionListener:
                         self._log.debug(f"Invoking callback: {callback.__module__}.{callback.__name__}")
                     callback(a)
                 except Exception as callback_error:
-                    self._log.error(f"Uncaught exception in callback: {callback_error}", exc_info=error)
+                    self._log.error(f"Uncaught exception in callback: {callback_error}", exc_info=callback_error)
             if is_blocking:
                 safe_invoke(arg)
             else:
@@ -180,8 +182,8 @@ class SubscriptionListener:
                 # schedule next run, skip if already exceeded
                 next_run = time.monotonic() + self.polling_interval
                 if self._log.isEnabledFor(logging.DEBUG):
-                    next_run_datetime = (datetime.now(timezone.utc) + timedelta(seconds=self.polling_interval) ).isoformat(sep=' ', timespec='seconds')
-                    self._log.debug(f"Next run at {next_run_datetime}.")
+                    next_run_datetime = datetime.now(timezone.utc) + timedelta(seconds=self.polling_interval)
+                    self._log.debug(f"Next run at {next_run_datetime.isoformat(sep=' ', timespec='seconds')}.")
                 # sleep until next poll
                 if not time.monotonic() > next_run:
                     self._is_closed.wait(next_run - time.monotonic())
@@ -192,6 +194,7 @@ class SubscriptionListener:
             if self._executor:
                 self._executor.shutdown(wait=False, cancel_futures=False)
 
+        # pylint: disable=broad-exception-caught
         except Exception as error:
             self._log.error(f"Uncaught exception during listen: {error}", exc_info=error)
 

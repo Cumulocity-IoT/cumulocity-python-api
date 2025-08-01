@@ -1,5 +1,6 @@
 # Changelog
 
+* Added `get_by` function to inventory API to return a single object by query.
 * Added `CumulocityApp` class to module `c8y_tk.app` which allows working with Cumulocity interactively, e.g. in a
   Jupyther notebook. It will deal with environment variables just like the other connection helpers but will also
   ask interactively for missing info, e.g. a second factor with 2FA. It also integrates well with the

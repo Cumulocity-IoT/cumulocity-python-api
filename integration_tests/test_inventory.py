@@ -98,6 +98,32 @@ def test_get_by_query(live_c8y: CumulocityApi, similar_objects: List[ManagedObje
     assert live_c8y.inventory.get_count(query=query) == len(similar_objects)
 
 
+def test_get_single_by_query(live_c8y: CumulocityApi, module_factory):
+    """Verify that the get_by function works as expected."""
+    basename = RandomNameGenerator.random_name(2)
+    typename = basename
+
+    # create a couple of objects with two types
+    objects = [
+        module_factory(ManagedObject(name=f'{basename}_1', type=f'{typename}_A')),
+        module_factory(ManagedObject(name=f'{basename}_2', type=f'{typename}_A')),
+        module_factory(ManagedObject(name=f'{basename}_3', type=f'{typename}_B')),
+    ]
+
+    # -> single matching query returns expected object
+    assert live_c8y.inventory.get_by(type=f'{typename}_B').id == objects[2].id
+
+    # -> not matching query returns expected object
+    with pytest.raises(ValueError) as error:
+        live_c8y.inventory.get_by(type=f'{typename}_C')
+    assert "no matching object found" in str(error).lower()
+
+    # -> not matching query returns expected object
+    with pytest.raises(ValueError) as error:
+        live_c8y.inventory.get_by(type=f'{typename}_A')
+    assert "ambiguous" in str(error).lower()
+
+
 def test_get_availability(live_c8y: CumulocityApi, session_device: Device):
     """Verify that the latest availability can be retrieved."""
     # set a required update interval
@@ -142,6 +168,99 @@ def test_reload(live_c8y):
     obj2 = obj0.reload()
     # -> should be removed when reloaded
     assert 'c8y_AdditionalFragment' not in obj2.fragments
+
+
+@pytest.fixture(name='asset_hierarchy_root_id', scope='module')
+def fix_asset_hierarchy_root_id(module_factory):
+    """Provide a (read-only) sample asset hierarchy for corresponding tests.
+
+    This fixture creates a root object with a child of each kind (asset,
+    device, addition). Each of the children references to another 'addition'
+    child to create a multi-level hierarchy.
+
+    It is automatically cleaned up after testing.
+    """
+    name = RandomNameGenerator.random_name()
+    obj = module_factory(ManagedObject(name=f'Root-{name}', type=f'Root-{name}'))
+
+    addition = module_factory(ManagedObject(name=f'Addition-{name}', type=f'Addition-{name}'))
+    asset = module_factory(ManagedObject(name=f'Asset-{name}', type=f'Asset-{name}'))
+    device = module_factory(Device(name=f'Device-{name}', type=f'Device-{name}'))
+    obj.add_child_addition(addition)
+    obj.add_child_asset(asset)
+    obj.add_child_device(device)
+
+    sub_addition =  module_factory(ManagedObject(name=f'SubAddition-{name}', type=f'Addition-{name}'))
+    addition.add_child_addition(sub_addition)
+    asset.add_child_addition(sub_addition)
+    device.add_child_addition(sub_addition)
+
+    return obj.id
+
+
+def test_references(live_c8y: CumulocityApi, asset_hierarchy_root_id):
+    """Verify that parent references are handles as expected.
+
+    This test uses the "asset_hierarchy" fixture which defines a root
+    with children of each kind.
+    """
+    root_id = asset_hierarchy_root_id
+
+    # (1) ignore children and parents
+    result = live_c8y.inventory.get(root_id, with_children=False)
+    assert not result.child_assets
+    assert not result.child_devices
+    assert not result.child_additions
+    assert not result.parent_assets
+    assert not result.parent_devices
+    assert not result.parent_additions
+
+    # (2) include children, with names
+    result = live_c8y.inventory.get(root_id, with_children=True, skip_children_names=False)
+    # -> the root object references one of each
+    assert len(result.child_assets) == 1
+    assert len(result.child_devices) == 1
+    assert len(result.child_additions) == 1
+    # -> including their names
+    assert result.child_assets[0].name
+    assert result.child_devices[0].name
+    assert result.child_additions[0].name
+    # -> but no parents
+    assert not result.parent_assets
+    assert not result.parent_devices
+    assert not result.parent_additions
+
+    # (3) include children, no names
+    result = live_c8y.inventory.get(root_id, with_children=True, skip_children_names=True)
+    # -> the root object references one of each
+    assert len(result.child_assets) == 1
+    assert len(result.child_devices) == 1
+    assert len(result.child_additions) == 1
+    # -> including their names
+    assert not result.child_assets[0].name
+    assert not result.child_devices[0].name
+    assert not result.child_additions[0].name
+
+
+@pytest.mark.parametrize('child_type', ['asset', 'device', 'addition'])
+def test_parent_references(live_c8y: CumulocityApi, asset_hierarchy_root_id, child_type):
+    """Verify that parent references are handles as expected.
+
+    This test uses the "asset_hierarchy" fixture which defines a root
+    with children of each kind. Each kind has another "addition" child.
+    """
+    root = live_c8y.inventory.get(asset_hierarchy_root_id, with_children=True)
+    child = root.__dict__[f'child_{child_type}s'][0]
+
+    # read child with references
+    result = live_c8y.inventory.get(child.id,  with_children=True, with_parents=True)
+    # parent (root) is linked by the child's type
+    parents = result.__dict__[f'parent_{child_type}s']
+    assert len(parents) == 1
+    assert parents[0].id == root.id
+    assert parents[0].name == root.name
+    # each child as an 'addition' child
+    assert len(result.child_additions) == 1
 
 
 def test_deletion(live_c8y: CumulocityApi, safe_create):

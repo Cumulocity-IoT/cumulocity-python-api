@@ -33,7 +33,7 @@ def isolate_call_url(fun, **kwargs):
     ({'tenant': 'T', 'subscriber': 'S', 'provided_for': 'P'},
      ['tenant=T', 'subscriber=S', 'providedFor=P'],
      ['_']),
-    ({'has_versions': False}, ['hasVersions=False'], ['_']),
+    ({'has_versions': False}, ['hasVersions=false'], ['_']),
     ({'snake_case': 'SC', 'pascalCase': 'PC'},
      ['snakeCase=SC', 'pascalCase=PC'],
      ['_']),

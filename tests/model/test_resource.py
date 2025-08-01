@@ -67,7 +67,7 @@ def test_build_base_query():
 
     # -> all expected params are there
     for key, value in expected_params.items():
-        assert f'{key}={value}' in base_query
+        assert f'{key}={str(value).lower() if isinstance(value, bool) else value}' in base_query
 
 
 @pytest.mark.parametrize('params, expected, not_expected', [

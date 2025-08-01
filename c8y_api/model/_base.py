@@ -685,6 +685,11 @@ class CumulocityResource:
         def multi(*xs):
             return sum(bool(x) for x in xs) > 1
 
+        def stringify(value):
+            if isinstance(value, bool):
+                return str(value).lower()
+            return value
+
         if multi(min_age, before, date_to):
             raise ValueError("Only one of 'min_age', 'before' and 'date_to' query parameters must be used.")
         if multi(max_age, after, date_from):
@@ -739,11 +744,11 @@ class CumulocityResource:
             'createdTo': created_to,
             'lastUpdatedFrom': updated_from,
             'lastUpdatedTo': updated_to,
-            'withSourceAssets': with_source_assets,
-            'withSourceDevices': with_source_devices,
-            'revert': str(reverse).lower() if reverse is not None else None,
+            'withSourceAssets': stringify(with_source_assets),
+            'withSourceDevices': stringify(with_source_devices),
+            'revert': stringify(reverse),
             'pageSize': page_size}.items() if v is not None}
-        params.update({_StringUtil.to_pascal_case(k): v for k, v in kwargs.items() if v is not None})
+        params.update({_StringUtil.to_pascal_case(k): stringify(v) for k, v in kwargs.items() if v is not None})
         tuples = list(params.items())
         if series:
             if isinstance(series, list):
@@ -758,8 +763,9 @@ class CumulocityResource:
             return resource or self.resource
         return (resource or self.resource) + '?' + encoded
 
-    def _get_object(self, object_id):
-        return self.c8y.get(self.build_object_path(object_id))
+    def _get_object(self, object_id, **kwargs):
+        query = self._prepare_query(self.build_object_path(object_id), **kwargs)
+        return self.c8y.get(query)
 
     def _get_page(self, base_query: str, page_number: int):
         sep = '&' if '?' in base_query else '?'
