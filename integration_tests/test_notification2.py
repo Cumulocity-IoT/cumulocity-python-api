@@ -8,8 +8,9 @@ import time
 import pytest
 
 from c8y_api import CumulocityApi
-from c8y_api.model import Device, ManagedObject, Subscription
+from c8y_api.model import Device, ManagedObject, Subscription, Measurement, Value, Event, Alarm, Operation
 from c8y_tk.notification2 import AsyncListener, Listener
+from tests.utils import assert_in_any
 
 from util.testing_util import RandomNameGenerator
 
@@ -45,6 +46,87 @@ def fix_object_tree_builder(live_c8y: CumulocityApi, safe_create):
         return mo.reload()
 
     return build
+
+
+@pytest.mark.parametrize("api_filters, expected", [
+    ('*', 'M,E,EwC,A,AwC,MO'),
+    ('M', 'M'),
+    ('E', 'E'),
+    ('EwC', 'E,EwC'),
+    ('A', 'A'),
+    ('AwC', 'A,AwC'),
+    ('MO', 'MO'),
+], ids=[
+    "*",
+    'measurements',
+    'events',
+    'events+children',
+    'alarms',
+    'alarms+children',
+    'managedObjects',
+])
+def test_api_filters(live_c8y: CumulocityApi, sample_object, api_filters, expected):
+    """Verify that API filters work as expected.
+
+    This test creates a subscription with selected API filters and performs
+    a couple of corresponding changes. It then matches the received
+    notifications against expectations.
+    """
+    # TODO: Add Operation
+    apis = {
+        '*': '*',
+        'M': 'measurements',
+        'E': 'events',
+        'A': 'alarms',
+        'EwC': 'eventsWithChildren',
+        'AwC': 'alarmsWithChildren',
+        'O': 'operations',
+        'MO': 'managedobjects',
+    }
+    expected = [apis[x] for x in expected.split(',')]
+    api_filters = [apis[x] for x in api_filters.split(',')]
+
+    mo = sample_object
+    mo['c8y_IsDevice'] = {}
+    mo.update()
+    sub = Subscription(
+        live_c8y,
+        name=f'{mo.name.replace("_", "")}Subscription',
+        context=Subscription.Context.MANAGED_OBJECT,
+        api_filter=api_filters,
+        source_id=mo.id,
+    ).create()
+
+    notifications = queue.Queue()
+    def receive_notification(m:Listener.Message):
+        notifications.put(m)
+        m.ack()
+
+    # (1) Create listener and start listening
+    listener = Listener(live_c8y, subscription_name=sub.name)
+    listener_thread = threading.Thread(target=listener.listen, args=[receive_notification])
+    listener_thread.start()
+    try:
+        time.sleep(3)  # ensure creation
+
+        # (2) apply updates
+        m_id = Measurement(live_c8y, source=mo.id, type="c8y_TestMeasurement", metric=Value(1, '')).create()
+        e_id = Event(live_c8y, source=mo.id, type="c8y_TestEvent", time='now', text='text').create()
+        a_id = Alarm(live_c8y, source=mo.id, type="c8y_TestAlarm", time='now', text='text', severity=Alarm.Severity.WARNING).create()
+        # o_id = Operation(live_c8y, device_id=mo.id, c8y_Operation={}).create()
+        mo.apply({'some_tag': {}})
+
+        time.sleep(1)
+        ns = list(notifications.queue)
+        # collect message types from source URL
+        types = {n.source.split('/')[2] for n in ns}
+        for e in expected:
+            assert_in_any(e, *types)
+
+    finally:
+        # (99) cleanup
+        listener.close()
+        listener_thread.join()
 
 
 def test_object_update_and_deletion(live_c8y: CumulocityApi, sample_object):
