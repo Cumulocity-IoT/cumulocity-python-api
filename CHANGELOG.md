@@ -20,7 +20,7 @@
 * Added `as_values` parameter to the Measurements API `select` and `get_all` functions.
 * Adding `c8y_tk.analytics` package with `to_numpy`, `to_series` and `to_data_frame` functions to
   ease incorporating Cumulocity data into standard analytics pipelines.
-
+  
 ## Version 3.2.1
 
 * Some essential fixes and improvements for dealing with measurements and series.
