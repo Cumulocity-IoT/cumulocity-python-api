@@ -192,7 +192,9 @@ def gen_common_select_cases():
         # (fragment filters are special and tested per API below)
         ({'type': 'T', 'with_children': False}, ['type=T', 'withChildren=false'], ['$', 'has']),
         ({'owner': 'O', 'skip_children_names': False}, ['owner=O', 'skipChildrenNames=false'], ['$', 'has']),
-        ({'text': "it's text", 'with_latest_values': True}, ["text='it''s text'", 'withLatestValues=true'], ['$', ' eq ']),
+        ({'text': "it's text", 'with_latest_values': True},
+         ["text='it''s text'", 'withLatestValues=true'],
+         ['$', ' eq ']),
         ({'name': "it's name", 'with_groups': False}, ["name eq 'it''s name'", 'withGroups=false'], ['name=']),
         # test all kinds of known parameters
         ({'with_children_count': False}, ['withChildrenCount=false'], ['with_children_count']),
