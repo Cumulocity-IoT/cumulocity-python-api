@@ -1,10 +1,13 @@
 # Copyright (c) 2025 Cumulocity GmbH
 
 import asyncio
+import contextlib
 import json as js
 import logging
 import ssl
-import time
+import threading
+import uuid
+from itertools import count
 from typing import Callable, Awaitable
 
 import certifi
@@ -55,9 +58,7 @@ class AsyncListener(object):
     See also: https://cumulocity.com/guides/reference/notifications/
     """
 
-    _log = logging.getLogger(__name__ + '.AsyncListener')
-    ping_interval = 60
-    ping_timeout = 20
+    _ids = count(0)
 
     class Message(_Message):
         """Represents a Notification 2.0 message.
@@ -79,7 +80,16 @@ class AsyncListener(object):
             """Acknowledge the message."""
             await self.listener.send(self.id)
 
-    def __init__(self, c8y: CumulocityApi, subscription_name: str, subscriber_name: str = None):
+    def __init__(
+            self,
+            c8y: CumulocityApi,
+            subscription_name: str,
+            subscriber_name: str = None,
+            consumer_name: str = None,
+            shared: bool = False,
+            auto_ack: bool = True,
+            auto_unsubscribe: bool = True,
+    ):
         """Create a new Listener.
 
         Args:
@@ -89,56 +99,75 @@ class AsyncListener(object):
             subscriber_name (str): Subscriber (consumer) name; a sensible default
                 is used when this is not defined.
         """
+        self._id = next(self._ids)
+        self._log = logging.getLogger(f'{__name__}.AsyncListener[{self._id}]')
+
         self.c8y = c8y
         self.subscription_name = subscription_name
-        self.subscriber_name = subscriber_name
+        self.subscriber_name = subscriber_name or subscription_name
+        self.consumer_name = consumer_name
+        self.shared = shared
+        self.auto_ack = auto_ack
+        self.auto_unsubscribe = auto_unsubscribe
+        self.signed_token = True
+        self.token_validity = 1440
+        self.ping_interval = 60
+        self.ping_timeout = 20
+        self.retry_interval = 0.1
+        self.retry_rate = 1.5
+        self.retry_max_delay = 30
 
-        self._event_loop = None
-        self._outbound_queue = []
-        self._current_validity = None
-        self._current_uri = None
-        self._is_closed = False
+        self._task = None
         self._connection = None
+        self._current_token = None
+        self._is_running = asyncio.Event()
+        self._is_connected = asyncio.Event()
+        self._stop_event = asyncio.Event()
+
+
+    def _create_token(self) -> str:
+        token = self.c8y.notification2_tokens.generate(
+            subscription=self.subscription_name,
+            subscriber=self.subscriber_name,
+            shared=self.shared,
+            signed=self.signed_token,
+            expires=self.token_validity,
+        )
+        self._log.info(
+            "New Notification 2.0 token requested for subscription %s, %s.",
+            self.subscription_name,
+            self.subscriber_name,
+        )
+        return token
 
     # Note: Return type naming differs for different Python Versions; ClientConnection
     # refers to the latest module revision
-    async def _get_connection(self) -> ws_client.ClientConnection:
-        if not self._connection:
-            if self._current_uri and self._current_validity < time.time():
-                self._current_uri = None
-            if not self._current_uri:
-                token = self.c8y.notification2_tokens.generate(
-                    subscription=self.subscription_name,
-                    subscriber=self.subscriber_name)
-                self._current_uri = self.c8y.notification2_tokens.build_websocket_uri(token)
-                self._current_validity = float(JWT(token).get_claim('exp'))
-                self._log.debug("New Notification 2.0 token requested for subscription %s, %s",
-                                self.subscription_name,
-                                self.subscriber_name or 'default')
-            try:
-                self._log.debug("Connecting ...")
-                # ensure that the SSL context uses certifi
-                ssl_context = ssl.create_default_context()
-                ssl_context.load_verify_locations(certifi.where())
-                self._connection = await ws_client.connect(
-                    uri=self._current_uri,
-                    ping_interval=AsyncListener.ping_interval,
-                    ping_timeout=AsyncListener.ping_timeout,
-                    ssl=ssl_context,
-                )
-                self._log.info("Websocket connection established for subscription %s, %s",
-                               self.subscription_name,
-                               self.subscriber_name or 'default')
-            except InvalidStatus as e:
-                self._log.info("Cannot open websocket connection. Failed: {e}", exc_info=e)
-                self._connection = None
-                raise e
-            except ConnectionClosed as e:
-                self._log.info("Cannot open websocket connection. Closed: {e}", exc_info=e)
-                self._connection = None
-                raise e
-
-        return self._connection
+    async def _create_connection(self)-> ws_client.ClientConnection:
+        self._current_token = self._create_token()
+        # if shared, consumer names should be unique
+        consumer = self.consumer_name  # user's choice is used
+        if not consumer and self.shared:
+            consumer = self.subscriber_name + uuid.uuid4().hex[:8]
+        # a consumer name is used for shared subscribers, only
+        uri = self.c8y.notification2_tokens.build_websocket_uri(
+            token=self._current_token,
+            consumer=consumer if self.shared else None,
+        )
+        # ensure that the SSL context uses certifi
+        ssl_context = ssl.create_default_context()
+        ssl_context.load_verify_locations(certifi.where())
+        connection = await ws_client.connect(
+            uri=uri,
+            ping_interval=self.ping_interval,
+            ping_timeout=self.ping_timeout,
+            ssl=ssl_context,
+        )
+        self._log.info(
+            "Websocket connection established for subscription %s, %s.",
+            self.subscription_name,
+            self.subscriber_name,
+        )
+        return connection
 
     async def listen(self, callback: Callable[["AsyncListener.Message"], Awaitable[None]]):
         """Listen and handle messages.
@@ -156,28 +185,117 @@ class AsyncListener(object):
         including the authentication via tokens and reconnecting on
         connection loss. It will end when the listener is closed using its
         `close` function.
-
-        Args:
-            callback (Callable):  A coroutine to be invoked on every inbound
-                message.
         """
-        # this unnecessary wrap seems to be necessary to suppress a compiler warning
         async def _callback(msg):
-            await callback(msg)
-
-        while not self._is_closed:
             try:
-                c = await self._get_connection()
-                payload = await c.recv()
-                self._log.debug("Received message: %s", payload)
-                await asyncio.create_task(_callback(AsyncListener.Message(listener=self, payload=payload)))
-            except InvalidStatus as e:
+                await callback(msg)
+                self._log.debug("Message %s processed.", msg.id)
+                if self.auto_ack:
+                    await msg.ack()
+                    self._log.debug("Message %s acknowledged.", msg.id)
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                self._log.error("Callback failed with exception: %s", e, exc_info=e)
+
+        if self._is_running.is_set():
+            raise RuntimeError("Listener already started")
+        self._task = asyncio.current_task()
+        self._is_running.set()
+        self._stop_event.clear()
+
+        # outer connection loop
+        connection_retry = 0
+        while not self._stop_event.is_set():
+            try:
+                self._connection = await self._create_connection()
+                self._is_connected.set()
+                connection_retry = 0  # reset after successful connect
+                # inner receive loop
+                while not self._stop_event.is_set():
+                    payload = await self._connection.recv()
+                    self._log.debug("Received message: %s", payload)
+                    await asyncio.create_task(_callback(AsyncListener.Message(listener=self, payload=payload)))
+            except asyncio.CancelledError:
+                self._log.info("Subscriber %s cancelled. Stopping ...", self.subscriber_name)
+                self._stop_event.set()
+            except (ConnectionClosed, InvalidStatus) as e:
                 self._log.info("Websocket connection failed: %s", e)
-            except ConnectionClosed as e:
-                self._log.info("Websocket connection closed: %s", e)
+                connection_retry += 1
+                backoff_delay = self.retry_interval * self.retry_rate ** connection_retry
+                await asyncio.wait_for(self._stop_event.wait(), timeout=min(backoff_delay, self.retry_max_delay))
+                continue  # reconnect via main loop
             except SSLError as e:
                 self._log.error("SSL connection failed: %s", e, exc_info=e)
                 raise e
+            finally:
+                # close and clear connection
+                self._is_connected.clear()
+                if self._connection:
+                    with contextlib.suppress(Exception):
+                        await self._connection.close()   # TODO: add code and reason
+                self._connection = None
+
+        self._is_running.clear()
+        if self.auto_unsubscribe:
+            self.unsubscribe()
+
+    def start(self, callback: Callable[["AsyncListener.Message"], Awaitable[None]]):
+        """Start the listener.
+
+        This function will start the listening process (`listen` function)
+        and register the callback function to be invoked on every subscribed
+        notification.
+
+        Args:
+            callback: Function to be invoked on notifications
+
+        Returns:
+            Created listener task.
+        """
+        return asyncio.create_task(self.listen(callback))
+
+    def stop(self):
+        """Signal the listener to be stopped."""
+        self._task.cancel()  # raise CancelledError in listen task
+
+    async def wait(self, timeout=None):
+        """Wait for the listener task to finish.
+
+        Args:
+            timeout (int): The number of seconds to wait for the listener
+                to finish. The listener will be cancelled if the timeout
+                occurs.
+        """
+        if self._task:
+            await asyncio.wait_for(self._task, timeout=timeout)
+
+    def unsubscribe(self):
+        """Unsubscribe the listener.
+
+        Manually unsubscribing is required if the listener wasn't created
+        with `auto_unsubscribe=True`.
+
+        See also https://cumulocity.com/api/core/#section/Overview/Consumers-and-tokens
+        """
+        try:
+            parsed_token = JWT(self._current_token)
+            if parsed_token.get_valid_seconds() < 60:
+                self._current_token = self._create_token()
+            self.c8y.notification2_tokens.unsubscribe(self._current_token)
+            self._log.info("Subscriber %s unsubscribed.", self.subscriber_name)
+        except SyntaxError:
+            if not self.shared:
+                self._log.error(
+                    "Subscriber %s could not be unsubscribed (potentially data leak).",
+                    self.subscriber_name)
+            else:
+                self._log.info(
+                    "Subscriber %s could not be unsubscribed (assuming it was already unsubscribed).",
+                    self.subscriber_name)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            self._log.fatal(
+                "Subscriber %s could not be unsubscribed (unknown error: %s).",
+                self.subscriber_name, e,
+                exc_info=e)
 
     async def send(self, payload: str):
         """Send a custom message.
@@ -185,44 +303,31 @@ class AsyncListener(object):
         Args:
             payload (str):  Message payload to send.
         """
-        websocket = await self._get_connection()
         self._log.debug("Sending message: %s", payload)
-        await websocket.send(payload)
+        await self._is_connected.wait()
+        await self._connection.send(payload)
         self._log.debug("Message sent: %s", payload)
 
-    async def ack(self, payload: str):
+    async def ack(self, msg_id: str = None, payload: str = None):
         """Acknowledge a Notification 2.0 message.
 
-        This extracts the message ID from the payload and sends it to the
-        channel to acknowledge the message handling completeness.
+        Either a valid Notification 2.0 message ID or payload needs to be
+        provided. The message ID is extracted from the payload if necessary
+        and sends it to the channel to signal the message handling
+        completeness.
 
         Args:
+            msg_id (str): Message ID to acknowledge.
             payload (str):  Raw Notification 2.0 message payload.
+
+        See also:
+            - Function `Message.ack` to acknowledge a specific Notification
+              2.0 message directly.
+            - `Listener` parameter `auto_ack=True` to automatically
+              acknowledge a processed message
         """
-        msg_id = payload.splitlines()[0]
+        msg_id = msg_id or payload.splitlines()[0]
         await self.send(msg_id)
-
-    async def receive(self):
-        """Read a message.
-
-        This will wait for an inbound message on the communication channel
-        and return it (raw).
-
-        Returns:
-             The raw payload of the next inbound message.
-        """
-        websocket = await self._get_connection()
-        self._log.debug("Waiting for message ...")
-        payload = await websocket.recv()
-        self._log.debug("Message received: %s", payload)
-        return payload
-
-    async def close(self):
-        """Close the websocket connection."""
-        self._log.info("Closing websocket connection ...")
-        self._is_closed = True
-        c = await self._get_connection()
-        await c.close()
 
 
 class Listener(object):
@@ -265,7 +370,16 @@ class Listener(object):
             """Acknowledge the message."""
             self.listener.send(self.id)
 
-    def __init__(self, c8y: CumulocityApi, subscription_name: str, subscriber_name: str = None):
+    def __init__(
+            self,
+            c8y: CumulocityApi,
+            subscription_name: str,
+            subscriber_name: str = None,
+            consumer_name: str = None,
+            shared: bool = False,
+            auto_ack: bool = True,
+            auto_unsubscribe: bool = True,
+    ):
         """Create a new Listener.
 
         Args:
@@ -275,11 +389,141 @@ class Listener(object):
             subscriber_name (str): Subscriber (consumer) name; a sensible default
                 is used when this is not defined.
         """
-        self._listener = AsyncListener(c8y=c8y, subscription_name=subscription_name, subscriber_name=subscriber_name)
-        self._event_loop = asyncio.new_event_loop()
-        self._current_uri = None
-        self._is_closed = False
-        self._connection = None
+        # actual attributes need to be set like this to allow getter/setter propagation
+        self._listener = AsyncListener(
+            c8y=c8y,
+            subscription_name=subscription_name,
+            subscriber_name=subscriber_name,
+            consumer_name=consumer_name,
+            shared=shared,
+            auto_ack=auto_ack,
+            auto_unsubscribe=auto_unsubscribe,
+        )
+        self._event_loop = None
+        self._thread = None
+
+    # Note: c8y is read-only as changing it post-init would be complex.
+    @property
+    def c8y(self) -> CumulocityApi:
+        # pylint: disable=missing-function-docstring
+        return self._listener.c8y
+
+    @property
+    def subscription_name(self) -> str:
+        # pylint: disable=missing-function-docstring
+        return self._listener.subscription_name
+
+    @subscription_name.setter
+    def subscription_name(self, value: str):
+        self._listener.subscription_name = value
+
+    @property
+    def subscriber_name(self) -> str:
+        # pylint: disable=missing-function-docstring
+        return self._listener.subscriber_name
+
+    @subscriber_name.setter
+    def subscriber_name(self, value: str):
+        self._listener.subscriber_name = value
+
+    @property
+    def consumer_name(self) -> str:
+        # pylint: disable=missing-function-docstring
+        return self._listener.consumer_name
+
+    @consumer_name.setter
+    def consumer_name(self, value: str):
+        self._listener.consumer_name = value
+
+    @property
+    def shared(self) -> bool:
+        # pylint: disable=missing-function-docstring
+        return self._listener.shared
+
+    @shared.setter
+    def shared(self, value: bool):
+        self._listener.shared = value
+
+    @property
+    def auto_ack(self) -> bool:
+        # pylint: disable=missing-function-docstring
+        return self._listener.auto_ack
+
+    @auto_ack.setter
+    def auto_ack(self, value: bool):
+        self._listener.auto_ack = value
+
+    @property
+    def auto_unsubscribe(self) -> bool:
+        # pylint: disable=missing-function-docstring
+        return self._listener.auto_unsubscribe
+
+    @auto_unsubscribe.setter
+    def auto_unsubscribe(self, value: bool):
+        self._listener.auto_unsubscribe = value
+
+    @property
+    def signed_token(self) -> bool:
+        # pylint: disable=missing-function-docstring
+        return self._listener.signed_token
+
+    @signed_token.setter
+    def signed_token(self, value: bool):
+        self._listener.signed_token = value
+
+    @property
+    def token_validity(self) -> int:
+        # pylint: disable=missing-function-docstring
+        return self._listener.token_validity
+
+    @token_validity.setter
+    def token_validity(self, value: int):
+        self._listener.token_validity = value
+
+    @property
+    def ping_interval(self) -> int:
+        # pylint: disable=missing-function-docstring
+        return self._listener.ping_interval
+
+    @ping_interval.setter
+    def ping_interval(self, value: int):
+        self._listener.ping_interval = value
+
+    @property
+    def ping_timeout(self) -> int:
+        # pylint: disable=missing-function-docstring
+        return self._listener.ping_timeout
+
+    @ping_timeout.setter
+    def ping_timeout(self, value: int):
+        self._listener.ping_timeout = value
+
+    @property
+    def retry_interval(self) -> float:
+        # pylint: disable=missing-function-docstring
+        return self._listener.retry_interval
+
+    @retry_interval.setter
+    def retry_interval(self, value: float):
+        self._listener.retry_interval = value
+
+    @property
+    def retry_rate(self) -> float:
+        # pylint: disable=missing-function-docstring
+        return self._listener.retry_rate
+
+    @retry_rate.setter
+    def retry_rate(self, value: float):
+        self._listener.retry_rate = value
+
+    @property
+    def retry_max_delay(self) -> int:
+        # pylint: disable=missing-function-docstring
+        return self._listener.retry_max_delay
+
+    @retry_max_delay.setter
+    def retry_max_delay(self, value: int):
+        self._listener.retry_max_delay = value
 
     def listen(self, callback: Callable[["Message"], None]):
         """Listen and handle messages.
@@ -297,58 +541,83 @@ class Listener(object):
         including the authentication via tokens and reconnecting on
         connection loss. It will end when the listener is closed using its
         `close` function.
-
-        Args:
-            callback (Callable):  A coroutine to be invoked on every inbound
-                message.
         """
+        # a simple sync-to-async callback wrapper; error capture is still
+        # done by the AsyncListener class
         async def _callback(message: AsyncListener.Message):
-            msg = Listener.Message(self, message.raw)
-            callback(msg)
+            callback(Listener.Message(self, message.raw))
 
-        self._log.debug("Listening ...")
-        self._event_loop.run_until_complete(self._listener.listen(_callback))
-        self._log.debug("Stopped listening.")
+        self._log.info("Listener started ...")
 
-    def send(self, payload: str) -> None:
-        """Send a custom message.
+        # we need to create an event loop to run the async listener in
+        self._event_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self._event_loop)
+        try:
+            self._event_loop.run_until_complete(self._listener.listen(_callback))
+        finally:
+            self._event_loop.close()
+        self._log.info("Listener stopped.")
 
-        Args:
-            payload (str):  Message payload to send.
-        """
-        # assuming that we are already listening ...
-        asyncio.run_coroutine_threadsafe(self._listener.send(payload), self._event_loop)
+    def start(self, callback: Callable[["Message"], None]) -> threading.Thread:
+        """Start the listener.
 
-    def ack(self, payload: str) -> None:
-        """Acknowledge a Notification 2.0 message.
-
-        This extracts the message ID from the payload and sends it to the
-        channel to acknowledge the message handling completeness.
+        This function will start the listening process (`listen` function)
+        within a thread and register the callback function to be invoked
+        on every subscribed notification.
 
         Args:
-            payload (str):  Raw Notification 2.0 message payload.
-        """
-        # assuming that we are already listening ...
-        asyncio.run_coroutine_threadsafe(self._listener.ack(payload), self._event_loop)
-
-    def receive(self) -> str:
-        """Read a message.
-
-        This will wait for an inbound message on the communication channel
-        and return it (raw).
+            callback: Function to be invoked on notifications
 
         Returns:
-             The raw payload of the next inbound message.
+            The listener thread.
         """
-        if not self._event_loop.is_running():
-            return self._event_loop.run_until_complete(self._listener.receive())
+        self._thread = threading.Thread(target=self.listen, args=(callback,))
+        self._thread.start()
+        return self._thread
 
-        future = asyncio.run_coroutine_threadsafe(self._listener.receive(), self._event_loop)
-        return future.result()
+    def stop(self):
+        """Stop the listener."""
+        self._event_loop.call_soon_threadsafe(self._listener.stop)
 
-    def close(self):
-        """Close the websocket connection."""
-        if self._event_loop.is_running():
-            asyncio.run_coroutine_threadsafe(self._listener.close(), self._event_loop)
-        else:
-            self._event_loop.run_until_complete(self._listener.close())
+    def wait(self, timeout=None) -> bool:
+        """Wait for the listener to stop.
+
+        Args:
+            timeout (float):  Timeout in seconds.
+
+        Returns:
+            True if the listener has stopped (before timeout), False otherwise.
+        """
+        self._thread.join(timeout=timeout)
+        return not self._thread.is_alive()
+
+    def unsubscribe(self):
+        """Unsubscribe the listener.
+
+        Manually unsubscribing is required if the listener wasn't created
+        with `auto_unsubscribe=True`.
+
+        See also https://cumulocity.com/api/core/#section/Overview/Consumers-and-tokens
+        """
+        self._event_loop.call_soon_threadsafe(self._listener.unsubscribe)
+
+    def ack(self, msg_id: str = None, payload: str = None) -> None:
+        """Acknowledge a Notification 2.0 message.
+
+        Either a valid Notification 2.0 message ID or payload needs to be
+        provided. The message ID is extracted from the payload if necessary
+        and sends it to the channel to signal the message handling
+        completeness.
+
+        Args:
+            msg_id (str): Message ID to acknowledge.
+            payload (str):  Raw Notification 2.0 message payload.
+
+        See also:
+            - Function `Message.ack` to acknowledge a specific Notification
+              2.0 message directly.
+            - `Listener` parameter `auto_ack=True` to automatically
+              acknowledge a processed message
+        """
+        # assuming that we are already listening ...
+        asyncio.run_coroutine_threadsafe(self._listener.ack(msg_id, payload), self._event_loop)

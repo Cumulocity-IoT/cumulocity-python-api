@@ -38,7 +38,7 @@ async def main():
         await msg.ack()
 
     # Start listening
-    listener_task = asyncio.create_task(listener.listen(callback))
+    listener.start(callback)
 
     # Some action: Update the managed object
     await asyncio.sleep(5)
@@ -49,8 +49,8 @@ async def main():
     await asyncio.sleep(5)
 
     # close the listener and wait for it to end.
-    await listener.close()
-    await listener_task
+    listener.stop()
+    await listener.wait()
 
     # cleanup subscription and managed object
     sub.delete()

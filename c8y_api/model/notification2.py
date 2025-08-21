@@ -280,7 +280,7 @@ class Tokens(CumulocityResource):
         super().__init__(c8y, '/notification2')
         self.host = urllib.parse.urlparse(c8y.base_url).netloc
 
-    def generate(self, subscription: str, expires: int = 60, subscriber: str = None,
+    def generate(self, subscription: str, expires: int = 1440, subscriber: str = None,
                  signed: bool = None, shared: bool = None, non_persistent: bool = None) -> str:
         """Generate a new access token.
 
@@ -303,8 +303,9 @@ class Tokens(CumulocityResource):
         """Renew a token.
 
         Args:
-            token:  Currently valid token to be renewed.
+            token:  Token to be renewed.
         """
+
 
     def unsubscribe(self, token: str):
         """Invalidate a token and unsubscribe a subscriber.

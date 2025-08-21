@@ -1,5 +1,11 @@
 # Changelog
 
+ * Updated and rewrote Notification 2.0 listener implementation. Added additional parameters for more control: 
+   `consumer_name`, `shared`, `auto_ack` and `auto_unsubscribe`. Added `unsubscribe` function for removing
+   subscribers on demand. Both `AsyncListener` and `Listener` now provide consistent `start`/`stop` functions
+   which take care of coroutine and thread creation. The `listen ` function can still be invoked directly if
+   necessary. 
+
 ## Version 3.3.0
 
 * Added `get_by` function to inventory API to return a single object by query.

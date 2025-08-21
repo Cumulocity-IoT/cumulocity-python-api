@@ -54,7 +54,8 @@ mo.update()
 time.sleep(5)
 
 # close the listener
-listener.close()
+listener.stop()
+listener_thread.join()
 
 # cleanup subscription and managed object
 sub.delete()
