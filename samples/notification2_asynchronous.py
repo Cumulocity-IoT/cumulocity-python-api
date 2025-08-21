@@ -29,13 +29,17 @@ async def main():
     print(f"Subscription created: {sub_name}")
 
     # Create a listener for previously created subscription
-    listener = AsyncListener(c8y, sub.name)
+    listener = AsyncListener(
+        c8y,
+        subscription_name=sub.name,
+        auto_ack=True,
+        auto_unsubscribe=True,
+    )
 
     # Define callback function.
     # This function is invoked (asynchronously) for each received event.
     async def callback(msg:AsyncListener.Message):
         print(f"Received message, ID: {msg.id}, Source: {msg.source}, Action: {msg.action}, Body: {msg.json}")
-        await msg.ack()
 
     # Start listening
     listener.start(callback)
@@ -48,7 +52,7 @@ async def main():
     # The update event is now being processed
     await asyncio.sleep(5)
 
-    # close the listener and wait for it to end.
+    # stop the listener and wait for it to end.
     listener.stop()
     await listener.wait()
 

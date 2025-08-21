@@ -32,7 +32,12 @@ sub = Subscription(c8y, name=sub_name, context=Subscription.Context.MANAGED_OBJE
 print(f"Subscription created: {sub_name}")
 
 # Create a listener for previously created subscription
-listener = Listener(c8y, sub.name)
+listener = Listener(
+    c8y,
+    subscription_name=sub.name,
+    auto_ack=False,
+    auto_unsubscribe=False,
+)
 
 # Define callback function.
 # This function is invoked (synchronously) for each received event.
@@ -40,10 +45,8 @@ def callback(msg: Listener.Message):
     print(f"Received message, ID: {msg.id}, Source: {msg.source}, Action: {msg.action}, Body: {msg.json}")
     msg.ack()
 
-# Wrap listen function into separate thread
-# and start listening
-listener_thread = threading.Thread(target=listener.listen, args=[callback])
-listener_thread.start()
+# Start listening, thread is handled automatically
+listener.start(callback)
 
 # Some action: Update the managed object
 time.sleep(5)
@@ -53,9 +56,9 @@ mo.update()
 # The update event is now being processed
 time.sleep(5)
 
-# close the listener
+# stop the listener and wait for completion
 listener.stop()
-listener_thread.join()
+listener.wait()
 
 # cleanup subscription and managed object
 sub.delete()
