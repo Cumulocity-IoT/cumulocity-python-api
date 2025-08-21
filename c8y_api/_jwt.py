@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import json
+import time
 
 
 class JWT:
@@ -44,3 +45,21 @@ class JWT:
     def get_claim(self, claim: str):
         """Read a claim from the token payload."""
         return self.payload[claim]
+
+    def get_valid_seconds(self):
+        """Return the number of seconds the token before the tokens expires.
+
+        Returns:
+            The number of seconds the token remains valid.
+        """
+        return self.payload['exp'] - time.time()
+
+    def is_valid(self, min_seconds: int = None):
+        """Check whether the token is valid.
+
+        Args:
+            min_seconds: Minimum number of seconds of validity.
+        """
+        if not min_seconds:
+            min_seconds = 0
+        return time.time() + min_seconds > int(self.payload['exp'])
