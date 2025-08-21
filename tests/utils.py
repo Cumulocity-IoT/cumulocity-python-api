@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import logging
 from typing import List, Set, Any
 from unittest.mock import Mock
 
@@ -14,12 +15,12 @@ from c8y_api.model._base import CumulocityObject
 from util.testing_util import RandomNameGenerator
 
 
-def assert_in_any(string, *strings):
+def assert_in_any(string, strings):
     """Assert that a string is in any of a given list of strings."""
     assert any(string in s for s in strings), f"'{string}' is not in any of {strings}"
 
 
-def assert_not_in_any(string, *strings):
+def assert_not_in_any(string, strings):
     """Assert that a string is not in any of a given list of strings."""
     assert all(string not in s for s in strings), f"'{string}' is in one of {strings}"
 
@@ -30,7 +31,7 @@ def assert_all_in(multiple_strings, string):
         assert one_string in string, f"'{one_string}' is not in {string}"
 
 
-def assert_all_in_any(multiple_strings, *strings):
+def assert_all_in_any(multiple_strings, strings):
     """Assert that multiple strings are in a given list of strings."""
     for string in multiple_strings:
         assert any(string in s for s in strings), f"'{string}' is not in any of {strings}"
@@ -42,10 +43,26 @@ def assert_all_not_in(multiple_strings, string):
         assert one_string not in string, f"'{one_string}' is in {string}"
 
 
-def assert_all_not_in_any(multiple_strings, *strings):
+def assert_all_not_in_any(multiple_strings, strings):
     """Assert that multiple strings are in a given list of strings."""
     for string in multiple_strings:
         assert all(string not in s for s in strings), f"'{string}' is in one of {strings}"
+
+
+def assert_no_errors(caplog):
+    """Assert that no errors were logged."""
+    for r in caplog.records:
+        assert r.levelno != logging.ERROR, f"Got error log: {r.message} ({r.logger}"
+
+
+def assert_no_failures(caplog):
+    """Assert that no failures (warnings, errors, fatals) were logged."""
+    for r in caplog.records:
+        assert r.levelno <= logging.INFO, f"Got {r.levelname} log: {r.message} ({r.name}"
+
+def assert_log(caplog, message, level=None):
+    """Assert that a message is logged."""
+    assert_in_any(message, [r.message for r in caplog.records if (not level or r.levelno == level)])
 
 
 def get_ids(objs: List[CumulocityObject]) -> Set[str]:

@@ -18,7 +18,7 @@ from c8y_api._base_api import (
     AccessDeniedError,
     HttpError
 )
-from tests.utils import isolate_last_call_arg, assert_all_in_any, assert_all_not_in_any
+from tests.utils import isolate_last_call_arg, assert_all_in, assert_all_not_in
 
 
 @pytest.fixture(scope='function')
@@ -382,8 +382,8 @@ def test_request_logging_simple(session_property_mock, mock_c8y: CumulocityRestA
     getattr(mock_c8y, method)('/resource', **kwargs)
     mock_c8y.log.debug.assert_called_once()
     msg = isolate_last_call_arg(mock_c8y.log.debug, 0)
-    assert_all_in_any([method.upper(), '/resource', *expected], msg)
-    assert_all_not_in_any(not_expected, msg)
+    assert_all_in([method.upper(), '/resource', *expected], msg)
+    assert_all_not_in(not_expected, msg)
 
 
 @patch('c8y_api.CumulocityRestApi.session', new_callable=PropertyMock)
@@ -400,7 +400,7 @@ def test_request_logging_file(session_property_mock, mock_c8y: CumulocityRestApi
     mock_c8y.get_file('/resource', params={'a': 1})
     mock_c8y.log.debug.assert_called_once()
     msg = isolate_last_call_arg(mock_c8y.log.debug, 0)
-    assert_all_in_any(['/resource', 'GET', 'a=1'], msg)
+    assert_all_in(['/resource', 'GET', 'a=1'], msg)
 
     # POST File
     mock_c8y.log.debug.reset_mock()
@@ -409,7 +409,7 @@ def test_request_logging_file(session_property_mock, mock_c8y: CumulocityRestApi
         mock_c8y.post_file('/resource', file='filename', object={'a': 1})
     mock_c8y.log.debug.assert_called_once()
     msg = isolate_last_call_arg(mock_c8y.log.debug, 0)
-    assert_all_in_any(['/resource', 'POST', 'a=1', 'filename'], msg)
+    assert_all_in(['/resource', 'POST', 'a=1', 'filename'], msg)
 
     # PUT File
     mock_c8y.log.debug.reset_mock()
@@ -418,4 +418,4 @@ def test_request_logging_file(session_property_mock, mock_c8y: CumulocityRestApi
         mock_c8y.put_file('/resource', file='filename')
     mock_c8y.log.debug.assert_called_once()
     msg = isolate_last_call_arg(mock_c8y.log.debug, 0)
-    assert_all_in_any(['/resource', 'PUT', 'filename'], msg)
+    assert_all_in(['/resource', 'PUT', 'filename'], msg)
