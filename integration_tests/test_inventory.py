@@ -262,6 +262,13 @@ def test_parent_references(live_c8y: CumulocityApi, asset_hierarchy_root_id, chi
     # each child as an 'addition' child
     assert len(result.child_additions) == 1
 
+    # using get_all
+    result2 = live_c8y.inventory.get_all(name=child.name, with_children=True, with_parents=True)
+    assert len(result2) == 1
+    parents2 = result2[0].__dict__[f'parent_{child_type}s']
+    assert parents[0].id == parents2[0].id
+    assert parents[0].name == parents2[0].name
+
 
 def test_deletion(live_c8y: CumulocityApi, safe_create):
     """Verify that deletion works as expected.
