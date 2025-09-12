@@ -13,9 +13,9 @@ from unittest.mock import Mock
 import pytest
 
 from c8y_api import CumulocityApi
-from c8y_api.model import Device, ManagedObject, Subscription, Measurement, Value, Event, Alarm
-from c8y_tk.notification2 import AsyncListener, Listener
-from tests.utils import assert_in_any, assert_no_failures, assert_all_in
+from c8y_api.model import Device, ManagedObject, Subscription, Measurement, Value, Event, Alarm, Operation
+from c8y_tk.notification2 import AsyncListener, Listener, AsyncQueueListener, QueueListener
+from tests.utils import assert_in_any, assert_no_failures
 
 from util.testing_util import RandomNameGenerator
 
@@ -86,9 +86,8 @@ def fix_object_tree_builder(live_c8y: CumulocityApi, safe_create):
     return build
 
 
-# TODO: Add Operation
 @pytest.mark.parametrize("api_filters, expected", [
-    ('*', 'M,E,EwC,A,AwC,MO'),
+    ('*', 'M,E,EwC,A,AwC,MO,O'),
     ('M', 'M'),
     ('E', 'E'),
     ('EwC', 'E,EwC'),
@@ -126,6 +125,7 @@ def test_api_filters(live_c8y: CumulocityApi, sample_object, api_filters, expect
 
     mo = sample_object
     mo['c8y_IsDevice'] = {}
+    mo['com_cumulocity_model_Agent'] = {}
     mo.update()
     sub = Subscription(
         live_c8y,
@@ -153,7 +153,7 @@ def test_api_filters(live_c8y: CumulocityApi, sample_object, api_filters, expect
         e_id = Event(live_c8y, source=mo.id, type="c8y_TestEvent", time='now', text='text').create().id
         a_id = Alarm(live_c8y, source=mo.id, type="c8y_TestAlarm", time='now', text='text',
                      severity=Alarm.Severity.WARNING).create().id
-        # o_id = Operation(live_c8y, device_id=mo.id, c8y_Operation={}).create().id
+        o_id = Operation(live_c8y, device_id=mo.id, c8y_Operation={}).create().id
         mo.apply({'some_tag': {}})
 
         time.sleep(1)
@@ -169,6 +169,8 @@ def test_api_filters(live_c8y: CumulocityApi, sample_object, api_filters, expect
             assert e_id in ids
         if 'alarms' in expected:
             assert a_id in ids
+        if 'operations' in expected:
+            assert o_id in ids
     finally:
         # (99) cleanup
         listener.stop()
@@ -666,3 +668,51 @@ async def test_asyncio_multiple_subscribers(caplog, live_c8y: CumulocityApi, sam
             == (n_listeners-1 if shared else 0))
     assert sum("cancelled" in x for x in log_messages) == n_listeners
     assert_no_failures(caplog)
+
+
+@pytest.mark.asyncio(loop_scope='function')
+async def test_asyncio_queue_listener(live_c8y: CumulocityApi, sample_object):
+    """Verify that the queue listener works as expected."""
+    mo = sample_object
+    sub = create_managed_object_subscription(live_c8y, mo)
+
+    q = asyncio.Queue()
+    listener = AsyncQueueListener(
+        c8y=live_c8y,
+        subscription_name=sub.name,
+        queue=q,
+    )
+
+    listener.start()
+    try:
+        await asyncio.sleep(5)  # ensure creation
+        mo.apply({'test_CustomFragment': {'num': 42}})
+        msg = await q.get()
+        assert msg.json['test_CustomFragment']['num'] == 42
+    finally:
+        listener.stop()
+        await listener.wait()
+
+
+@pytest.mark.asyncio(loop_scope='function')
+async def test_queue_listener(live_c8y: CumulocityApi, sample_object):
+    """Verify that the queue listener works as expected."""
+    mo = sample_object
+    sub = create_managed_object_subscription(live_c8y, mo)
+
+    q = queue.Queue()
+    listener = QueueListener(
+        c8y=live_c8y,
+        subscription_name=sub.name,
+        queue=q,
+    )
+
+    listener.start()
+    try:
+        time.sleep(5)  # ensure creation
+        mo.apply({'test_CustomFragment': {'num': 42}})
+        msg = q.get()
+        assert msg.json['test_CustomFragment']['num'] == 42
+    finally:
+        listener.stop()
+        listener.wait()

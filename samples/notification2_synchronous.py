@@ -2,7 +2,6 @@
 
 # pylint: disable=missing-function-docstring
 
-import threading
 import time
 
 from c8y_api.app import SimpleCumulocityApp
