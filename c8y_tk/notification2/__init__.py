@@ -2,4 +2,4 @@
 
 from c8y_tk.notification2.listener import *
 
-__all__ = ['Listener', 'AsyncListener']
+__all__ = ['Listener', 'AsyncListener', 'AsyncQueueListener', 'QueueListener']

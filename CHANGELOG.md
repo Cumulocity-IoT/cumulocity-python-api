@@ -1,10 +1,13 @@
 # Changelog
 
- * Updated and rewrote Notification 2.0 listener implementation. Added additional parameters for more control: 
-   `consumer_name`, `shared`, `auto_ack` and `auto_unsubscribe`. Added `unsubscribe` function for removing
-   subscribers on demand. Both `AsyncListener` and `Listener` now provide consistent `start`/`stop` functions
-   which take care of coroutine and thread creation. The `listen ` function can still be invoked directly if
-   necessary. 
+* Added `QueueListener` and `AsyncQueueListener` classes to the Notification 2.0 toolkit. These pre-defined
+  listener implementation append new notifications to standard queues that can be monitored/listened to which 
+  makes Notification 2.0 solutions even simpler to implement.
+* Updated and rewrote Notification 2.0 listener implementation. Added additional parameters for more control: 
+  `consumer_name`, `shared`, `auto_ack` and `auto_unsubscribe`. Added `unsubscribe` function for removing
+  subscribers on demand. Both `AsyncListener` and `Listener` now provide consistent `start`/`stop` functions
+  which take care of coroutine and thread creation. The `listen ` function can still be invoked directly if
+  necessary. 
 
 ## Version 3.3.0
 

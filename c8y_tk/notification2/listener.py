@@ -8,6 +8,7 @@ import ssl
 import threading
 import uuid
 from itertools import count
+import queue as sync_queue
 from typing import Callable, Awaitable
 
 import certifi
@@ -231,7 +232,7 @@ class AsyncListener(object):
                 self._is_connected.clear()
                 if self._connection:
                     with contextlib.suppress(Exception):
-                        await self._connection.close()   # TODO: add code and reason
+                        await self._connection.close()
                 self._connection = None
 
         self._is_running.clear()
@@ -586,7 +587,7 @@ class Listener(object):
             timeout (float):  Timeout in seconds.
 
         Returns:
-            True if the listener has stopped (before timeout), False otherwise.
+            Whether the listener has stopped (before timeout).
         """
         self._thread.join(timeout=timeout)
         return not self._thread.is_alive()
@@ -621,3 +622,101 @@ class Listener(object):
         """
         # assuming that we are already listening ...
         asyncio.run_coroutine_threadsafe(self._listener.ack(msg_id, payload), self._event_loop)
+
+
+class AsyncQueueListener(object):
+    """Special listener implementation which pushes notification messages
+    into a standard (async) queue which can be monitored and read."""
+
+    def __init__(
+            self,
+            c8y: CumulocityApi,
+            subscription_name: str,
+            subscriber_name: str = None,
+            consumer_name: str = None,
+            shared: bool = False,
+            auto_unsubscribe: bool = True,
+            queue: asyncio.Queue = None
+    ):
+        self.queue = queue or asyncio.Queue()
+        self.listener = AsyncListener(
+            c8y=c8y,
+            subscription_name=subscription_name,
+            subscriber_name=subscriber_name,
+            consumer_name=consumer_name,
+            shared=shared,
+            auto_ack=True,
+            auto_unsubscribe=auto_unsubscribe,
+        )
+
+    def start(self):
+        """Start the listener."""
+        async def push_message(msg: AsyncListener.Message):
+            self.queue.put_nowait(msg)
+
+        self.listener.start(push_message)
+
+    def stop(self):
+        """Stop the listener."""
+        self.listener.stop()
+
+    async def wait(self, timeout=None):
+        """Wait for the listener task to finish.
+
+        Args:
+            timeout (int): The number of seconds to wait for the listener
+                to finish. The listener will be cancelled if the timeout
+                occurs.
+        """
+        await self.listener.wait(timeout=timeout)
+
+
+class QueueListener(object):
+    """Special listener implementation which pushes notification messages
+    into a standard (sync) queue which can be monitored and read."""
+
+    def __init__(
+            self,
+            c8y: CumulocityApi,
+            subscription_name: str,
+            subscriber_name: str = None,
+            consumer_name: str = None,
+            shared: bool = False,
+            auto_unsubscribe: bool = True,
+            queue: sync_queue.Queue = None
+    ):
+        self.queue = queue or sync_queue.Queue()
+        self.listener = Listener(
+            c8y=c8y,
+            subscription_name=subscription_name,
+            subscriber_name=subscriber_name,
+            consumer_name=consumer_name,
+            shared=shared,
+            auto_ack=True,
+            auto_unsubscribe=auto_unsubscribe,
+        )
+
+    def start(self):
+        """Start the listener."""
+
+        def push_message(msg: AsyncListener.Message):
+            self.queue.put(msg)
+
+        self.listener.start(push_message)
+
+    def stop(self):
+        """Stop the listener."""
+        self.listener.stop()
+
+    def wait(self, timeout=None) -> bool:
+        """Wait for the listener task to finish.
+
+        Args:
+            timeout (int): The number of seconds to wait for the listener
+                to finish. The listener will be cancelled if the timeout
+                occurs.
+
+        Returns:
+            Whether the listener has stopped (before timeout).
+        """
+        return self.listener.wait(timeout=timeout)
