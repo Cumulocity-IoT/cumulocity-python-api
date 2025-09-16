@@ -8,6 +8,7 @@ from urllib.parse import urlencode
 
 from collections.abc import MutableMapping, MutableSequence
 from deprecated import deprecated
+import jmespath
 
 from c8y_api._base_api import CumulocityRestApi
 from c8y_api.model._util import _DateUtil, _StringUtil, _QueryUtil
@@ -777,15 +778,20 @@ class CumulocityResource:
         result_json = self.c8y.get(base_query + '&pageSize=1&withTotalPages=true')
         return result_json['statistics']['totalPages']
 
-    def _iterate(self, base_query: str, page_number: int | None, limit: int | None, parse_fun):
+    def _iterate(self, base_query: str, page_number: int | None, limit: int | None, filter: str | None, parse_fun):
         # if no specific page is defined we just start at 1
         current_page = page_number if page_number else 1
+        # pre-compile filter expression
+        filter = jmespath.compile(filter) if filter else None
         # we will read page after page until
         #  - we reached the limit, or
         #  - there is no result (i.e. we were at the last page)
         num_results = 0
         while True:
-            results = [parse_fun(x) for x in self._get_page(base_query, current_page)]
+            if not filter:
+                results = [parse_fun(x) for x in self._get_page(base_query, current_page)]
+            else:
+                results = [parse_fun(x) for x in self._get_page(base_query, current_page) if filter.search(x)]
             # no results, so we are done
             if not results:
                 break
