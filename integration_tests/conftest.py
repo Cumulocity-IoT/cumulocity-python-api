@@ -57,7 +57,7 @@ def safe_executor(logger):
         try:
             fun()
             return True
-        except BaseException as e:
+        except Exception as e:
             logger.warning(f"Caught exception ignored due to safe call: {e}")
         return False
 
@@ -81,7 +81,7 @@ def auto_delete(logger):
             o.delete()
         except KeyError:
             pass
-        except BaseException as e:
+        except Exception as e:
             logger.warning(f"Caught exception ignored due to safe call: {e}")
 
 
@@ -110,35 +110,6 @@ def live_c8y(test_environment) -> CumulocityApi:
         raise RuntimeError("Missing Cumulocity environment variables (C8Y_*). Cannot create CumulocityApi instance. "
                            "Please define the required variables directly or setup a .env file.")
     return SimpleCumulocityApp()
-
-
-
-
-
-#
-#
-# @pytest.fixture(scope='session')
-# def register_object(logger):
-#     """Wrap a created Cumulocity object so that it will automatically be deleted
-#     after a test regardless of an exception or failure."""
-#
-#     objects = []
-#
-#     def register(obj) -> Any:
-#         objects.append(obj)
-#         return obj
-#
-#     yield register
-#
-#     for o in objects:
-#         try:
-#             # Deletion should through a KeyError if object was already deleted
-#             o.delete()
-#             logger.warning(f"Object #{o.id} was not deleted by test.")
-#         except KeyError:
-#             pass
-#         except BaseException as e:
-#             logger.warning(f"Caught exception ignored due to safe call: {e}")
 
 
 @pytest.fixture(scope='function')
