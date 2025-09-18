@@ -66,7 +66,7 @@ def test_CRUD(live_c8y: CumulocityApi, safe_executor):
         with pytest.raises(KeyError):
             live_c8y.group_inventory.get(root.id)
 
-    except BaseException as e:
+    except Exception as e:
         safe_executor(root.delete)
         safe_executor(child1.delete)
         safe_executor(child2.delete)
@@ -110,7 +110,7 @@ def test_CRUD2(live_c8y, safe_executor):
         # 4) remove the groups
         live_c8y.group_inventory.delete_trees(root.id)
 
-    except BaseException as e:
+    except Exception as e:
         safe_executor(live_c8y.group_inventory.delete(root.id, child1.id, child2.id))
         raise e
 
@@ -128,7 +128,6 @@ def test_select(live_c8y: CumulocityApi, safe_executor):
     root.assign_child_group(child1)
 
     try:
-
         # 1) select via name (query)
         #  by default, only root folders are selected
         ids = [x.id for x in live_c8y.group_inventory.select(name=f'Root-{name}')]
@@ -149,9 +148,20 @@ def test_select(live_c8y: CumulocityApi, safe_executor):
         assert ids == [child1.id]
         assert live_c8y.group_inventory.get_count(parent=root.id, owner=live_c8y.username) == 1
 
+        # 4)  select with client-side filtering
+        filtered_roots_1 = live_c8y.group_inventory.get_all(
+            type=DeviceGroup.ROOT_TYPE,
+            filter="starts_with(name, 'Root-')",
+            as_values='name')
+        filtered_roots_2 = [
+            x for x in live_c8y.group_inventory.get_all(type=DeviceGroup.ROOT_TYPE, as_values='name')
+            if x.startswith('Root-')
+        ]
+        assert set(filtered_roots_1) == set(filtered_roots_2)
+
         root.delete_tree()
 
-    except BaseException as ex:
+    except Exception as ex:
         safe_executor(root.delete)
         safe_executor(child1.delete)
         raise ex
