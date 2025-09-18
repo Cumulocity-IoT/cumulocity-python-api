@@ -33,6 +33,11 @@ dependencies = [
     "importlib_metadata; python_version < '3.8'"
 ]
 
+[project.optional-dependencies]
+jmespath = ["jmespath"]
+jsonpath = ["jsonpath-ng"]
+filters = ["jmespath", "jsonpath-ng"]
+
 [project.urls]
 Homepage = "https://github.com/Cumulocity-IoT/cumulocity-python-api"
 Source = "https://github.com/Cumulocity-IoT/cumulocity-python-api"
