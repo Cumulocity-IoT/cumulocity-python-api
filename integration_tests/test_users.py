@@ -5,7 +5,6 @@
 import secrets
 import string
 import time
-from contextlib import suppress
 from typing import Union, Tuple
 
 import pytest
@@ -54,24 +53,31 @@ def test_CRUD(live_c8y: CumulocityApi):  # noqa (case)
         assert user.username in str(e)
 
 
-def test_select_by_name(live_c8y: CumulocityApi):
+def test_select_by_name(live_c8y: CumulocityApi, safe_create):
     """Verify that user selection by name works as expected."""
     prefix = RandomNameGenerator.random_name(1)
     users = []
-    try:
-        for _ in range(0, 5):
-            username = f'{prefix}-{RandomNameGenerator.random_name(1)}'
-            email = f'{username}@c8y.com'
+    for _ in range(0, 5):
+        username = f'{prefix}-{RandomNameGenerator.random_name(1)}'
+        email = f'{username}@c8y.com'
 
-            user = User(live_c8y, username=username, email=email, enabled=True).create()
-            users.append(user)
+        user = safe_create(User(live_c8y, username=username, email=email, enabled=True))
+        users.append(user)
 
-        selected = live_c8y.users.get_all(username=prefix)
-        assert {x.id for x in selected} == {x.id for x in users}
-    finally:
-        for u in users:
-            with suppress(Exception):
-                u.delete()
+    selected = live_c8y.users.get_all(username=prefix)
+    assert {x.id for x in selected} == {x.id for x in users}
+
+
+def test_select(live_c8y: CumulocityApi, safe_create):
+    """Verify that user selection works as expected."""
+    # test getting by group (2 == admin should be on all installations)
+    admin_users = live_c8y.users.get_all(groups=['2'])
+    for user in admin_users:
+        assert '2' in live_c8y.users.get(user.username).global_role_ids
+
+    # test getting with a client-side-filter
+    admin_users_2 = live_c8y.users.get_all(filter="contains(groups.references[].group.id, `2`)")
+    assert {x.id for x in admin_users} == {x.id for x in admin_users_2}
 
 
 def test_get_current(live_c8y: CumulocityApi):

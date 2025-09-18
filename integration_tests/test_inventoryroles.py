@@ -81,6 +81,11 @@ def test_select_inventory_roles(live_c8y: CumulocityApi):
     # (1) get all defined inventory roles
     assert live_c8y.inventory_roles.get_all()
 
+    # (2) filter
+    filtered_1 = live_c8y.inventory_roles.get_all(filter='description != null')
+    filtered_2 = [x for x in live_c8y.inventory_roles.get_all() if x.description]
+    assert {x.id for x in filtered_1} == {x.id for x in filtered_2}
+
 
 def test_assignments(live_c8y, session_device, module_factory):
     """Verify that inventory roles can be assigned, retrieved and unassigned."""

@@ -43,7 +43,7 @@ def test_CRUD(live_c8y: CumulocityApi):  # noqa (case)
         assert rolename in str(e)
 
 
-def test_select(live_c8y: CumulocityApi):
+def test_select(live_c8y: CumulocityApi, safe_create):
     """Verify that selection works as expected."""
     # (1) get all defined global roles
     all_roles = live_c8y.global_roles.get_all()
@@ -51,7 +51,7 @@ def test_select(live_c8y: CumulocityApi):
     # (2) create a user and assign roles
     username = RandomNameGenerator.random_name(2)
     email = f'{username}@c8y.com'
-    user = User(live_c8y, username=username, email=email, enabled=True).create()
+    user = safe_create(User(live_c8y, username=username, email=email, enabled=True))
     selected_roles = random.sample(all_roles, k=5)
     for role in selected_roles:
         user.assign_global_role(role.id)
@@ -59,6 +59,16 @@ def test_select(live_c8y: CumulocityApi):
     # (3) select by user
     for role in live_c8y.global_roles.get_all(username=username):
         assert role.id in [x.id for x in selected_roles]
+
+    # (4) select with filter
+    filtered_1 = live_c8y.global_roles.get_all(filter="contains(name, 'Global')")
+    filtered_2 = [x for x in live_c8y.global_roles.get_all() if 'Global' in x.name]
+    assert {x.name for x in filtered_1} == {x.name for x in filtered_2}
+
+    # (5) select by user with filter
+    filtered_1 = live_c8y.global_roles.get_all(username=username, filter="contains(name, 'a')")
+    filtered_2 = [x for x in live_c8y.global_roles.get_all(username=username) if 'a' in x.name]
+    assert {x.name for x in filtered_1} == {x.name for x in filtered_2}
 
     # Cleanup
     user.delete()

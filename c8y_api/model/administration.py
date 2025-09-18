@@ -11,6 +11,7 @@ from c8y_api._base_api import CumulocityRestApi, AccessDeniedError
 from c8y_api.model._base import CumulocityResource, SimpleObject
 from c8y_api.model._parser import SimpleObjectParser, ComplexObjectParser, as_values as parse_as_values
 from c8y_api.model._util import _DateUtil
+from c8y_api.model.matcher import JsonMatcher
 
 
 class PermissionUtil:
@@ -939,7 +940,13 @@ class InventoryRoles(CumulocityResource):
         role.c8y = self.c8y  # inject c8y connection into instance
         return role
 
-    def select(self, limit: int = None, page_size: int = 1000, page_number: int = None) -> Generator[InventoryRole]:
+    def select(
+            self,
+            limit: int = None,
+            filter: str | JsonMatcher = None,
+            page_size: int = 1000,
+            page_number: int = None,
+    ) -> Generator[InventoryRole]:
         """Get all defined inventory roles.
 
         This function is implemented in a lazy fashion - results will only be
@@ -949,6 +956,8 @@ class InventoryRoles(CumulocityResource):
 
         Args:
             limit (int): Limit the number of results to this number.
+            filter (str | JsonMatcher): Matcher/expression to filter the query
+                results (on client side). Uses JMESPath by default.
             page_size (int): Define the number of objects read (and parsed
                 in one chunk). This is a performance related setting.
             page_number (int): Pull a specific page; this effectively disables
@@ -958,9 +967,15 @@ class InventoryRoles(CumulocityResource):
             Generator for InventoryRole objects
         """
         base_query = self._prepare_query(page_size=page_size)
-        return super()._iterate(base_query, page_number, limit, InventoryRole.from_json)
+        return super()._iterate(base_query, page_number, limit, filter, InventoryRole.from_json)
 
-    def get_all(self, limit: int = None, page_size: int = 1000, page_number: int = None) -> List[InventoryRole]:
+    def get_all(
+            self,
+            limit: int = None,
+            filter: str | JsonMatcher = None,
+            page_size: int = 1000,
+            page_number: int = None,
+    ) -> List[InventoryRole]:
         """Get all defined inventory roles.
 
         This function is a greedy version of the ``select`` function. All
@@ -971,7 +986,7 @@ class InventoryRoles(CumulocityResource):
         Returns:
             List of InventoryRole objects
         """
-        return list(self.select(limit=limit, page_size=page_size, page_number=page_number))
+        return list(self.select(limit=limit, filter=filter, page_size=page_size, page_number=page_number))
 
     def select_assignments(self, username: str) -> Generator[InventoryRoleAssignment]:
         """Get all inventory role assignments of a user.
@@ -1065,6 +1080,7 @@ class Users(CumulocityResource):
             only_devices: bool = None,
             with_subusers_count: bool = None,
             limit: int = None,
+            filter: str | JsonMatcher = None,
             page_size: int = 5,
             page_number: int = None,
             as_values: str | tuple | list[str | tuple] = None,
@@ -1088,6 +1104,8 @@ class Users(CumulocityResource):
             with_subusers_count (bool):  Whether to include an additional field
              `subusersCount` which holds the number of direct sub users.
             limit (int): Limit the number of results to this number.
+            filter (str | JsonMatcher): Matcher/expression to filter the query
+                results (on client side). Uses JMESPath by default.
             page_size (int): Define the number of events which are read (and
                 parsed in one chunk). This is a performance related setting.
             page_number (int): Pull a specific page; this effectively disables
@@ -1131,6 +1149,7 @@ class Users(CumulocityResource):
             base_query,
             page_number,
             limit,
+            filter,
             User.from_json if not as_values else
             lambda x: parse_as_values(x, as_values))
 
@@ -1141,6 +1160,7 @@ class Users(CumulocityResource):
             owner: str = None,
             only_devices: bool = None,
             with_subusers_count: bool = None,
+            filter: str | JsonMatcher = None,
             page_size: int = 1000,
             as_values: str | tuple | list[str|tuple] = None,
             **kwargs
@@ -1160,6 +1180,7 @@ class Users(CumulocityResource):
             owner=owner,
             only_devices=only_devices,
             with_subusers_count=with_subusers_count,
+            filter=filter,
             page_size=page_size,
             as_values=as_values,
             **kwargs))
@@ -1286,12 +1307,19 @@ class GlobalRoles(CumulocityResource):
                 self._global_roles_by_name = {g.name: g for g in self.get_all()}
             return self._global_roles_by_name[role_id]
 
-    def select(self, username: str = None, page_size: int = 5) -> Generator[GlobalRole]:
+    def select(
+            self,
+            username: str = None,
+            filter: str | JsonMatcher = None,
+            page_size: int = 5,
+    ) -> Generator[GlobalRole]:
         """Iterate over global roles.
 
         Args:
             username (str): Retrieve global roles assigned to a specified user
                 If omitted, all available global roles are returned
+            filter (str | JsonMatcher): Matcher/expression to filter the query
+                results (on client side). Uses JMESPath by default.
             page_size (int): Maximum number of entries fetched per requests;
                 this is a performance setting
 
@@ -1301,12 +1329,18 @@ class GlobalRoles(CumulocityResource):
         # unfortunately, as selecting by username can't be implemented using the
         # generic _iterate method, we have to do everything manually.
         if username:
+            # compile/prepare filter if defined
+            if isinstance(filter, str):
+                filter = self.default_matcher(filter)
             # select by username
             query = f'/user/{self.c8y.tenant_id}/users/{username}/groups?pageSize={page_size}&currentPage='
             page_number = 1
             while True:
                 response_json = self.c8y.get(query + str(page_number))
-                references = response_json['references']
+                references = (
+                    response_json['references'] if not filter
+                    else [x for x in response_json['references'] if filter.matches(x['group'])]
+                )
                 if not references:
                     break
                 for ref_json in references:
@@ -1317,21 +1351,29 @@ class GlobalRoles(CumulocityResource):
         else:
             # select all
             base_query = self._prepare_query(page_size=page_size)
-            yield from super()._iterate(base_query, page_number=None, limit=None, parse_fun=GlobalRole.from_json)
+            yield from super()._iterate(
+                base_query, page_number=None, limit=None, filter=filter, parse_fun=GlobalRole.from_json)
 
-    def get_all(self, username: str = None, page_size: int = 1000) -> List[GlobalRole]:
+    def get_all(
+            self,
+            username: str = None,
+            filter: str | JsonMatcher = None,
+            page_size: int = 1000
+    ) -> List[GlobalRole]:
         """Retrieve global roles.
 
         Args:
             username (str): Retrieve global roles assigned to a specified user
                 If omitted, all available global roles are returned
+            filter (str | JsonMatcher): Matcher/expression to filter the query
+                results (on client side). Uses JMESPath by default.
             page_size (int): Maximum number of entries fetched per requests;
                 this is a performance setting
 
         Return:
             List of GlobalRole instances
         """
-        return list(self.select(username=username, page_size=page_size))
+        return list(self.select(username=username, filter=filter, page_size=page_size))
 
     def assign_users(self, role_id: int | str, *usernames: str):
         """Add users to a global role.

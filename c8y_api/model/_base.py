@@ -8,10 +8,14 @@ from urllib.parse import urlencode
 
 from collections.abc import MutableMapping, MutableSequence
 from deprecated import deprecated
-import jmespath
 
 from c8y_api._base_api import CumulocityRestApi
+from c8y_api.model.matcher import JsonMatcher
 from c8y_api.model._util import _DateUtil, _StringUtil, _QueryUtil
+try:
+    from c8y_api.model.matcher import JmesPathMatcher
+except ImportError:
+    pass
 
 
 def get_by_path(dictionary: dict, path: str, default: Any = None) -> Any:
@@ -634,6 +638,8 @@ class CumulocityResource:
         # the default object name would be the resource path element just before
         # the last event for e.g. /event/events
         self.object_name = self.resource.split('/')[-1]
+        # the default JSON matcher for client-side filtering
+        self.default_matcher = JmesPathMatcher
 
     def build_object_path(self, object_id: int | str) -> str:
         """Build the path to a specific object of this resource.
@@ -778,20 +784,29 @@ class CumulocityResource:
         result_json = self.c8y.get(base_query + '&pageSize=1&withTotalPages=true')
         return result_json['statistics']['totalPages']
 
-    def _iterate(self, base_query: str, page_number: int | None, limit: int | None, filter: str | None, parse_fun):
+    def _iterate(
+            self,
+            base_query: str,
+            page_number: int | None,
+            limit: int | None,
+            filter: str | JsonMatcher | None,
+            parse_fun
+    ):
         # if no specific page is defined we just start at 1
         current_page = page_number if page_number else 1
-        # pre-compile filter expression
-        filter = jmespath.compile(filter) if filter else None
         # we will read page after page until
         #  - we reached the limit, or
         #  - there is no result (i.e. we were at the last page)
         num_results = 0
+        # compile/prepare filter if defined
+        if isinstance(filter, str):
+            filter = self.default_matcher(filter)
+
         while True:
-            if not filter:
-                results = [parse_fun(x) for x in self._get_page(base_query, current_page)]
+            if filter:
+                results = [parse_fun(x) for x in self._get_page(base_query, current_page) if filter.matches(x)]
             else:
-                results = [parse_fun(x) for x in self._get_page(base_query, current_page) if filter.search(x)]
+                results = [parse_fun(x) for x in self._get_page(base_query, current_page)]
             # no results, so we are done
             if not results:
                 break
