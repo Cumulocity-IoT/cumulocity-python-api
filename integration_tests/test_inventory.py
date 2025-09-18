@@ -2,6 +2,7 @@
 
 # pylint: disable=redefined-outer-name
 
+import random
 import time
 from typing import List
 
@@ -9,6 +10,7 @@ import pytest
 
 from c8y_api import CumulocityApi
 from c8y_api.model import Event, ManagedObject, Measurement, Count, Value, Device
+from c8y_api.model.matcher import jsonpath
 
 from util.testing_util import RandomNameGenerator
 from tests.utils import get_ids
@@ -96,6 +98,35 @@ def test_get_by_query(live_c8y: CumulocityApi, similar_objects: List[ManagedObje
     selected_mos = live_c8y.inventory.get_all(query=query)
     assert get_ids(similar_objects) == get_ids(selected_mos)
     assert live_c8y.inventory.get_count(query=query) == len(similar_objects)
+
+
+def test_filtering(live_c8y: CumulocityApi, safe_create):
+    """Verify that client side filtering works as expected."""
+    objects = [
+        safe_create(ManagedObject(
+            live_c8y,
+            type='c8y_TestObject',
+            name=f'c8y_TestObject_{i}',
+            array=random.choices(range(10), k=5)
+        ))
+        for i in range(10)
+    ]
+
+    # using filter parameter (JSONPath)
+    filtered_1 = live_c8y.inventory.get_all(
+        type='c8y_TestObject',
+        fragment='array',
+        filter=jsonpath('$.array[?(@ == 0)]'))
+    # using Python means
+    filtered_2 = list(filter(
+        lambda mo: 'array' in mo and 0 in mo.array,
+        live_c8y.inventory.select(type='c8y_TestObject', fragment='array')
+    ))
+    # -> no difference
+    assert {x.name for x in filtered_1} == {x.name for x in filtered_2}
+
+    for o in objects:
+        o.delete()
 
 
 def test_get_single_by_query(live_c8y: CumulocityApi, module_factory):
