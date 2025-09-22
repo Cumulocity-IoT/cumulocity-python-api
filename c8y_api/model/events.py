@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from typing import Generator, List, BinaryIO
 
 from c8y_api._base_api import CumulocityRestApi
+from c8y_api.model import JsonMatcher
 from c8y_api.model._base import CumulocityResource, SimpleObject, ComplexObject
 from c8y_api.model._parser import as_values as parse_as_values, ComplexObjectParser
 from c8y_api.model._util import _DateUtil
@@ -275,9 +276,11 @@ class Events(CumulocityResource):
                updated_before: str | datetime = None, updated_after: str | datetime = None,
                last_updated_from: str | datetime = None, last_updated_to: str | datetime = None,
                min_age: timedelta = None, max_age: timedelta = None,
-               reverse: bool = False, limit: int = None,
                with_source_assets: bool = None, with_source_devices: bool = None,
-               page_size: int = 1000, page_number: int = None,
+               reverse: bool = False, limit: int = None,
+               filter: str | JsonMatcher = None,
+               page_size: int = 1000,
+               page_number: int = None,
                as_values: str | tuple | list[str | tuple] = None,
                **kwargs) -> Generator[Event]:
         """Query the database for events and iterate over the results.
@@ -325,6 +328,8 @@ class Events(CumulocityResource):
             with_source_devices (bool): Whether also alarms for related source
                 devices should be included. Requires `source`
             limit (int): Limit the number of results to this number.
+            filter (str | JsonMatcher): Matcher/expression to filter the query
+                results (on client side). Uses JMESPath by default.
             page_size (int): Define the number of events which are read (and
                 parsed in one chunk). This is a performance related setting.
             page_number (int): Pull a specific page; this effectively disables
@@ -361,12 +366,14 @@ class Events(CumulocityResource):
             reverse=reverse,
             with_source_assets=with_source_assets,
             with_source_devices=with_source_devices,
+            filter=filter,
             page_size=page_size,
             **kwargs)
         return super()._iterate(
             base_query,
             page_number,
             limit,
+            filter,
             Event.from_json if not as_values else
             lambda x: parse_as_values(x, as_values))
 
@@ -382,8 +389,9 @@ class Events(CumulocityResource):
             updated_before: str | datetime = None, updated_after: str | datetime = None,
             last_updated_from: str | datetime = None, last_updated_to: str | datetime = None,
             min_age: timedelta = None, max_age: timedelta = None,
-            reverse: bool = False, limit: int = None,
             with_source_assets: bool = None, with_source_devices: bool = None,
+            reverse: bool = False, limit: int = None,
+            filter: str | JsonMatcher = None,
             page_size: int = 1000, page_number: int = None,
             as_values: str | tuple | list[str | tuple] = None,
             **kwargs) -> List[Event]:
@@ -408,9 +416,9 @@ class Events(CumulocityResource):
             updated_before=updated_before, updated_after=updated_after,
             last_updated_from=last_updated_from, last_updated_to=last_updated_to,
             min_age=min_age, max_age=max_age,
-            reverse=reverse,
             with_source_devices=with_source_devices, with_source_assets=with_source_assets,
-            limit=limit, page_size=page_size, page_number=page_number,
+            reverse=reverse,
+            limit=limit, filter=filter, page_size=page_size, page_number=page_number,
             as_values=as_values,
             **kwargs
         ))
