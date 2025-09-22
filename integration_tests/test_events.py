@@ -7,6 +7,7 @@ from __future__ import annotations
 import datetime as dt
 import logging
 import os
+import random
 import tempfile
 from typing import List
 
@@ -15,6 +16,7 @@ import pytest
 from c8y_api import CumulocityApi
 from c8y_api.model import Event, Device
 from c8y_api.model._util import _DateUtil
+from integration_tests.conftest import live_c8y
 from util.testing_util import RandomNameGenerator
 
 
@@ -157,6 +159,18 @@ def test_filter_by_update_time(live_c8y: CumulocityApi, session_device, sample_e
     result_datetimes = [a.updated_datetime for a in after_events]
     assert sorted(result_datetimes) == sorted(after_datetimes)
     assert last_event_after.updated_datetime == max(after_datetimes)
+
+
+def test_select(live_c8y, sample_events):
+    """Verify that selecting events works as expected."""
+
+    # 1) use client-side filtering
+    event_1 = random.choice(sample_events)
+    event_2 = live_c8y.events.get_all(source=event_1.source, filter=f"type == '{event_1.type}'")[0]
+    assert event_1.id == event_2.id
+
+    # 2) use type/source
+    assert live_c8y.events.get_all(type=event_1.type, source=event_1.source)[0].text == event_1.text
 
 
 def test_CRUD_attachments(live_c8y: CumulocityApi, session_device: Device, sample_events: List[Event]):  # noqa (case)

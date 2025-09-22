@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import datetime
+import random
 from typing import List
 
 import pytest
@@ -172,6 +174,18 @@ def test_count(live_c8y: CumulocityApi, sample_alarms: List[Alarm]):
     count = live_c8y.alarms.count(source=alarm.source, severity=alarm.severity,
                                   before='2021-01-01', after='2020-12-31')
     assert count == len(sample_alarms)
+
+
+def test_client_side_filtering(live_c8y: CumulocityApi, sample_alarms: List[Alarm]):
+    """Verify that client-side filtering works as expected."""
+    alarm = random.choice(sample_alarms)
+
+    alarms_1 = live_c8y.alarms.get_all(source=alarm.source)
+    # we need _some_ start date, otherwise the result set would be too big
+    created_after = alarm.creation_datetime - datetime.timedelta(hours=1)
+    # not that the filter uses source.id as this is raw JSON format
+    alarms_2 = live_c8y.alarms.get_all(created_after=created_after, filter=f"source.id == '{alarm.source}'")
+    assert len(alarms_1) == len(alarms_2)
 
 
 def test_filter_by_update_time(live_c8y: CumulocityApi, session_device, sample_alarms: List[Alarm]):
