@@ -1339,7 +1339,7 @@ class GlobalRoles(CumulocityResource):
                 response_json = self.c8y.get(query + str(page_number))
                 references = (
                     response_json['references'] if not filter
-                    else [x for x in response_json['references'] if filter.matches(x['group'])]
+                    else [x for x in response_json['references'] if filter.safe_matches(x['group'])]
                 )
                 if not references:
                     break

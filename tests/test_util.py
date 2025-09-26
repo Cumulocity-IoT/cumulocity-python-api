@@ -29,6 +29,60 @@ def test_snake_to_pascal_case(name, expected):
     assert _StringUtil.to_pascal_case(name) == expected
 
 
+@pytest.mark.parametrize(
+    'expression, string, expected',
+    [
+        ('abc', 'abc', True),
+        ('abc', 'abcd', False),
+        ('*abc', 'abc', True),
+        ('*abc', 'xabc', True),
+        ('*abc', 'xabx', False),
+        ('abc*', 'abc', True),
+        ('abc*', 'abcx', True),
+        ('abc*', 'abx', False),
+        ('*abc*', 'abc', True),
+        ('*abc*', 'xabcy', True),
+        ('*abc*', 'xaby', False),
+    ],
+    ids=[
+        'exact match',
+        'no exact match',
+        'ends with',
+        'ends with #2',
+        'no ends with',
+        'starts with',
+        'starts with #2',
+        'no starts with',
+        'contains',
+        'contains #2',
+        'no contains',
+    ]
+)
+def test_like(expression, string, expected):
+    """Verify that the `like` function works as expected."""
+    assert _StringUtil.like(expression, string) == expected
+
+
+@pytest.mark.parametrize(
+    'expression, string, expected',
+    [
+        ('abc', 'abc', True),
+        ('abc', 'xabcy', True),
+        (r'^abc$', 'xabcy', False),
+        (r'abc.*', 'abcx', True),
+    ],
+    ids=[
+        'exact match',
+        'contains',
+        'no full match',
+        'regex match',
+    ]
+)
+def test_matches(expression, string, expected):
+    """Verify that the `matches` function works as expected."""
+    assert _StringUtil.matches(expression, string) == expected
+
+
 @patch.dict(os.environ, {'C8Y_SOME': 'some', 'C8Y_THING': 'thing', 'C8YNOT': 'not'}, clear=True)
 def test_c8y_keys():
     """Verify that the C8Y_* keys can be filtered from environment."""

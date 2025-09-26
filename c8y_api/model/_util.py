@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Union
 
 from dateutil import parser
-from re import sub
+from re import sub, PatternError
 
 
 class _StringUtil(object):
@@ -30,6 +30,26 @@ class _StringUtil(object):
             return name
         return parts[0] + "".join([x.title() for x in parts[1:]])
 
+    @staticmethod
+    def like(expression: str, string: str):
+        """Check if like-expression matches a string.
+
+        Only supports * at beginning and end.
+        """
+        return (
+            expression[1:-1] in string if expression.startswith('*') and expression.endswith('*')
+            else string.startswith(expression[:-1]) if expression.endswith('*')
+            else string.endswith(expression[1:]) if expression.startswith('*')
+            else expression == string
+        )
+
+    @staticmethod
+    def matches(expression: str, string: str):
+        """Check if regex expression matches a string."""
+        try:
+            return re.search(expression, string) is not None
+        except PatternError:
+            return False
 
 class _QueryUtil(object):
 

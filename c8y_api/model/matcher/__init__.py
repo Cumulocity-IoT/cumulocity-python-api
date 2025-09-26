@@ -1,28 +1,50 @@
-from ._matcher import JsonMatcher
+from ._matcher import (
+    JsonMatcher,
+    AllMatcher,
+    match_all,
+    AnyMatcher,
+    match_any,
+    FragmentMatcher,
+    fragment,
+    FieldMatcher,
+    field,
+    DescriptionMatcher,
+    description,
+    TextMatcher,
+    text,
+    CommandMatcher,
+    command,
+)
 
-__all__ = ['JsonMatcher']
+__all__ = [
+    'JsonMatcher',
+    'AllMatcher',
+    'match_all',
+    'AnyMatcher',
+    'match_any',
+    'FragmentMatcher',
+    'fragment',
+    'FieldMatcher',
+    'field',
+    'DescriptionMatcher',
+    'description',
+    'TextMatcher',
+    'text',
+    'CommandMatcher',
+    'command',
+]
 
 try:
     import jmespath as _jmespath
-    from ._jmespath_matcher import JmesPathMatcher
-
-    def jmespath(expression: str) -> JmesPathMatcher:
-        """Create a JMESPathMatcher from an expression."""
-        return JmesPathMatcher(expression)
-
+    from ._jmespath_matcher import JmesPathMatcher, jmespath
     __all__.append('JmesPathMatcher')
     __all__.append('jmespath')
 except ImportError:
     pass
 
 try:
-    import jsonpath_ng
-    from ._jsonpath_matcher import JsonPathMatcher
-
-    def jsonpath(expression: str) -> JsonPathMatcher:
-        """Create a JMESPathMatcher from an expression."""
-        return JsonPathMatcher(expression)
-
+    import jsonpath_ng as _jsonpath_ng
+    from ._jsonpath_matcher import JsonPathMatcher, jsonpath
     __all__.append('JsonPathMatcher')
     __all__.append('jsonpath')
 except ImportError:
