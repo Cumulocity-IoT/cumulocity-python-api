@@ -116,7 +116,7 @@ def test_filtering(live_c8y: CumulocityApi, safe_create):
     filtered_1 = live_c8y.inventory.get_all(
         type='c8y_TestObject',
         fragment='array',
-        filter=jsonpath('$.array[?(@ == 0)]'))
+        include=jsonpath('$.array[?(@ == 0)]'))
     # using Python means
     filtered_2 = list(filter(
         lambda mo: 'array' in mo and 0 in mo.array,

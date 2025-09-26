@@ -61,12 +61,12 @@ def test_select(live_c8y: CumulocityApi, safe_create):
         assert role.id in [x.id for x in selected_roles]
 
     # (4) select with filter
-    filtered_1 = live_c8y.global_roles.get_all(filter="contains(name, 'Global')")
+    filtered_1 = live_c8y.global_roles.get_all(include="contains(name, 'Global')")
     filtered_2 = [x for x in live_c8y.global_roles.get_all() if 'Global' in x.name]
     assert {x.name for x in filtered_1} == {x.name for x in filtered_2}
 
     # (5) select by user with filter
-    filtered_1 = live_c8y.global_roles.get_all(username=username, filter="contains(name, 'a')")
+    filtered_1 = live_c8y.global_roles.get_all(username=username, include="contains(name, 'a')")
     filtered_2 = [x for x in live_c8y.global_roles.get_all(username=username) if 'a' in x.name]
     assert {x.name for x in filtered_1} == {x.name for x in filtered_2}
 

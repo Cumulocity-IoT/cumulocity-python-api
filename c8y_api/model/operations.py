@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Type, List, Generator
 
 from c8y_api._base_api import CumulocityRestApi
-
+from c8y_api.model.matcher import JsonMatcher
 from c8y_api.model._base import CumulocityResource, ComplexObject, SimpleObject, _DictWrapper
 from c8y_api.model._parser import ComplexObjectParser, as_values as parse_as_values
 from c8y_api.model._util import _DateUtil
@@ -161,6 +161,7 @@ class Operations(CumulocityResource):
             min_age: timedelta = None, max_age: timedelta = None,
             date_from: str | datetime = None, date_to: str | datetime = None,
             reverse: bool = False, limit: int = None,
+            include: str | JsonMatcher = None, exclude: str | JsonMatcher = None,
             page_size: int = 1000, page_number: int = None,
             as_values: str | tuple | list[str | tuple] = None,
             **kwargs
@@ -198,6 +199,12 @@ class Operations(CumulocityResource):
             reverse (bool):  Invert the order of results, starting with the
                 most recent one.
             limit (int):  Limit the number of results to this number.
+            include (str | JsonMatcher): Matcher/expression to filter the query
+                results (on client side). The inclusion is applied first.
+                Creates a JMESPath matcher by default for strings.
+            exclude (str | JsonMatcher): Matcher/expression to filter the query
+                results (on client side). The exclusion is applied second.
+                Creates a JMESPath matcher by default for strings.
             page_size (int):  Define the number of operations which are
                 read (and parsed in one chunk). This is a performance
                 related setting.
@@ -225,7 +232,8 @@ class Operations(CumulocityResource):
             base_query,
             page_number,
             limit,
-            None,
+            include,
+            exclude,
             Operation.from_json if not as_values else
             lambda x: parse_as_values(x, as_values))
 
@@ -238,6 +246,7 @@ class Operations(CumulocityResource):
             min_age: timedelta = None, max_age: timedelta = None,
             date_from: str | datetime = None, date_to: str | datetime = None,
             reverse: bool = False, limit: int = None,
+            include: str | JsonMatcher = None, exclude: str | JsonMatcher = None,
             page_size: int = 1000, page_number: int = None,
             as_values: str | tuple | list[str | tuple] = None,
             **kwargs
@@ -260,6 +269,7 @@ class Operations(CumulocityResource):
             date_from=date_from, date_to=date_to,
             reverse=reverse,
             limit=limit,
+            include=include, exclude=exclude,
             page_size=page_size,
             page_number=page_number,
             as_values=as_values,
@@ -549,7 +559,7 @@ class BulkOperations(CumulocityResource):
             Generator[BulkOperation]: Iterable of matching BulkOperation objects
         """
         base_query = self._prepare_query(page_size=page_size)
-        return super()._iterate(base_query, page_number, limit, None, BulkOperation.from_json)
+        return super()._iterate(base_query, page_number, limit, None, None, BulkOperation.from_json)
 
     def get_all(self, limit: int = None, page_size: int = 1000, page_number: int = None) -> List[BulkOperation]:
         """ Query the database for bulk operations and return the results

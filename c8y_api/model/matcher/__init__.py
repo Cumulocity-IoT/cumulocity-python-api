@@ -4,6 +4,8 @@ from ._matcher import (
     match_all,
     AnyMatcher,
     match_any,
+    NotMatcher,
+    match_not,
     FragmentMatcher,
     fragment,
     FieldMatcher,

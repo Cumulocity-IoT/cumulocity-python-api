@@ -5,7 +5,7 @@ from unittest.mock import patch, Mock
 import pytest
 
 from c8y_api.model.matcher import JsonMatcher, jmespath, jsonpath
-from c8y_api.model.matcher import command, description, field, fragment, match_all, match_any, text, FieldMatcher
+from c8y_api.model.matcher import command, description, field, fragment, match_all, match_any, match_not, text, FieldMatcher
 
 
 class MatchingMatcher(JsonMatcher):
@@ -129,6 +129,13 @@ def test_any_matcher():
     dont_match.matches.assert_called_once_with({})
     match1.matches.assert_called_once_with({})
     match2.matches.assert_not_called()
+
+
+def test_not_matcher():
+    """Verify that NOT matcher work as expected."""
+    assert not match_not(MATCH).matches({})
+    assert match_not(DONT_MATCH).matches({})
+
 
 def test_description_matcher():
     """Verify that the description matchers are initialized correctly."""

@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from typing import Generator, List, ClassVar
 
 from c8y_api._base_api import CumulocityRestApi
+from c8y_api.model.matcher import JsonMatcher
 from c8y_api.model._base import CumulocityResource, ComplexObject
 from c8y_api.model._parser import ComplexObjectParser, SimpleObjectParser, as_values as parse_as_values
 from c8y_api.model._util import _DateUtil
@@ -206,6 +207,7 @@ class AuditRecords(CumulocityResource):
             before: str | datetime = None, after: str | datetime = None,
             min_age: timedelta = None, max_age: timedelta = None,
             reverse: bool = False, limit: int = None,
+            include: str | JsonMatcher = None, exclude: str | JsonMatcher = None,
             page_size: int = 1000, page_number: int = None,
             as_values: str | tuple | list[str | tuple] = None,
             **kwargs
@@ -236,6 +238,12 @@ class AuditRecords(CumulocityResource):
             reverse (bool): Invert the order of results, starting with the
                 most recent one.
             limit (int): Limit the number of results to this number.
+            include (str | JsonMatcher): Matcher/expression to filter the query
+                results (on client side). The inclusion is applied first.
+                Creates a JMESPath matcher by default for strings.
+            exclude (str | JsonMatcher): Matcher/expression to filter the query
+                results (on client side). The exclusion is applied second.
+                Creates a JMESPath matcher by default for strings.
             page_size (int): Define the number of objects which are read (and
                 parsed in one chunk). This is a performance related setting.
             page_number (int): Pull a specific page; this effectively disables
@@ -253,12 +261,15 @@ class AuditRecords(CumulocityResource):
             type=type, source=source, application=application, user=user,
             before=before, after=after,
             min_age=min_age, max_age=max_age,
-            reverse=reverse, page_size=page_size,
+            reverse=reverse,
+            page_size=page_size,
             **kwargs)
         return super()._iterate(
             base_query,
             page_number,
             limit,
+            include,
+            exclude,
             AuditRecord.from_json if not as_values else
             lambda x: parse_as_values(x, as_values))
 
@@ -269,6 +280,7 @@ class AuditRecords(CumulocityResource):
             before: str | datetime = None, after: str | datetime = None,
             min_age: timedelta = None, max_age: timedelta = None,
             reverse: bool = False, limit: int = None,
+            include: str | JsonMatcher = None, exclude: str | JsonMatcher = None,
             page_size: int = 1000, page_number: int = None,
             as_values: str | tuple | list[str | tuple] = None,
             **kwargs
@@ -288,7 +300,9 @@ class AuditRecords(CumulocityResource):
             type=type, source=source, application=application, user=user,
             before=before, after=after,
             min_age=min_age, max_age=max_age,
-            reverse=reverse, limit=limit, page_size=page_size, page_number=page_number,
+            reverse=reverse, limit=limit,
+            include=include, exclude=exclude,
+            page_size=page_size, page_number=page_number,
             as_values=as_values,
             **kwargs,
         ))

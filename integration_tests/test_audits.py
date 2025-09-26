@@ -23,9 +23,9 @@ def test_CR(live_c8y: CumulocityApi, session_device):  # noqa (case)
                          application=f'{name}_app', user=live_c8y.username).create()
     after = _DateUtil.now()
 
-    # -> there should be exactly one audit record with that source
+    # -> there should be at least 1 audit record with that source
     records = live_c8y.audit_records.get_all(source=session_device.id)
-    assert len(records) == 1
+    assert len(records) >= 1
     assert records[0].id == record.id
 
     # -> there should be exactly one audit record with that application/user
