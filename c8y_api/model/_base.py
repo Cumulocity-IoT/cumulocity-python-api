@@ -804,7 +804,7 @@ class CumulocityResource:
 
         while True:
             if filter:
-                results = [parse_fun(x) for x in self._get_page(base_query, current_page) if filter.matches(x)]
+                results = [parse_fun(x) for x in self._get_page(base_query, current_page) if filter.safe_matches(x)]
             else:
                 results = [parse_fun(x) for x in self._get_page(base_query, current_page)]
             # no results, so we are done
