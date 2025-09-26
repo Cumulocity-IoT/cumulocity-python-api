@@ -251,11 +251,11 @@ def test_collect_multiple_series(series_fixture, request):
     assert all(len(v) == len(series_names) for v in values)
     # -> Each value within the n-tuple belongs to one series
     #    There will be None values (when a series does not define a value
-    #    at that timestamp). Subsequent values will have the same type
+    #    at that timestamp). All actual values will have the same type.
     assert any(any(e is None for e in v) for v in values)
     for i in range(0, len(series_names)):
-        t = type(values[0][i])
-        assert all(isinstance(v[i], t) for v in values if v[i])
+        actual_values = [v[i] for v in values if v[i] is not None]
+        assert all(isinstance(v, type(actual_values[0])) for v in actual_values)
 
 
 def test_get_and_collect_series(live_c8y, sample_series_device):
