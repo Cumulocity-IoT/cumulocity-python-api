@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 import logging
 import threading
 import time
-from typing import Callable, Union
+from typing import Callable, Union, List
 
 from c8y_api.app import MultiTenantCumulocityApp
 
@@ -29,7 +29,7 @@ class SubscriptionListener:
     def __init__(
             self,
             app: MultiTenantCumulocityApp,
-            callback: Callable[[list[str]], None] = None,
+            callback: Callable[[List[str]], None] = None,
             max_threads: int = 5,
             blocking: bool = True,
             polling_interval: float = 3600,
@@ -75,9 +75,9 @@ class SubscriptionListener:
 
     def add_callback(
             self,
-            callback: Callable[[Union[str ,list[str]]], None],
+            callback: Callable[[Union[str, List[str]]], None],
             blocking: bool = True,
-            when: str = 'any',
+            when: str = 'any'
     ) -> "SubscriptionListener":
         """Add a callback function to be invoked if a tenant subscribes
         to/unsubscribes from the monitored multi-tenant microservice.
@@ -262,7 +262,7 @@ class SubscriptionListener:
                 self._executor and self.get_callbacks()):
             raise TimeoutError(f"Listener thread did not close within the specified timeout ({timeout}s).")
 
-    def get_callbacks(self) -> list[Future]:
+    def get_callbacks(self) -> List[Future]:
         """Get currently running callbacks.
 
         This function can be used to gain direct access to the currently
