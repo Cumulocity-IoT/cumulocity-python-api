@@ -697,7 +697,7 @@ class DeviceGroup(ManagedObject):
     def __init__(self, c8y=None, root: bool = False, name: str = None, owner: str = None, **kwargs):
         """ Build a new DeviceGroup object.
 
-        A type of a device group will always be either `c8y_DeviceGroup`
+        The `type` of a device group will always be either `c8y_DeviceGroup`
         or `c8y_DeviceSubGroup` (depending on it's level). This is handled
         by the API.
 
