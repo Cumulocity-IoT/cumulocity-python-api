@@ -4,8 +4,7 @@ from unittest.mock import patch, Mock
 
 import pytest
 
-from c8y_api.model.matcher import JsonMatcher, jmespath, jsonpath
-from c8y_api.model.matcher import command, description, field, fragment, match_all, match_any, match_not, text, FieldMatcher
+from c8y_api.model.matcher import *
 
 
 class MatchingMatcher(JsonMatcher):
