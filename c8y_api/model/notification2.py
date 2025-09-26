@@ -216,7 +216,7 @@ class Subscriptions(CumulocityResource):
             typeFilter=type_filter,
             page_size=page_size,
             **kwargs)
-        return super()._iterate(base_query, page_number, limit, Subscription.from_json)
+        return super()._iterate(base_query, page_number, limit, None, Subscription.from_json)
 
     def get_all(
             self,
