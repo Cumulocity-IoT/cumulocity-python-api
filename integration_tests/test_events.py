@@ -16,7 +16,7 @@ import pytest
 from c8y_api import CumulocityApi
 from c8y_api.model import Event, Device
 from c8y_api.model._util import _DateUtil
-from integration_tests.conftest import live_c8y
+
 from util.testing_util import RandomNameGenerator
 
 
