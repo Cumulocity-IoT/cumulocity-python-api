@@ -67,7 +67,7 @@ def safe_executor(logger):
 @pytest.fixture(scope='function')
 def auto_delete(logger):
     """Register a created Cumulocity object for automatic deletion after test function execution."""
-
+    # pylint: disable=broad-exception-caught
     objects = []
 
     def register(obj) -> Any:
