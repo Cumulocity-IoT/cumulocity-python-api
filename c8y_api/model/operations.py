@@ -225,6 +225,7 @@ class Operations(CumulocityResource):
             base_query,
             page_number,
             limit,
+            None,
             Operation.from_json if not as_values else
             lambda x: parse_as_values(x, as_values))
 
@@ -548,7 +549,7 @@ class BulkOperations(CumulocityResource):
             Generator[BulkOperation]: Iterable of matching BulkOperation objects
         """
         base_query = self._prepare_query(page_size=page_size)
-        return super()._iterate(base_query, page_number, limit, BulkOperation.from_json)
+        return super()._iterate(base_query, page_number, limit, None, BulkOperation.from_json)
 
     def get_all(self, limit: int = None, page_size: int = 1000, page_number: int = None) -> List[BulkOperation]:
         """ Query the database for bulk operations and return the results

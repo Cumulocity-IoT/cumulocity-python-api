@@ -568,6 +568,7 @@ class Measurements(CumulocityResource):
             base_query,
             page_number,
             limit,
+            None,
             Measurement.from_json if not as_values else
             lambda x: parse_as_values(x, as_values))
 

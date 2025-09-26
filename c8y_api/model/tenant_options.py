@@ -151,7 +151,7 @@ class TenantOptions(CumulocityResource):
         if not category:
             # select all
             base_query = self._prepare_query(page_size=page_size)
-            yield from super()._iterate(base_query, page_number, limit, TenantOption.from_json)
+            yield from super()._iterate(base_query, page_number, limit, None, TenantOption.from_json)
         else:
             # select by category, this is just a single request
             options_json = self.c8y.get(f'{self.resource}/{category}')
