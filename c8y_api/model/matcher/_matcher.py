@@ -2,7 +2,6 @@
 
 import logging
 from abc import ABC, abstractmethod
-from enum import StrEnum
 
 from c8y_api.model._util import _StringUtil
 
@@ -79,6 +78,22 @@ def match_any(*matchers: JsonMatcher) -> AnyMatcher:
     return AnyMatcher(*matchers)
 
 
+class NotMatcher(JsonMatcher):
+    """Higher level matcher matching if the enclosed matcher doesn't match."""
+
+    def __init__(self, matcher: JsonMatcher):
+        super().__init__(f'NOT {matcher}')
+        self.matcher = matcher
+
+    def matches(self, json: dict) -> bool:
+        return not self.matcher.matches(json)
+
+
+def match_not(matcher: JsonMatcher) -> NotMatcher:
+    """Create a higher level matcher matching if the enclosed matcher doesn't match."""
+    return NotMatcher(matcher)
+
+
 class FragmentMatcher(JsonMatcher):
     """Matcher matching the existence of a top-level fragment."""
 
@@ -97,7 +112,7 @@ def fragment(name: str) -> FragmentMatcher:
 class FieldMatcher(JsonMatcher):
     """Generic matcher matching the value of a top-level string field."""
 
-    class Mode(StrEnum):
+    class Mode:
         """The mode of matching."""
         LIKE = 'LIKE'
         REGEX = 'REGEX'

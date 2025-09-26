@@ -789,7 +789,8 @@ class CumulocityResource:
             base_query: str,
             page_number: int | None,
             limit: int | None,
-            filter: str | JsonMatcher | None,
+            include: str | JsonMatcher | None,
+            exclude: str | JsonMatcher | None,
             parse_fun
     ):
         # if no specific page is defined we just start at 1
@@ -799,15 +800,17 @@ class CumulocityResource:
         #  - there is no result (i.e. we were at the last page)
         num_results = 0
         # compile/prepare filter if defined
-        if isinstance(filter, str):
-            filter = self.default_matcher(filter)
+        if isinstance(include, str):
+            include = self.default_matcher(include)
+        if isinstance(exclude, str):
+            exclude = self.default_matcher(exclude)
 
         while True:
-            if filter:
-                results = [parse_fun(x) for x in self._get_page(base_query, current_page) if filter.safe_matches(x)]
-            else:
-                results = [parse_fun(x) for x in self._get_page(base_query, current_page)]
-            # no results, so we are done
+            results = [
+                parse_fun(x) for x in self._get_page(base_query, current_page)
+                if (not include or include.safe_matches(x))
+                   and (not exclude or not exclude.safe_matches(x))
+            ]
             if not results:
                 break
             for result in results:

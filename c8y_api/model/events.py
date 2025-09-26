@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from typing import Generator, List, BinaryIO
 
 from c8y_api._base_api import CumulocityRestApi
-from c8y_api.model import JsonMatcher
+from c8y_api.model.matcher import JsonMatcher
 from c8y_api.model._base import CumulocityResource, SimpleObject, ComplexObject
 from c8y_api.model._parser import as_values as parse_as_values, ComplexObjectParser
 from c8y_api.model._util import _DateUtil
@@ -278,7 +278,7 @@ class Events(CumulocityResource):
                min_age: timedelta = None, max_age: timedelta = None,
                with_source_assets: bool = None, with_source_devices: bool = None,
                reverse: bool = False, limit: int = None,
-               filter: str | JsonMatcher = None,
+               include: str | JsonMatcher = None, exclude: str | JsonMatcher = None,
                page_size: int = 1000,
                page_number: int = None,
                as_values: str | tuple | list[str | tuple] = None,
@@ -328,8 +328,12 @@ class Events(CumulocityResource):
             with_source_devices (bool): Whether also alarms for related source
                 devices should be included. Requires `source`
             limit (int): Limit the number of results to this number.
-            filter (str | JsonMatcher): Matcher/expression to filter the query
-                results (on client side). Uses JMESPath by default.
+            include (str | JsonMatcher): Matcher/expression to filter the query
+                results (on client side). The inclusion is applied first.
+                Creates a JMESPath matcher by default for strings.
+            exclude (str | JsonMatcher): Matcher/expression to filter the query
+                results (on client side). The exclusion is applied second.
+                Creates a JMESPath matcher by default for strings.
             page_size (int): Define the number of events which are read (and
                 parsed in one chunk). This is a performance related setting.
             page_number (int): Pull a specific page; this effectively disables
@@ -366,14 +370,14 @@ class Events(CumulocityResource):
             reverse=reverse,
             with_source_assets=with_source_assets,
             with_source_devices=with_source_devices,
-            filter=filter,
             page_size=page_size,
             **kwargs)
         return super()._iterate(
             base_query,
             page_number,
             limit,
-            filter,
+            include,
+            exclude,
             Event.from_json if not as_values else
             lambda x: parse_as_values(x, as_values))
 
@@ -391,7 +395,7 @@ class Events(CumulocityResource):
             min_age: timedelta = None, max_age: timedelta = None,
             with_source_assets: bool = None, with_source_devices: bool = None,
             reverse: bool = False, limit: int = None,
-            filter: str | JsonMatcher = None,
+            include: str | JsonMatcher = None, exclude: str | JsonMatcher = None,
             page_size: int = 1000, page_number: int = None,
             as_values: str | tuple | list[str | tuple] = None,
             **kwargs) -> List[Event]:
@@ -418,7 +422,9 @@ class Events(CumulocityResource):
             min_age=min_age, max_age=max_age,
             with_source_devices=with_source_devices, with_source_assets=with_source_assets,
             reverse=reverse,
-            limit=limit, filter=filter, page_size=page_size, page_number=page_number,
+            limit=limit,
+            include=include, exclude=exclude,
+            page_size=page_size, page_number=page_number,
             as_values=as_values,
             **kwargs
         ))

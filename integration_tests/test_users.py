@@ -76,7 +76,7 @@ def test_select(live_c8y: CumulocityApi, safe_create):
         assert '2' in live_c8y.users.get(user.username).global_role_ids
 
     # test getting with a client-side-filter
-    admin_users_2 = live_c8y.users.get_all(filter="contains(groups.references[].group.id, `2`)")
+    admin_users_2 = live_c8y.users.get_all(include="contains(groups.references[].group.id, `2`)")
     assert {x.id for x in admin_users} == {x.id for x in admin_users_2}
 
 

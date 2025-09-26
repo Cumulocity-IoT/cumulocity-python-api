@@ -166,7 +166,7 @@ def test_select(live_c8y, sample_events):
 
     # 1) use client-side filtering
     event_1 = random.choice(sample_events)
-    event_2 = live_c8y.events.get_all(source=event_1.source, filter=f"type == '{event_1.type}'")[0]
+    event_2 = live_c8y.events.get_all(source=event_1.source, include=f"type == '{event_1.type}'")[0]
     assert event_1.id == event_2.id
 
     # 2) use type/source

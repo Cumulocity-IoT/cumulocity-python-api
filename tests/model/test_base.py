@@ -582,7 +582,13 @@ def test_iteration(page_size, num_all, limit, expected):
     res._get_page = Mock(side_effect=get_page)
 
     # iterate oder results
-    result = list(res._iterate(base_query="q", page_number=None, limit=limit, filter=None, parse_fun=parse_fun))
+    result = list(res._iterate(
+        base_query="q",
+        page_number=None,
+        limit=limit,
+        include=None,
+        exclude=None,
+        parse_fun=parse_fun))
     result_ids = [x.id for x in result]
 
     # check expectation

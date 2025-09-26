@@ -5,7 +5,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Union
 
 from dateutil import parser
-from re import sub, PatternError
 
 
 class _StringUtil(object):
@@ -48,7 +47,7 @@ class _StringUtil(object):
         """Check if regex expression matches a string."""
         try:
             return re.search(expression, string) is not None
-        except PatternError:
+        except re.error:
             return False
 
 class _QueryUtil(object):
@@ -59,7 +58,7 @@ class _QueryUtil(object):
         http://docs.oasis-open.org/odata/odata/v4.01/odata-v4.01-part2-url-conventions.html#sec_URLParsing
         http://docs.oasis-open.org/odata/odata/v4.01/cs01/abnf/odata-abnf-construction-rules.txt """
         # single quotes escaped through single quote
-        return sub('\'', '\'\'', value)
+        return re.sub('\'', '\'\'', value)
 
     @staticmethod
     def encode_odata_text_value(value):
@@ -67,7 +66,7 @@ class _QueryUtil(object):
         http://docs.oasis-open.org/odata/odata/v4.01/odata-v4.01-part2-url-conventions.html#sec_URLParsing
         http://docs.oasis-open.org/odata/odata/v4.01/cs01/abnf/odata-abnf-construction-rules.txt """
         # single quotes escaped through single quote
-        encoded_quotes = sub('\'', '\'\'', value)
+        encoded_quotes = re.sub('\'', '\'\'', value)
         return encoded_quotes if " " not in encoded_quotes else f"'{encoded_quotes}'"
 
 

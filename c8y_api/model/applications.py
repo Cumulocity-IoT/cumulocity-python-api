@@ -319,7 +319,7 @@ class Applications(CumulocityResource):
             page_size=page_size,
             **kwargs
         )
-        return super()._iterate(base_query, page_number, limit, None, Application.from_json)
+        return super()._iterate(base_query, page_number, limit, None, None, Application.from_json)
 
     def get_all(
             self,

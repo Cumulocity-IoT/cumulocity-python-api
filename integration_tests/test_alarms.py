@@ -184,7 +184,7 @@ def test_client_side_filtering(live_c8y: CumulocityApi, sample_alarms: List[Alar
     # we need _some_ start date, otherwise the result set would be too big
     created_after = alarm.creation_datetime - datetime.timedelta(hours=1)
     # not that the filter uses source.id as this is raw JSON format
-    alarms_2 = live_c8y.alarms.get_all(created_after=created_after, filter=f"source.id == '{alarm.source}'")
+    alarms_2 = live_c8y.alarms.get_all(created_after=created_after, include=f"source.id == '{alarm.source}'")
     assert len(alarms_1) == len(alarms_2)
 
 

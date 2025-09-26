@@ -6,9 +6,11 @@ from __future__ import annotations
 
 import json
 import os
+from unittest.mock import Mock
 
 import pytest
 
+from c8y_api import CumulocityApi
 from c8y_api.model import GlobalRole
 
 
@@ -67,3 +69,45 @@ def test_updating(sample_role: GlobalRole):
     expected_updates = {'name', 'description'}
     assert len(sample_role.get_updates()) == len(expected_updates)
     assert set(sample_role.to_diff_json().keys()) == expected_updates
+
+
+def test_client_side_filtering():
+    """Verify that client side filtering works as expected when selecting by username.
+
+    The GlobalRoles API has a special case for selecting groups/global roles by username
+    which is covered by this test.
+
+    See also `test_filtering.py` for generic client side filtering tests.
+    """
+
+    # create mock CumulocityApi instance
+    c8y = CumulocityApi(base_url='some.host.com', tenant_id='t123', username='user', password='pass')
+
+    # prepare mock data and corresponding matchers
+    # the get function is invoked until there are no results (empty list), the results
+    # are stored in an array by object name
+    get_data = [
+        {'references': x, 'statistics': {'totalPages': 1}} for x in
+        [
+            # need to prepare data for all kind of formats ...
+            [{'group': {'id': str(x)}} for x in [1, 2, 3]],
+            []
+        ]
+    ]
+    include_results = [True, False, True]
+    exclude_results = [True, False]
+
+    c8y.get = Mock(side_effect=get_data)
+    include_matcher = Mock(safe_matches=Mock(side_effect=include_results))
+    exclude_matcher = Mock(safe_matches=Mock(side_effect=exclude_results))
+
+    # run get_all/select
+    result = c8y.global_roles.get_all(username='username', include=include_matcher, exclude=exclude_matcher)
+
+    # -> result should only contain filtered documents
+    #    1,2,3 -> 1,3 -> 3
+    assert ['3'] == [str(x.id) for x in result]
+    # -> include matcher should have been called for each document
+    assert include_matcher.safe_matches.call_count == len(include_results)
+    # -> exclude matcher should have been called for each included
+    assert exclude_matcher.safe_matches.call_count == len(exclude_results)
