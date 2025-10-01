@@ -2,7 +2,7 @@ import logging
 
 from c8y_api.app import SimpleCumulocityApp
 from c8y_api.model import Device
-from c8y_api.model.matcher import field
+from c8y_api.model.matcher import field, match_all, match_not
 from util.testing_util import load_dotenv
 
 logging.basicConfig(level=logging.DEBUG)
@@ -45,7 +45,7 @@ print("All devices of type 'c8y_TestDevice':")
 for d in c8y.device_inventory.select(type='c8y_TestDevice'):
     print(f" - {d.name}")
 
-# Option 1: filtering devices by name using Python filters
+# Option 1: filtering devices by name using standard Python filters
 # The following select statement will simply list "all" devices (there are
 # no DB filters) and subsequently filter the results using a standard Python
 # list comprehension:
@@ -67,7 +67,7 @@ print("Option #2 result (same thing):")
 for d in filtered_devices_2:
     print(f" - {d.name}")
 
-# Option 3: the client-side filtering with Python filters
+# Option 3: the client-side filtering with custom filters
 # The following statement will simply list "all" devices (there are no DB
 # filters) and subsequently filter the results using Python matchers. There
 # is quite a list of predefined matchers (see c8y_api.model.matchers) and
@@ -80,6 +80,23 @@ filtered_devices_3 = c8y.device_inventory.get_all(
 #    without '#' anywhere in the name
 print("Option #3 result (Same, but no #)")
 for d in filtered_devices_3:
+    print(f" - {d.name}")
+
+# Option 4: the client-side filtering with nested filters
+# The following statement applies the same as above, but using ridiculously
+# nested Python matchers to get the same logic.
+
+filtered_devices_4 = c8y.device_inventory.get_all(
+    type='c8y_TestDevice',
+    include=match_all(
+        field('name', '*Device*'),
+        match_not(
+            field('name', '*#*')
+        )
+    ))
+# -> Same result
+print("Option #4 result (All the same)")
+for d in filtered_devices_4:
     print(f" - {d.name}")
 
 
