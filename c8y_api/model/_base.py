@@ -13,7 +13,7 @@ from c8y_api._base_api import CumulocityRestApi
 from c8y_api.model.matcher import JsonMatcher
 from c8y_api.model._util import _DateUtil, _StringUtil, _QueryUtil
 try:
-    from c8y_api.model.matcher import JmesPathMatcher
+    from c8y_api.model.matcher import PydfMatcher
 except ImportError:
     pass
 
@@ -639,7 +639,7 @@ class CumulocityResource:
         # the last event for e.g. /event/events
         self.object_name = self.resource.split('/')[-1]
         # the default JSON matcher for client-side filtering
-        self.default_matcher = JmesPathMatcher
+        self.default_matcher = PydfMatcher
 
     def build_object_path(self, object_id: int | str) -> str:
         """Build the path to a specific object of this resource.

@@ -298,10 +298,10 @@ class Inventory(CumulocityResource):
             limit (int): Limit the number of results to this number.
             include (str | JsonMatcher): Matcher/expression to filter the query
                 results (on client side). The inclusion is applied first.
-                Creates a JMESPath matcher by default for strings.
+                Creates a PyDF (Python Display Filter) matcher by default for strings.
             exclude (str | JsonMatcher): Matcher/expression to filter the query
                 results (on client side). The exclusion is applied second.
-                Creates a JMESPath matcher by default for strings.
+                Creates a PyDF (Python Display Filter) matcher by default for strings.
             page_size (int): Define the number of events which are read (and
                 parsed in one chunk). This is a performance related setting.
             page_number (int): Pull a specific page; this effectively disables
@@ -313,8 +313,10 @@ class Inventory(CumulocityResource):
 
         Returns:
             Generator for ManagedObject instances
-        """
 
+        See also:
+            https://github.com/bytebutcher/pydfql/blob/main/docs/USER_GUIDE.md#4-query-language
+        """
         return self._select(
             ManagedObject.from_json,
             device_mode=False,
@@ -694,10 +696,10 @@ class DeviceInventory(Inventory):
             limit (int): Limit the number of results to this number.
             include (str | JsonMatcher): Matcher/expression to filter the query
                 results (on client side). The inclusion is applied first.
-                Creates a JMESPath matcher by default for strings.
+                Creates a PyDF (Python Display Filter) matcher by default for strings.
             exclude (str | JsonMatcher): Matcher/expression to filter the query
                 results (on client side). The exclusion is applied second.
-                Creates a JMESPath matcher by default for strings.
+                Creates a PyDF (Python Display Filter) matcher by default for strings.
             page_size (int): Define the number of events which are read (and
                 parsed in one chunk). This is a performance related setting.
             page_number (int): Pull a specific page; this effectively disables
@@ -709,6 +711,9 @@ class DeviceInventory(Inventory):
 
         Returns:
             Generator for Device objects
+
+        See also:
+            https://github.com/bytebutcher/pydfql/blob/main/docs/USER_GUIDE.md#4-query-language
         """
         return super()._select(
             Device.from_json,
@@ -962,10 +967,10 @@ class DeviceGroupInventory(Inventory):
             limit (int): Limit the number of results to this number.
             include (str | JsonMatcher): Matcher/expression to filter the query
                 results (on client side). The inclusion is applied first.
-                Creates a JMESPath matcher by default for strings.
+                Creates a PyDF (Python Display Filter) matcher by default for strings.
             exclude (str | JsonMatcher): Matcher/expression to filter the query
                 results (on client side). The exclusion is applied second.
-                Creates a JMESPath matcher by default for strings.
+                Creates a PyDF (Python Display Filter) matcher by default for strings.
             page_size (int): Define the number of events which are read (and
                 parsed in one chunk). This is a performance related setting.
             page_number (int): Pull a specific page; this effectively disables
@@ -977,6 +982,9 @@ class DeviceGroupInventory(Inventory):
 
         Returns:
             Generator of DeviceGroup instances
+
+        See also:
+            https://github.com/bytebutcher/pydfql/blob/main/docs/USER_GUIDE.md#4-query-language
         """
         type = type or (DeviceGroup.CHILD_TYPE if parent else None)
         if fragments:

@@ -959,10 +959,10 @@ class InventoryRoles(CumulocityResource):
             limit (int): Limit the number of results to this number.
             include (str | JsonMatcher): Matcher/expression to filter the query
                 results (on client side). The inclusion is applied first.
-                Creates a JMESPath matcher by default for strings.
+                Creates a PyDF (Python Display Filter) matcher by default for strings.
             exclude (str | JsonMatcher): Matcher/expression to filter the query
                 results (on client side). The exclusion is applied second.
-                Creates a JMESPath matcher by default for strings.
+                Creates a PyDF (Python Display Filter) matcher by default for strings.
             page_size (int): Define the number of objects read (and parsed
                 in one chunk). This is a performance related setting.
             page_number (int): Pull a specific page; this effectively disables
@@ -970,6 +970,9 @@ class InventoryRoles(CumulocityResource):
 
         Returns:
             Generator for InventoryRole objects
+
+        See also:
+            https://github.com/bytebutcher/pydfql/blob/main/docs/USER_GUIDE.md#4-query-language
         """
         base_query = self._prepare_query(page_size=page_size)
         return super()._iterate(base_query, page_number, limit, include, exclude, InventoryRole.from_json)
@@ -1116,10 +1119,10 @@ class Users(CumulocityResource):
             limit (int): Limit the number of results to this number.
             include (str | JsonMatcher): Matcher/expression to filter the query
                 results (on client side). The inclusion is applied first.
-                Creates a JMESPath matcher by default for strings.
+                Creates a PyDF (Python Display Filter) matcher by default for strings.
             exclude (str | JsonMatcher): Matcher/expression to filter the query
                 results (on client side). The exclusion is applied second.
-                Creates a JMESPath matcher by default for strings.
+                Creates a PyDF (Python Display Filter) matcher by default for strings.
             page_size (int): Define the number of events which are read (and
                 parsed in one chunk). This is a performance related setting.
             page_number (int): Pull a specific page; this effectively disables
@@ -1131,6 +1134,9 @@ class Users(CumulocityResource):
 
         Returns:
             Generator of User instances
+
+        See also:
+            https://github.com/bytebutcher/pydfql/blob/main/docs/USER_GUIDE.md#4-query-language
         """
         # group_list can be ints, strings (names) or Group objects
         # it needs to become a comma-separated string
@@ -1337,15 +1343,18 @@ class GlobalRoles(CumulocityResource):
                 If omitted, all available global roles are returned
             include (str | JsonMatcher): Matcher/expression to filter the query
                 results (on client side). The inclusion is applied first.
-                Creates a JMESPath matcher by default for strings.
+                Creates a PyDF (Python Display Filter) matcher by default for strings.
             exclude (str | JsonMatcher): Matcher/expression to filter the query
                 results (on client side). The exclusion is applied second.
-                Creates a JMESPath matcher by default for strings.
+                Creates a PyDF (Python Display Filter) matcher by default for strings.
             page_size (int): Maximum number of entries fetched per requests;
                 this is a performance setting
 
         Return:
             Generator of GlobalRole instances
+
+        See also:
+            https://github.com/bytebutcher/pydfql/blob/main/docs/USER_GUIDE.md#4-query-language
         """
         # unfortunately, as selecting by username can't be implemented using the
         # generic _iterate method, we have to do everything manually.
@@ -1400,15 +1409,18 @@ class GlobalRoles(CumulocityResource):
                 If omitted, all available global roles are returned
             include (str | JsonMatcher): Matcher/expression to filter the query
                 results (on client side). The inclusion is applied first.
-                Creates a JMESPath matcher by default for strings.
+                Creates a PyDF (Python Display Filter) matcher by default for strings.
             exclude (str | JsonMatcher): Matcher/expression to filter the query
                 results (on client side). The exclusion is applied second.
-                Creates a JMESPath matcher by default for strings.
+                Creates a PyDF (Python Display Filter) matcher by default for strings.
             page_size (int): Maximum number of entries fetched per requests;
                 this is a performance setting
 
         Return:
             List of GlobalRole instances
+
+        See also:
+            https://github.com/bytebutcher/pydfql/blob/main/docs/USER_GUIDE.md#4-query-language
         """
         return list(self.select(username=username, include=include, exclude=exclude, page_size=page_size))
 
