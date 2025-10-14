@@ -34,9 +34,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+pydf = ["python-dict-display-filter"]
 jmespath = ["jmespath"]
 jsonpath = ["jsonpath-ng"]
-filters = ["jmespath", "jsonpath-ng"]
+filters = ["python-dict-display-filter", "jmespath", "jsonpath-ng"]
 
 [project.urls]
 Homepage = "https://github.com/Cumulocity-IoT/cumulocity-python-api"
