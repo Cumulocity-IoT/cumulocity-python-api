@@ -1,3 +1,7 @@
+# Copyright (c) 2025 Cumulocity GmbH
+
+# pylint: disable=wildcard-import, unused-wildcard-import
+
 import logging
 import re
 from unittest.mock import patch, Mock

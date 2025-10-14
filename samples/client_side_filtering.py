@@ -1,3 +1,5 @@
+# Copyright (c) 2025 Cumulocity GmbH
+
 import logging
 
 from c8y_api.app import SimpleCumulocityApp
@@ -7,6 +9,7 @@ from util.testing_util import load_dotenv
 
 logging.basicConfig(level=logging.DEBUG)
 
+# pylint: disable=pointless-string-statement
 """
 This example demonstrates how to use the client-side-filtering feature of the
 Python Cumulocity API. 
