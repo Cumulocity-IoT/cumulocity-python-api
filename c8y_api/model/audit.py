@@ -240,10 +240,10 @@ class AuditRecords(CumulocityResource):
             limit (int): Limit the number of results to this number.
             include (str | JsonMatcher): Matcher/expression to filter the query
                 results (on client side). The inclusion is applied first.
-                Creates a JMESPath matcher by default for strings.
+                Creates a PyDF (Python Display Filter) matcher by default for strings.
             exclude (str | JsonMatcher): Matcher/expression to filter the query
                 results (on client side). The exclusion is applied second.
-                Creates a JMESPath matcher by default for strings.
+                Creates a PyDF (Python Display Filter) matcher by default for strings.
             page_size (int): Define the number of objects which are read (and
                 parsed in one chunk). This is a performance related setting.
             page_number (int): Pull a specific page; this effectively disables
@@ -255,6 +255,9 @@ class AuditRecords(CumulocityResource):
 
         Returns:
             Generator for AuditRecord objects
+
+        See also:
+            https://github.com/bytebutcher/pydfql/blob/main/docs/USER_GUIDE.md#4-query-language
         """
         base_query = self._prepare_query(
             expression=expression,
