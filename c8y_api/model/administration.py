@@ -1361,8 +1361,12 @@ class GlobalRoles(CumulocityResource):
         if username:
             # compile/prepare filter if defined
             if isinstance(include, str):
+                if not self.default_matcher:
+                    raise ValueError("No default matcher defined (client-side filtering not supported?)")
                 include = self.default_matcher(include)
             if isinstance(exclude, str):
+                if not self.default_matcher:
+                    raise ValueError("No default matcher defined (client-side filtering not supported?)")
                 exclude = self.default_matcher(exclude)
             # select by username
             query = f'/user/{self.c8y.tenant_id}/users/{username}/groups?pageSize={page_size}&currentPage='

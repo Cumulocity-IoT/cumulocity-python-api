@@ -12,10 +12,18 @@ from deprecated import deprecated
 from c8y_api._base_api import CumulocityRestApi
 from c8y_api.model.matcher import JsonMatcher
 from c8y_api.model._util import _DateUtil, _StringUtil, _QueryUtil
+
+# trying to import various matchers that need external libraries
 try:
-    from c8y_api.model.matcher import PydfMatcher
+    from c8y_api.model.matcher import PydfMatcher as DefaultMatcher
 except ImportError:
-    pass
+    try:
+        from c8y_api.model.matcher import JmesPathMatcher as DefaultMatcher
+    except ImportError:
+        try:
+            from c8y_api.model.matcher import JsonPathMatcher as DefaultMatcher
+        except ImportError:
+            DefaultMatcher = None
 
 
 def get_by_path(dictionary: dict, path: str, default: Any = None) -> Any:
@@ -52,7 +60,7 @@ def get_all_by_path(dictionary: dict, paths: list[str] | dict[str, Any]) -> tupl
 
     Return:
         The extracted values (or defaults it specified) as tuple. The
-        number of elements in the tuple matches the length of the paths
+        number of elements in the tuple matches the length of the `paths`
         argument.
     """
     if isinstance(paths, dict):
@@ -639,7 +647,7 @@ class CumulocityResource:
         # the last event for e.g. /event/events
         self.object_name = self.resource.split('/')[-1]
         # the default JSON matcher for client-side filtering
-        self.default_matcher = PydfMatcher
+        self.default_matcher = DefaultMatcher
 
     def build_object_path(self, object_id: int | str) -> str:
         """Build the path to a specific object of this resource.
@@ -801,8 +809,12 @@ class CumulocityResource:
         num_results = 0
         # compile/prepare filter if defined
         if isinstance(include, str):
+            if not self.default_matcher:
+                raise ValueError("No default matcher defined (client-side filtering not supported?)")
             include = self.default_matcher(include)
         if isinstance(exclude, str):
+            if not self.default_matcher:
+                raise ValueError("No default matcher defined (client-side filtering not supported?)")
             exclude = self.default_matcher(exclude)
 
         while True:
