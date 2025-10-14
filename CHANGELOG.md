@@ -1,9 +1,14 @@
 # Changelog
 
+## Version 3.5.0
+
 * Added client-side filtering to many of the standard API (wherever sensibly applicable); These APIs `select`
   and `get_all` functions now feature optional `include` and `exclude` parameters which can be used to filter 
   the results before being wrapped into Python objects; Added multiple matchers including a JSONPath matcher
   a JMESPath matcher and a PyDF (Python Display Filter) matcher with PyDF as default.
+
+## Version 3.4.0
+
 * Added `QueueListener` and `AsyncQueueListener` classes to the Notification 2.0 toolkit. These pre-defined
   listener implementation append new notifications to standard queues that can be monitored/listened to which 
   makes Notification 2.0 solutions even simpler to implement.
