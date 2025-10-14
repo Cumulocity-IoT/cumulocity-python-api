@@ -169,6 +169,20 @@ def test_command_matcher():
         matches_mock.assert_not_called()
 
 
+def test_pydf_matcher():
+    """Verify that the pydf matchers work as expected."""
+    assert pydf("name == NAME").matches({'name': 'NAME'})
+    assert pydf("name[0:2] eq NA").matches({'name': 'NAME'})
+    assert pydf("name contains AM").matches({'name': 'NAME'})
+    assert pydf("name in  {'NAME', 'NONAME'}").matches({'name': 'NAME'})
+    assert pydf("lower(name) == name").matches({'name': 'NAME'})
+    assert pydf("len(name) == 4").matches({'name': 'NAME'})
+    assert not pydf("name == 'NAME'").matches({'name': 'RANDOM'})
+    with pytest.raises(Exception) as error:
+        pydf("*INVALID*").matches({})
+    assert "Error parsing display filter" in str(error.value)
+
+
 def test_jmespath_matcher():
     """Verify that the jmespath matchers work as expected."""
     assert jmespath("name == 'NAME'").matches({'name': 'NAME'})
@@ -177,7 +191,6 @@ def test_jmespath_matcher():
         jmespath("*INVALID*").matches({})
     assert "INVALID" in str(error.value)
 
-# $[?(@.firstName == "John")]
 
 def test_jsonpath_matcher():
     """Verify that the jsonpath matchers work as expected."""
