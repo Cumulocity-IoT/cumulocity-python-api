@@ -151,7 +151,7 @@ def test_select(live_c8y: CumulocityApi, safe_executor):
         # 4)  select with client-side filtering
         filtered_roots_1 = live_c8y.group_inventory.get_all(
             type=DeviceGroup.ROOT_TYPE,
-            include="starts_with(name, 'Root-')",
+            include="name matches 'Root-.*'",
             as_values='name')
         filtered_roots_2 = [
             x for x in live_c8y.group_inventory.get_all(type=DeviceGroup.ROOT_TYPE, as_values='name')

@@ -12,6 +12,7 @@ import pyotp
 
 from c8y_api import CumulocityApi
 from c8y_api.model import User
+from c8y_api.model.matcher import jmespath
 
 from util.testing_util import RandomNameGenerator
 
@@ -76,7 +77,7 @@ def test_select(live_c8y: CumulocityApi, safe_create):
         assert '2' in live_c8y.users.get(user.username).global_role_ids
 
     # test getting with a client-side-filter
-    admin_users_2 = live_c8y.users.get_all(include="contains(groups.references[].group.id, `2`)")
+    admin_users_2 = live_c8y.users.get_all(include=jmespath("contains(groups.references[].group.id, `2`)"))
     assert {x.id for x in admin_users} == {x.id for x in admin_users_2}
 
 
