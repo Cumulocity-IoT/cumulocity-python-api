@@ -18,7 +18,7 @@ from c8y_api.model._base import (
     CumulocityObject,
     get_by_path,
     _DictWrapper,
-    _ListWrapper, harmonize_page_size,
+    _ListWrapper, sanitize_page_size,
 )
 from c8y_api.model._parser import SimpleObjectParser, ComplexObjectParser, as_values
 
@@ -65,20 +65,24 @@ def test_get_by_path(json, path, default, expected):
 
 
 @pytest.mark.parametrize("limit, page_size, expected_page_size", [
-    (None, None, None),
+    (None, None, 1000),
     (1, 2, 1),
     (5, 2, 2),
+    (10000, 500, 500),
+    (10000, None, 1000),
     (1, None, 1),
     (None, 2, 2),
 ], ids=[
     "All None",
     "Exceeded page size",
     "limit > page_size",
+    "limit > page_size #2",
+    "Maximum page size",
     "No page size",
     "No limit",
 ])
-def test_harmonize_page_size(limit, page_size, expected_page_size):
-    assert harmonize_page_size(limit, page_size) == expected_page_size
+def test_sanitize_page_size(limit, page_size, expected_page_size):
+    assert sanitize_page_size(limit, page_size) == expected_page_size
 
 
 @pytest.mark.parametrize("paths, expected", [

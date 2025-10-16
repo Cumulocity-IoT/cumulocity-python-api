@@ -6,7 +6,7 @@ from __future__ import annotations
 from typing import Any, Generator, List
 
 from c8y_api.model.matcher import JsonMatcher
-from c8y_api.model._base import CumulocityResource, harmonize_page_size
+from c8y_api.model._base import CumulocityResource, sanitize_page_size
 from c8y_api.model._parser import as_values as parse_as_values
 from c8y_api.model._util import _QueryUtil
 from c8y_api.model.managedobjects import ManagedObjectUtil, ManagedObject, Device, Availability, DeviceGroup
@@ -341,7 +341,7 @@ class Inventory(CumulocityResource):
             limit=limit,
             include=include,
             exclude=exclude,
-            page_size=harmonize_page_size(limit, page_size),
+            page_size=sanitize_page_size(limit, page_size),
             page_number=page_number,
             as_values=as_values,
             **kwargs)
@@ -802,7 +802,7 @@ class DeviceInventory(Inventory):
             limit=limit,
             include=include,
             exclude=exclude,
-            page_size=harmonize_page_size(limit, page_size),
+            page_size=sanitize_page_size(limit, page_size),
             page_number=page_number,
             as_values=as_values,
             **kwargs))
@@ -1018,7 +1018,7 @@ class DeviceGroupInventory(Inventory):
             limit=limit,
             include=include,
             exclude=exclude,
-            page_size=harmonize_page_size(limit, page_size),
+            page_size=sanitize_page_size(limit, page_size),
             page_number=page_number,
             as_values=as_values,
             **kwargs)

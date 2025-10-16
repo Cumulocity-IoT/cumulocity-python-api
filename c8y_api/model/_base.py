@@ -68,7 +68,7 @@ def get_all_by_path(dictionary: dict, paths: list[str] | dict[str, Any]) -> tupl
     return tuple(get_by_path(dictionary, p) for p in paths)
 
 
-def harmonize_page_size(limit: int, page_size: int) -> int:
+def sanitize_page_size(limit: int, page_size: int) -> int:
     """Harmonize/sanitize page_size for a database query.
     
     The page size should never exceed the given limit of a query. Hence, 
@@ -78,9 +78,7 @@ def harmonize_page_size(limit: int, page_size: int) -> int:
     Returns:
         Updated page size.
     """
-    if not page_size or (limit and page_size > limit):
-        return limit
-    return page_size
+    return min(limit or 1001, page_size or 1001, 1000)
 
 
 # def harmonize_limit_and_page_size(limit: int, page_size: int) -> tuple:

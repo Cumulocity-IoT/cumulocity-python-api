@@ -10,7 +10,7 @@ from typing import Generator, List, BinaryIO
 
 from c8y_api._base_api import CumulocityRestApi
 from c8y_api.model.matcher import JsonMatcher
-from c8y_api.model._base import CumulocityResource, SimpleObject, ComplexObject, harmonize_page_size
+from c8y_api.model._base import CumulocityResource, SimpleObject, ComplexObject, sanitize_page_size
 from c8y_api.model._parser import as_values as parse_as_values, ComplexObjectParser
 from c8y_api.model._util import _DateUtil
 
@@ -373,7 +373,7 @@ class Events(CumulocityResource):
             reverse=reverse,
             with_source_assets=with_source_assets,
             with_source_devices=with_source_devices,
-            page_size=harmonize_page_size(limit, page_size),
+            page_size=sanitize_page_size(limit, page_size),
             **kwargs)
         return super()._iterate(
             base_query,

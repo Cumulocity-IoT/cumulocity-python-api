@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Generator, List, BinaryIO
 
 from c8y_api._base_api import CumulocityRestApi
-from c8y_api.model._base import SimpleObject, CumulocityResource, harmonize_page_size
+from c8y_api.model._base import SimpleObject, CumulocityResource, sanitize_page_size
 from c8y_api.model._parser import SimpleObjectParser
 
 
@@ -316,7 +316,7 @@ class Applications(CumulocityResource):
             name=name, type=type, owner=owner, tenant=tenant,
             user=user, subscriber=subscriber, providedFor=provided_for,
             has_versions=has_versions,
-            page_size=harmonize_page_size(limit, page_size),
+            page_size=sanitize_page_size(limit, page_size),
             **kwargs
         )
         return super()._iterate(base_query, page_number, limit, None, None, Application.from_json)

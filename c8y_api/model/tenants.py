@@ -7,7 +7,7 @@ from typing import Generator, List
 
 from c8y_api._base_api import CumulocityRestApi
 from c8y_api.model.applications import Application
-from c8y_api.model._base import SimpleObject, CumulocityResource, harmonize_page_size
+from c8y_api.model._base import SimpleObject, CumulocityResource, sanitize_page_size
 from c8y_api.model._parser import SimpleObjectParser
 
 
@@ -258,7 +258,7 @@ class Tenants(CumulocityResource):
             parent=parent,
             domain=domain,
             company=company,
-            page_size=harmonize_page_size(limit, page_size),
+            page_size=sanitize_page_size(limit, page_size),
             **kwargs)
         return super()._iterate(base_query, page_number, limit, None, None, Tenant.from_json)
 
