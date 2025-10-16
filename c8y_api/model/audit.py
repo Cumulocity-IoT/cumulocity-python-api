@@ -8,7 +8,7 @@ from typing import Generator, List, ClassVar
 
 from c8y_api._base_api import CumulocityRestApi
 from c8y_api.model.matcher import JsonMatcher
-from c8y_api.model._base import CumulocityResource, ComplexObject
+from c8y_api.model._base import CumulocityResource, ComplexObject, harmonize_page_size
 from c8y_api.model._parser import ComplexObjectParser, SimpleObjectParser, as_values as parse_as_values
 from c8y_api.model._util import _DateUtil
 
@@ -265,7 +265,7 @@ class AuditRecords(CumulocityResource):
             before=before, after=after,
             min_age=min_age, max_age=max_age,
             reverse=reverse,
-            page_size=page_size,
+            page_size=harmonize_page_size(limit, page_size),
             **kwargs)
         return super()._iterate(
             base_query,

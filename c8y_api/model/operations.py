@@ -7,7 +7,7 @@ from typing import Type, List, Generator
 
 from c8y_api._base_api import CumulocityRestApi
 from c8y_api.model.matcher import JsonMatcher
-from c8y_api.model._base import CumulocityResource, ComplexObject, SimpleObject, _DictWrapper
+from c8y_api.model._base import CumulocityResource, ComplexObject, SimpleObject, _DictWrapper, harmonize_page_size
 from c8y_api.model._parser import ComplexObjectParser, as_values as parse_as_values
 from c8y_api.model._util import _DateUtil
 
@@ -228,7 +228,7 @@ class Operations(CumulocityResource):
             before=before, after=after,
             min_age=min_age, max_age=max_age,
             date_from=date_from, date_to=date_to,
-            reverse=reverse, page_size=page_size,
+            reverse=reverse, page_size=harmonize_page_size(limit, page_size),
             **kwargs
         )
         return super()._iterate(
@@ -561,7 +561,7 @@ class BulkOperations(CumulocityResource):
         Returns:
             Generator[BulkOperation]: Iterable of matching BulkOperation objects
         """
-        base_query = self._prepare_query(page_size=page_size)
+        base_query = self._prepare_query(page_size=harmonize_page_size(limit, page_size))
         return super()._iterate(base_query, page_number, limit, None, None, BulkOperation.from_json)
 
     def get_all(self, limit: int = None, page_size: int = 1000, page_number: int = None) -> List[BulkOperation]:

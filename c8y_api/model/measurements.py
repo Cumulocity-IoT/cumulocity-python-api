@@ -8,7 +8,7 @@ from typing import Type, List, Generator, Sequence
 
 from c8y_api._base_api import CumulocityRestApi
 
-from c8y_api.model._base import CumulocityResource, ComplexObject
+from c8y_api.model._base import CumulocityResource, ComplexObject, harmonize_page_size
 from c8y_api.model._parser import as_values as parse_as_values, ComplexObjectParser
 from c8y_api.model._base import _DictWrapper
 from c8y_api.model._util import _DateUtil
@@ -561,7 +561,7 @@ class Measurements(CumulocityResource):
             min_age=min_age,
             max_age=max_age,
             reverse=reverse,
-            page_size=page_size,
+            page_size=harmonize_page_size(limit, page_size),
             **kwargs
         )
         return super()._iterate(

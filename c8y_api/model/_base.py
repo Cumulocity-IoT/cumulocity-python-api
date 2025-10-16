@@ -68,6 +68,32 @@ def get_all_by_path(dictionary: dict, paths: list[str] | dict[str, Any]) -> tupl
     return tuple(get_by_path(dictionary, p) for p in paths)
 
 
+def harmonize_page_size(limit: int, page_size: int) -> int:
+    """Harmonize/sanitize page_size for a database query.
+    
+    The page size should never exceed the given limit of a query. Hence, 
+    this function sets the page size to the limit if undefined or too large.
+    A smaller page size passes as this can be a performance consideration.
+
+    Returns:
+        Updated page size.
+    """
+    if not page_size or (limit and page_size > limit):
+        return limit
+    return page_size
+
+
+# def harmonize_limit_and_page_size(limit: int, page_size: int) -> tuple:
+#     """Harmonize/sanitize limit and page_size parameters for a database query.
+#
+#
+#
+#     """
+#     if not page_size or (limit and page_size > limit):
+#         return limit, limit  # page size to limit if not sensible
+#     return limit, page_size
+
+
 class _DictWrapper(MutableMapping, dict):
 
     def __init__(self, dictionary: dict, on_update=None):
@@ -772,7 +798,7 @@ class CumulocityResource:
                 tuples.append(('series', series))
         return tuples
 
-    def _prepare_query(self, resource: str = None, expression: str = None, **kwargs):
+    def _prepare_query(self, resource: str = None, expression: str = None, **kwargs: object) -> str | None:
         encoded = expression or urlencode(self._map_params(**kwargs))
         if not encoded:
             return resource or self.resource

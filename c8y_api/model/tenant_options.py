@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Generator, List, Dict
 
 from c8y_api._base_api import CumulocityRestApi
-from c8y_api.model._base import SimpleObject, CumulocityResource
+from c8y_api.model._base import SimpleObject, CumulocityResource, harmonize_page_size
 from c8y_api.model._parser import SimpleObjectParser
 
 
@@ -150,7 +150,7 @@ class TenantOptions(CumulocityResource):
         """
         if not category:
             # select all
-            base_query = self._prepare_query(page_size=page_size)
+            base_query = self._prepare_query(page_size=harmonize_page_size(limit, page_size))
             yield from super()._iterate(base_query, page_number, limit, None, None, TenantOption.from_json)
         else:
             # select by category, this is just a single request

@@ -8,7 +8,7 @@ import urllib.parse
 import uuid
 
 from c8y_api._base_api import CumulocityRestApi
-from c8y_api.model._base import SimpleObject, CumulocityResource
+from c8y_api.model._base import SimpleObject, CumulocityResource, harmonize_page_size
 from c8y_api.model._parser import SimpleObjectParser
 
 
@@ -214,7 +214,7 @@ class Subscriptions(CumulocityResource):
             source=source,
             subscription=subscription,
             typeFilter=type_filter,
-            page_size=page_size,
+            page_size=harmonize_page_size(limit, page_size),
             **kwargs)
         return super()._iterate(base_query, page_number, limit, None, None, Subscription.from_json)
 

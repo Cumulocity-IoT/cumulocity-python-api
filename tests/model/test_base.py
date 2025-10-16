@@ -18,7 +18,7 @@ from c8y_api.model._base import (
     CumulocityObject,
     get_by_path,
     _DictWrapper,
-    _ListWrapper,
+    _ListWrapper, harmonize_page_size,
 )
 from c8y_api.model._parser import SimpleObjectParser, ComplexObjectParser, as_values
 
@@ -49,7 +49,7 @@ class ComplexTestObject(ComplexObject):
     field = SimpleObject.UpdatableProperty('_field')
 
 
-@pytest.mark.parametrize("json, path, default, expected",[
+@pytest.mark.parametrize("json, path, default, expected", [
     ({}, "some", None, None),
     ({'a': 1}, 'a', 'x', 1),
     ({'x': 1}, 'a', 1, 1),
@@ -62,6 +62,23 @@ class ComplexTestObject(ComplexObject):
 def test_get_by_path(json, path, default, expected):
     """Verify that get by path works as expected."""
     assert get_by_path(json, path, default) == expected
+
+
+@pytest.mark.parametrize("limit, page_size, expected_page_size", [
+    (None, None, None),
+    (1, 2, 1),
+    (5, 2, 2),
+    (1, None, 1),
+    (None, 2, 2),
+], ids=[
+    "All None",
+    "Exceeded page size",
+    "limit > page_size",
+    "No page size",
+    "No limit",
+])
+def test_harmonize_page_size(limit, page_size, expected_page_size):
+    assert harmonize_page_size(limit, page_size) == expected_page_size
 
 
 @pytest.mark.parametrize("paths, expected", [
