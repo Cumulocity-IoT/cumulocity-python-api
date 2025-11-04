@@ -1,5 +1,13 @@
 # Changelog
 
+* Adding `select`, `get_all` and `get_count` functions to Binaries API.
+* Fixing imports for situations where client-side filtering libraries are not imported. The library supports
+  optional dependncy definitions: `c8y_api[filters]` to support all available filters, `c8y_api[pydf]`,
+  `c8y_api[jmespath]`, and `c8y_api[jsonpath]` to support PyDF, JMESPath or JSONPath accordingly.
+* Harmonizing page size and limit - the page size of a query should never exceed a given limit (as this would 
+  be pointless). This feature also allows just specifying the limit for a query, the page size will
+  automatically be adjusted.
+
 ## Version 3.5.0
 
 * Added client-side filtering to many of the standard API (wherever sensibly applicable); These APIs `select`
