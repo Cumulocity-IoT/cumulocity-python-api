@@ -37,6 +37,10 @@ def mock_c8y() -> CumulocityRestApi:
 @pytest.fixture(scope='module')
 def httpbin_basic() -> CumulocityRestApi:
     """Provide mock CumulocityRestApi instance for httpbin with basic auth."""
+    response = requests.head("https://httpbin.org/")
+    if response.status_code != 200:
+        pytest.skip(f"Skipped as httpbin.org is temporarily not available (HTTP {response.status_code})")
+
     return CumulocityRestApi(
         base_url='https://httpbin.org',
         tenant_id='t12345',
