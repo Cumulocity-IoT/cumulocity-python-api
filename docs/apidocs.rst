@@ -117,6 +117,31 @@ These values can easily be combined, e.g. when constructing a measurement:
 Auxiliary Tools
 ----------------
 
-.. automodule:: c8y_tk
+The **Cumulocity Python API**'s standard packages (see :ref:`main-api-classes`
+and :ref:`object-models`) represent what the Cumulocity REST API provides.
+The `c8y_tk` (*Cumulocity toolkit*) module provides additional auxiliary tools
+that cover useful functionality beyond the REST API but applicable in many
+projects.
+
+The `c8y_tk.notification2` module provides listener implementations that
+allow straightforward development of Notification 2.0 applications without
+additional overhead.
+
+.. automodule:: c8y_tk.notification2
     :special-members: __init__
-    :undoc-members:
+    :members: Listener, AsyncListener, QueueListener, AsyncQueueListener
+
+The `c8y_tk.analytics` module provides helper functions that allow easy
+transformation of a Cumulocity Series to Pandas' data frames and series as
+well as NumPy arrays.
+
+.. automodule:: c8y_tk.analytics
+    :special-members: __init__
+    :members: to_numpy, to_data_frame, to_series
+
+The `c8y_tk.app` module provides auxiliary tools for implementing both
+interactive and micro service applications.
+
+.. automodule:: c8y_tk.app
+    :special-members: __init__
+    :members: CumulocityApp, SubscriptionListener
