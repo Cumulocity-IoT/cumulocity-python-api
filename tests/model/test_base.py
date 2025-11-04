@@ -82,6 +82,7 @@ def test_get_by_path(json, path, default, expected):
     "No limit",
 ])
 def test_sanitize_page_size(limit, page_size, expected_page_size):
+    """Verify that page_size and limit are properly sanitized."""
     assert sanitize_page_size(limit, page_size) == expected_page_size
 
 
