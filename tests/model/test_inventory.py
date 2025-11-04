@@ -7,7 +7,7 @@ import pytest
 from urllib import parse
 
 from c8y_api import CumulocityRestApi, CumulocityApi
-from c8y_api.model import Inventory, DeviceGroupInventory, DeviceInventory
+from c8y_api.model import Inventory, DeviceGroupInventory, DeviceInventory, Binaries
 from c8y_api.model._util import _QueryUtil
 
 from tests.utils import isolate_last_call_arg, assert_all_in, assert_all_not_in
@@ -121,7 +121,7 @@ def test_select_by_name_plus():
         assert e in url
 
 
-@pytest.mark.parametrize('inventory_class', [Inventory, DeviceInventory, DeviceGroupInventory])
+@pytest.mark.parametrize('inventory_class', [Inventory, DeviceInventory, DeviceGroupInventory, Binaries])
 def test_select_as_values(inventory_class):
     """Verify that select as values works as expected."""
     data = [
