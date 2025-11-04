@@ -1,6 +1,9 @@
 # Changelog
 
 * Adding `select`, `get_all` and `get_count` functions to Binaries API.
+
+## Version 3.5.1
+
 * Fixing imports for situations where client-side filtering libraries are not imported. The library supports
   optional dependncy definitions: `c8y_api[filters]` to support all available filters, `c8y_api[pydf]`,
   `c8y_api[jmespath]`, and `c8y_api[jsonpath]` to support PyDF, JMESPath or JSONPath accordingly.
