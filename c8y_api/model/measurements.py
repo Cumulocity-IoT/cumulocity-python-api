@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 from datetime import datetime, timedelta
-from typing import Type, List, Generator, Sequence
+from typing import List, Generator, Sequence
 
 from c8y_api._base_api import CumulocityRestApi
 
@@ -227,7 +227,7 @@ class Measurement(ComplexObject):
         return [f'{k1}.{k2}' for k1, v1 in self.fragments.items() for k2, v2 in v1.items() if 'value' in v2]
 
     @property
-    def datetime(self) -> Type[datetime] | None:
+    def datetime(self) -> datetime | None:
         """ Convert the measurement's time to a Python datetime object.
 
         Returns:
