@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Type, List, Generator
+from typing import List, Generator
 
 from c8y_api._base_api import CumulocityRestApi
 from c8y_api.model.matcher import JsonMatcher
@@ -101,7 +101,7 @@ class Operation(ComplexObject):
     #     return _DictWrapper(self.fragments[item], on_update=None)
     #
     @property
-    def datetime(self) -> Type[datetime] | None:
+    def datetime(self) -> datetime | None:
         """ Convert the measurement's time to a Python datetime object.
 
         Returns:
