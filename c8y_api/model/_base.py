@@ -39,14 +39,22 @@ def get_by_path(dictionary: dict, path: str, default: Any = None) -> Any:
     Return:
         The extracted value or the specified default.
     """
-    def _get_by_path(current: dict, segments: list[str]) -> Any:
-        if not segments:
-            return current
-        if segments[0] in current:
-            return _get_by_path(current[segments[0]], segments[1:])
+    keys = path.split('.')
+    current = dictionary
+
+    for key in keys:
+        if not isinstance(current, dict):
+            return default
+        if key in current:
+            current = current[key]
+            continue
+        pascal_key = _StringUtil.to_pascal_case(key)
+        if pascal_key in current:
+            current = current[pascal_key]
+            continue
         return default
 
-    return _get_by_path(dictionary, path.split('.'))
+    return current
 
 
 def get_all_by_path(dictionary: dict, paths: list[str] | dict[str, Any]) -> tuple:
@@ -66,6 +74,59 @@ def get_all_by_path(dictionary: dict, paths: list[str] | dict[str, Any]) -> tupl
     if isinstance(paths, dict):
         return tuple(get_by_path(dictionary, p, d) for p, d in paths.items())
     return tuple(get_by_path(dictionary, p) for p in paths)
+
+
+def as_tuple(data: dict, paths: list[str | tuple]) -> tuple:
+    """Select nested values from a dictionary by path-like expressions
+    (dot notation) and return as tuple.
+
+    Args:
+        data (dict):  the dictionary to extract values from
+        paths: (list):  a list of path-like expressions; each "expression"
+            can be a tuple to define a default value other than None.
+
+    Return:
+        The extracted values (or defaults it specified) as tuple. The
+        number of elements in the tuple matches the length of the `paths`
+        argument.
+    """
+    if isinstance(paths, list):
+        return tuple(
+            get_by_path(
+                data,
+                path[0] if isinstance(path, tuple) else path,
+                path[1] if isinstance(path, tuple) else None
+            )
+            for path in paths
+        )
+    return get_by_path(
+        data,
+        paths[0] if isinstance(paths, tuple) else paths,
+        paths[1] if isinstance(paths, tuple) else None
+    )
+
+
+def as_record(data: dict, mapping: dict[str, str | tuple]) -> dict:
+    """Select nested values from a dictionary by path-like expressions
+    (dot notation) and return as record (dict).
+
+    Args:
+        data (dict):  the dictionary to extract values from
+        mapping: (dict):  a dictionary mapping result keys to a path-like
+            expression; each "expression" can be a tuple to define a
+            default value other than None.
+
+    Return:
+        The extracted values (or defaults it specified) as dictionary.
+    """
+    return {
+        key: get_by_path(
+            data,
+            path[0] if isinstance(path, tuple) else path,
+            path[1] if isinstance(path, tuple) else None
+        )
+        for key, path in mapping.items()
+    }
 
 
 def sanitize_page_size(limit: int, page_size: int) -> int:
@@ -683,6 +744,12 @@ class CumulocityResource:
             The relative path to the object within Cumulocity.
         """
         return self.resource + '/' + str(object_id)
+
+
+    @staticmethod
+    def _filter_page_size(kwargs):
+        """Remove page_size parameter from kwargs to support get_count functions."""
+        return {k: v for k, v in kwargs.items() if k != 'page_size'}
 
     @staticmethod
     def _map_params(
