@@ -459,7 +459,7 @@ class Measurements(CumulocityResource):
             min_age: timedelta = None,
             max_age: timedelta = None,
             reverse: bool = None,
-            page_size: int = 1000,
+            page_size: int = None,
             **kwargs
     ):
         series_type, series_value = self._collate_select_params(
@@ -622,6 +622,39 @@ class Measurements(CumulocityResource):
             page_number=page_number,
             as_values=as_values,
             **kwargs))
+
+    def get_count(
+            self,
+            expression: str = None,
+            type: str = None,
+            source: str | int = None,
+            value_fragment_type: str = None,
+            value_fragment_series: str = None,
+            series: str = None,
+            before: str | datetime = None,
+            after: str | datetime = None,
+            date_from: str | datetime = None,
+            date_to: str | datetime = None,
+            min_age: timedelta = None,
+            max_age: timedelta = None,
+            **kwargs
+    ) -> int:
+        base_query = self._prepare_measurement_query(
+            expression=expression,
+            type=type,
+            source=source,
+            value_fragment_type=value_fragment_type,
+            value_fragment_series=value_fragment_series,
+            series=series,
+            before=before,
+            after=after,
+            date_from=date_from,
+            date_to=date_to,
+            min_age=min_age,
+            max_age=max_age,
+            **CumulocityResource._filter_page_size(kwargs)
+        )
+        return self._get_count(base_query)
 
     def get_last(
             self,
