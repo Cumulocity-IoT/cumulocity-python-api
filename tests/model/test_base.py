@@ -18,9 +18,12 @@ from c8y_api.model._base import (
     CumulocityObject,
     get_by_path,
     _DictWrapper,
-    _ListWrapper, sanitize_page_size,
+    _ListWrapper,
+    sanitize_page_size,
+    as_tuple,
+    as_record,
 )
-from c8y_api.model._parser import SimpleObjectParser, ComplexObjectParser, as_values
+from c8y_api.model._parser import SimpleObjectParser, ComplexObjectParser
 
 
 class SimpleTestObject(SimpleObject):
@@ -128,7 +131,7 @@ def test_sanitize_page_size(limit, page_size, expected_page_size):
     'multi_default_1',
     'multi_default_2',
 ])
-def test_as_values(paths, expected):
+def test_as_tuples(paths, expected):
     """Verify that the as_values function works as expected."""
     json = {
         # types
@@ -146,7 +149,66 @@ def test_as_values(paths, expected):
         'mixed_case': {'caseMixed': 'v'}
     }
 
-    assert as_values(json, paths) == expected
+    assert as_tuple(json, paths) == expected
+
+
+@pytest.mark.parametrize("mapping, expected", [
+    ({'r': 'x'}, {'r': None}),
+    ({'r': 'a'}, {'r': 1}),
+    ({'r': ('x', '-')}, {'r': '-'}),
+    ({'r': 'bb.b1'}, {'r': True}),
+    ({'r': 'bb.b2'}, {'r': False}),
+    ({'r': 'ccc.c1'}, {'r': []}),
+    ({'r': 'ccc.c2'}, {'r': [1, 2, 3]}),
+    ({'r': 'ccc.c3'}, {'r': None}),
+    ({'r': 'snake_case'}, {'r': 'v'}),
+    ({'r': 'pascalCase'}, {'r': 'v'}),
+    ({'r': 'pascal_case'}, {'r': 'v'}),
+    ({'r': 'mixed_case.caseMixed'}, {'r': 'v'}),
+    ({'r': 'mixed_case.case_mixed'}, {'r': 'v'}),
+    ({'r': 'a', 's': 'bb.b1', 't': 'ccc.c2'}, {'r': 1, 's': True, 't': [1, 2, 3]}),
+    ({'r': 'bb.b2', 's': 'ccc.c3'}, {'r': False, 's': None}),
+    ({'r': 'a', 's': 'bb.b3', 't': 'ccc.c2'}, {'r': 1, 's': None, 't': [1, 2, 3]}),
+    ({'r': 'a', 's': ('bb.b3', '-'), 't': 'ccc.c2'}, {'r': 1, 's': '-', 't': [1, 2, 3]}),
+
+], ids=[
+    'none',
+    'int',
+    'default',
+    'nested_True',
+    'nested_False',
+    'nested_empty',
+    'nested_list',
+    'nested_None',
+    'snake_case',
+    'pascal_case_1',
+    'pascal_case_2',
+    'mixed_case_1',
+    'mixed_case_2',
+    'multi_1',
+    'multi_2',
+    'multi_default_1',
+    'multi_default_2',
+])
+def test_as_record(mapping, expected):
+    """Verify that the as_record function works as expected."""
+    json = {
+        # types
+        'a': 1,
+        'bb' : {
+            'b1': True,
+            'b2': False },
+        'ccc': {
+            'c1': [],
+            'c2': [1, 2, 3],
+            'c3': None,
+        },
+        'snake_case': 'v',
+        'pascalCase': 'v',
+        'mixed_case': {'caseMixed': 'v'}
+    }
+
+    assert as_record(json, mapping) == expected
 
 
 def test_simpleobject_instantiation_and_formatting():

@@ -10,8 +10,8 @@ from typing import Generator, List, BinaryIO
 
 from c8y_api._base_api import CumulocityRestApi
 from c8y_api.model.matcher import JsonMatcher
-from c8y_api.model._base import CumulocityResource, SimpleObject, ComplexObject, sanitize_page_size
-from c8y_api.model._parser import as_values as parse_as_values, ComplexObjectParser
+from c8y_api.model._base import CumulocityResource, SimpleObject, ComplexObject, sanitize_page_size, as_tuple
+from c8y_api.model._parser import ComplexObjectParser
 from c8y_api.model._util import _DateUtil
 
 
@@ -382,7 +382,7 @@ class Events(CumulocityResource):
             include,
             exclude,
             Event.from_json if not as_values else
-            lambda x: parse_as_values(x, as_values))
+            lambda x: as_tuple(x, as_values))
 
     def get_all(
             self,

@@ -8,8 +8,8 @@ from datetime import datetime
 from typing import Generator, List
 
 from c8y_api._base_api import CumulocityRestApi, AccessDeniedError
-from c8y_api.model._base import CumulocityResource, SimpleObject, sanitize_page_size
-from c8y_api.model._parser import SimpleObjectParser, ComplexObjectParser, as_values as parse_as_values
+from c8y_api.model._base import CumulocityResource, SimpleObject, sanitize_page_size, as_tuple
+from c8y_api.model._parser import SimpleObjectParser, ComplexObjectParser
 from c8y_api.model._util import _DateUtil
 from c8y_api.model.matcher import JsonMatcher
 
@@ -1172,7 +1172,7 @@ class Users(CumulocityResource):
             include,
             exclude,
             User.from_json if not as_values else
-            lambda x: parse_as_values(x, as_values))
+            lambda x: as_tuple(x, as_values))
 
     def get_all(
             self,

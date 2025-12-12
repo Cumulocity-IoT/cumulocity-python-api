@@ -5,8 +5,7 @@ from __future__ import annotations
 from typing import BinaryIO, Generator, List
 
 from c8y_api._base_api import CumulocityRestApi
-from c8y_api.model._base import CumulocityResource
-from c8y_api.model._parser import as_values as parse_as_values
+from c8y_api.model._base import CumulocityResource, as_tuple
 from c8y_api.model.inventory import ManagedObject
 from c8y_api.model.matcher import JsonMatcher
 
@@ -254,7 +253,7 @@ class Binaries(CumulocityResource):
             include,
             exclude,
             Binary.from_json if not as_values else
-            lambda x: parse_as_values(x, as_values))
+            lambda x: as_tuple(x, as_values))
 
     def get_all(
             self,

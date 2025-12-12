@@ -7,8 +7,15 @@ from typing import List, Generator
 
 from c8y_api._base_api import CumulocityRestApi
 from c8y_api.model.matcher import JsonMatcher
-from c8y_api.model._base import CumulocityResource, ComplexObject, SimpleObject, _DictWrapper, sanitize_page_size
-from c8y_api.model._parser import ComplexObjectParser, as_values as parse_as_values
+from c8y_api.model._base import (
+    CumulocityResource,
+    ComplexObject,
+    SimpleObject,
+    _DictWrapper,
+    sanitize_page_size,
+    as_tuple,
+)
+from c8y_api.model._parser import ComplexObjectParser
 from c8y_api.model._util import _DateUtil
 
 
@@ -238,7 +245,7 @@ class Operations(CumulocityResource):
             include,
             exclude,
             Operation.from_json if not as_values else
-            lambda x: parse_as_values(x, as_values))
+            lambda x: as_tuple(x, as_values))
 
     def get_all(
             self,
