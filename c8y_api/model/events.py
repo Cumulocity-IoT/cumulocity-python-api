@@ -444,8 +444,6 @@ class Events(CumulocityResource):
             updated_before: str | datetime = None, updated_after: str | datetime = None,
             last_updated_from: str | datetime = None, last_updated_to: str | datetime = None,
             min_age: timedelta = None, max_age: timedelta = None,
-            reverse: bool = False,
-            with_source_assets: bool = None, with_source_devices: bool = None,
             **kwargs
     ) -> int:
         """Calculate the number of potential results of a database query.
@@ -476,10 +474,8 @@ class Events(CumulocityResource):
             max_age=max_age,
             date_from=date_from,
             date_to=date_to,
-            reverse=reverse,
-            with_source_assets=with_source_assets,
-            with_source_devices=with_source_devices,
-            **kwargs)
+            **CumulocityResource._filter_page_size(kwargs)
+        )
         return self._get_count(base_query)
 
     def get_last(

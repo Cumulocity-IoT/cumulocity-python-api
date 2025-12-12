@@ -101,7 +101,7 @@ class Operation(ComplexObject):
     #     return _DictWrapper(self.fragments[item], on_update=None)
     #
     @property
-    def datetime(self) -> Type[datetime] | None:
+    def datetime(self) -> datetime | None:
         """ Convert the measurement's time to a Python datetime object.
 
         Returns:
