@@ -15,6 +15,7 @@ from c8y_api.model.operations import *
 from c8y_api.model.tenant_options import *
 from c8y_api.model.tenants import *
 
+from c8y_api.model._base import get_by_path, as_record, as_tuple
 
 __all__ = [
     # API Classes
@@ -80,4 +81,8 @@ __all__ = [
     'Meters',
     'Percentage',
     'Value',
+    # Functions
+    'get_by_path',
+    'as_record',
+    'as_tuple',
 ]

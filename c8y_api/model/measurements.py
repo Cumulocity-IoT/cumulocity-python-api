@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import dataclasses
 from datetime import datetime, timedelta
-from typing import Type, List, Generator, Sequence
+from typing import List, Generator, Sequence
 
 from c8y_api._base_api import CumulocityRestApi
 
-from c8y_api.model._base import CumulocityResource, ComplexObject, sanitize_page_size
-from c8y_api.model._parser import as_values as parse_as_values, ComplexObjectParser
+from c8y_api.model._base import CumulocityResource, ComplexObject, sanitize_page_size, as_tuple
+from c8y_api.model._parser import ComplexObjectParser
 from c8y_api.model._base import _DictWrapper
 from c8y_api.model._util import _DateUtil
 
@@ -571,7 +571,7 @@ class Measurements(CumulocityResource):
             None,
             None,
             Measurement.from_json if not as_values else
-            lambda x: parse_as_values(x, as_values))
+            lambda x: as_tuple(x, as_values))
 
     def get_all(
             self,

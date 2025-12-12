@@ -5,48 +5,7 @@ from __future__ import annotations
 from typing import Set
 
 from c8y_api.model._base import ComplexObject
-from c8y_api.model._util import _StringUtil
 
-
-def as_values(json_data, paths: str | tuple | list[str | tuple]):
-    """Parse a JSON structure as value(s) from paths.
-
-    Args:
-        json_data (dict):  A JSON structure as Python dict
-        paths (list[str|tuple]):  Path(s) to extract from
-            the structure; Use dots to separate JSON levels; Arrays are not
-            supported.
-
-    Mote: This function automatically converts path segments from
-    Python snake_case to pascalCase, e.g. `creation_time` will match
-    both `creation_time` and `creationTime` fields.
-
-    Returns:
-        A tuple with `len(path)` elements containing the values as-is defined
-        in the JSON structure or a single value if `len(path) == 1` ; an
-        invalid path will result in None.
-    """
-    def resolve(segments, default=None):
-        json_level = json_data
-        for segment in segments[:-1]:
-            if segment in json_level:
-                json_level = json_level[segment]
-                continue
-            pascal_segment = _StringUtil.to_pascal_case(segment)
-            if pascal_segment in json_level:
-                json_level = json_level[pascal_segment]
-                continue
-            return default
-        return json_level.get(segments[-1], json_level.get(_StringUtil.to_pascal_case(segments[-1]), default))
-
-    # each p in path(s) can be a string or a tuple
-    if isinstance(paths, str):
-        return resolve(paths.split('.'))
-    if isinstance(paths, tuple):
-        return resolve(paths[0].split('.'), paths[1])
-    return tuple(
-        resolve(p[0].split('.'), p[1]) if isinstance(p, tuple)
-        else resolve(p.split('.')) for p in paths)
 
 class SimpleObjectParser(object):
     """A parser for simple (without fragments) Cumulocity database objects.

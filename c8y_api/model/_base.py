@@ -57,25 +57,6 @@ def get_by_path(dictionary: dict, path: str, default: Any = None) -> Any:
     return current
 
 
-def get_all_by_path(dictionary: dict, paths: list[str] | dict[str, Any]) -> tuple:
-    """Select nested values from a dictionary by path-like expressions
-    (dot notation).
-
-    Args:
-        dictionary (dict):  the dictionary to extract values from
-        paths: (list or dict):  a set of path-like expressions; use
-            a dictionary to define default values for each
-
-    Return:
-        The extracted values (or defaults it specified) as tuple. The
-        number of elements in the tuple matches the length of the `paths`
-        argument.
-    """
-    if isinstance(paths, dict):
-        return tuple(get_by_path(dictionary, p, d) for p, d in paths.items())
-    return tuple(get_by_path(dictionary, p) for p in paths)
-
-
 def as_tuple(data: dict, paths: list[str | tuple]) -> tuple:
     """Select nested values from a dictionary by path-like expressions
     (dot notation) and return as tuple.

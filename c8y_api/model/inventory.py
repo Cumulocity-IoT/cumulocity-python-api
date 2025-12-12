@@ -5,8 +5,7 @@ from __future__ import annotations
 
 from typing import Any, Generator, List
 
-from c8y_api.model._base import CumulocityResource, sanitize_page_size
-from c8y_api.model._parser import as_values as parse_as_values
+from c8y_api.model._base import CumulocityResource, sanitize_page_size, as_tuple
 from c8y_api.model._util import _QueryUtil
 from c8y_api.model.managedobjects import ManagedObjectUtil, ManagedObject, Device, Availability, DeviceGroup
 from c8y_api.model.matcher import JsonMatcher
@@ -465,7 +464,7 @@ class Inventory(CumulocityResource):
             include,
             exclude,
             parse_fun if not as_values else
-            lambda x: parse_as_values(x, as_values))
+            lambda x: as_tuple(x, as_values))
 
     def create(self, *objects: ManagedObject):
         """Create managed objects within the database.
