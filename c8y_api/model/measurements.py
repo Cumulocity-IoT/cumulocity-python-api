@@ -639,6 +639,13 @@ class Measurements(CumulocityResource):
             max_age: timedelta = None,
             **kwargs
     ) -> int:
+        """Calculate the number of potential results of a database query.
+
+        This function uses the same parameters as the `select` function.
+
+        Returns:
+            Number of potential results
+        """
         base_query = self._prepare_measurement_query(
             expression=expression,
             type=type,
