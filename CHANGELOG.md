@@ -1,6 +1,8 @@
 # Changelog
 
 * Adding `select`, `get_all` and `get_count` functions to Binaries API.
+* Adding `c8y_tk.analytics.parallel` module and `ParallelExecutor` class which can be used to reduce I/O wait
+  time through concurrent API requests and asynchronous result collection.
 
 ## Version 3.5.1
 
