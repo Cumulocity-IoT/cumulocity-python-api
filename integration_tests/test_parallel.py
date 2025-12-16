@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from functools import partial
 
 import pytest
 
@@ -60,14 +61,13 @@ def test_parallel(live_c8y:CumulocityApi, sample_measurements, workers, page_siz
 
 
 def test_parallel_execution(live_c8y: CumulocityApi) -> None:
+    """Verify that parallel execution works as expected."""
 
     devices = live_c8y.device_inventory.get_all(limit=10)
 
     with ParallelExecutor(5) as executor:
         last_measurements = executor.parallel(
-            [lambda: live_c8y.measurements.get_last(source=x.id) for x in devices]
+            partial(live_c8y.measurements.get_last, source=x.id) for x in devices
         ).as_list()
 
     assert len(last_measurements) == len(devices)
-
-
