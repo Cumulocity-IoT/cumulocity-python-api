@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from concurrent.futures import ThreadPoolExecutor, wait as await_futures, as_completed
+from concurrent.futures import ThreadPoolExecutor, wait as await_futures
 from queue import Queue, Empty
 from typing import Iterable
 
@@ -41,6 +41,7 @@ class ParallelExecutorResult:
 
     def as_dataframe(self, mapping: dict = None, columns: list = None) -> DataFrame:
         """Collect the results as a Pandas dataframe.
+
         If `mapping` is provided, the function call results (dict-like or
         JSON as returned by the API) are mapped as corresponding columns
         within the result dataframe. Otherwise, it is assumed that the
@@ -76,7 +77,19 @@ class ParallelExecutorResult:
         data = {name: [get_by_path(x, path) for x in results]for name, path in mapping.items()}
         return pd.DataFrame.from_dict(data)
 
-    def as_records(self, mapping: dict = None) -> list[dict]:
+    def as_records(self, mapping: dict) -> list[dict]:
+        """Collect the results as a list of records.
+
+        Args:
+            mapping (dict): A mapping of simplified JSON paths to record
+                field names.
+
+        Returns:
+            The collected data as list of records/dictionaries.
+
+        See also `c8y_api.model.as_records` for more information about the
+        mapping syntax.
+        """
         results = self.as_list()
         return [as_record(x, mapping) for x in results]
 
