@@ -57,3 +57,17 @@ def test_parallel(live_c8y:CumulocityApi, sample_measurements, workers, page_siz
     ms2 = ParallelExecutor.as_list(live_c8y.measurements, workers=workers, strategy='pages', **kwargs)
 
     assert len(ms1) == len(ms2)
+
+
+def test_parallel_execution(live_c8y: CumulocityApi) -> None:
+
+    devices = live_c8y.device_inventory.get_all(limit=10)
+
+    with ParallelExecutor(5) as executor:
+        last_measurements = executor.parallel(
+            [lambda: live_c8y.measurements.get_last(source=x.id) for x in devices]
+        ).as_list()
+
+    assert len(last_measurements) == len(devices)
+
+

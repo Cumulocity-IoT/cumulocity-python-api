@@ -1,7 +1,7 @@
 import threading
 import time
+from functools import partial
 from queue import Empty, Queue
-from threading import Event
 from unittest.mock import Mock, patch
 
 import numpy as np
@@ -237,7 +237,7 @@ def test_as_list(workers, total, page_size, result_total):
     api.get_count = Mock(return_value=total)
     api.get_all = Mock(side_effect=mock_get_all)
 
-    result = parallel.as_list(api, workers=workers, strategy='pages', page_size=page_size, p1=1, p2=False, p3='p3')
+    result = ParallelExecutor.as_list(api, workers=workers, strategy='pages', page_size=page_size, p1=1, p2=False, p3='p3')
 
     # -> results should all be collected
     assert len(result) == result_total
@@ -270,7 +270,7 @@ def test_as_records():
 
     # convert to dataframe
     with patch("c8y_tk.analytics.parallel.ParallelExecutor._read", return_value=q):
-        records = parallel.as_records(api=None, mapping=mapping)
+        records = ParallelExecutor.as_records(api=None, mapping=mapping)
 
     assert len(records) == batches * page_size
     for i, r in enumerate(records):
@@ -302,9 +302,11 @@ def test_as_dataframe(use_mapping):
 
     # convert to dataframe
     with patch("c8y_tk.analytics.parallel.ParallelExecutor._read", return_value=q):
-        df = parallel.as_dataframe(api=None,
-                                   mapping=mapping if use_mapping else None,
-                                   columns=columns if not use_mapping else None)
+        df = ParallelExecutor.as_dataframe(
+            api=None,
+            mapping=mapping if use_mapping else None,
+            columns=columns if not use_mapping else None
+        )
 
     # -> 2 columns, batches * page size rows
     assert df.shape == (batches * page_size, len(columns))
@@ -318,3 +320,63 @@ def test_as_dataframe(use_mapping):
     assert df.batch.dtype == np.dtype('int')
     assert df['float'].dtype == np.dtype('float')
     assert df['bool'].dtype == np.dtype('bool')
+
+
+def test_parallel():
+    """Verify that parallel execution works as expected."""
+
+    def fun(arg):
+        time.sleep(0.1)
+        return arg
+
+    with ParallelExecutor(10) as executor:
+        # single function
+        result = executor.parallel(partial(fun, 12)).as_list()
+        assert result == [12]
+        # multiple functions
+        result = executor.parallel(partial(fun, 12), partial(fun, 13)).as_list()
+        assert result == [12, 13]
+        # generator
+        result = executor.parallel(partial(fun, i) for i in range(100)).as_list()
+        assert result == list(range(100))
+        # list
+        result = executor.parallel([partial(fun, i) for i in range(100)]).as_list()
+        assert result == list(range(100))
+
+
+def test_parallel_as_dataframe():
+    """Verify that the as_dataframe method works as expected."""
+
+    def fun1(arg):
+        time.sleep(0.1)
+        return arg, arg*2
+
+    def fun2(arg):
+        time.sleep(0.1)
+        return {"i": arg, "j": arg*2}
+
+    ns = list(range(100))
+    expected_i = list(range(100))
+    expected_j = list(range(0, 200, 2))
+
+    with ParallelExecutor(10) as executor:
+        df = executor.parallel(
+            partial(fun1, i) for i in ns
+        ).as_dataframe()
+        assert df.shape == (100, 2)
+        assert df.c0.to_list() == expected_i
+        assert df.c1.to_list() == expected_j
+
+        df = executor.parallel(
+            partial(fun1, i) for i in ns
+        ).as_dataframe(columns=['i', 'j'])
+        assert df.shape == (100, 2)
+        assert df.i.to_list() == expected_i
+        assert df.j.to_list() == expected_j
+
+        df = executor.parallel(
+            partial(fun2, i) for i in ns
+        ).as_dataframe(mapping={'ii': 'i', 'jj': 'j'})
+        assert df.shape == (100, 2)
+        assert df.ii.to_list() == expected_i
+        assert df.jj.to_list() == expected_j

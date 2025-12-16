@@ -1,16 +1,84 @@
 from __future__ import annotations
 
 import logging
-from concurrent.futures import ThreadPoolExecutor, wait as await_futures
+from concurrent.futures import ThreadPoolExecutor, wait as await_futures, as_completed
 from queue import Queue, Empty
+from typing import Iterable
 
 import math
 import pandas as pd
+from pandas import DataFrame
 
 from c8y_api.model import as_record, get_by_path, CumulocityResource
 
 
 _logger = logging.getLogger(__name__)
+
+
+class ParallelExecutorResult:
+    """(Future) result of a parallel function execution.
+
+    See also: ParallelExecutor.parallel
+    """
+
+    def __init__(self, futures):
+        self.futures = futures
+        self.done = False
+
+    def wait(self):
+        """Explicitly wait for the futures to complete.
+
+        Note: this function is implicitly on demand.
+        """
+        if not self.done:
+            await_futures(self.futures)
+            self.done = True
+
+    def as_list(self) -> list:
+        """Collect the results as a list."""
+        self.wait()
+        return [f.result() for f in self.futures]
+
+    def as_dataframe(self, mapping: dict = None, columns: list = None) -> DataFrame:
+        """Collect the results as a Pandas dataframe.
+        If `mapping` is provided, the function call results (dict-like or
+        JSON as returned by the API) are mapped as corresponding columns
+        within the result dataframe. Otherwise, it is assumed that the
+        functions return identically shaped tuples, e.g. by using the
+        `as_values` parameter in API calls. The result tuples are directly
+        mapped to columns within the result dataframe. The `columns`
+        parameter can be used to provide specific column names (default:
+        c0, c1 ...).
+
+        Args:
+            mapping (dict): A mapping of simplified JSON paths to columns.
+            columns (list): A list of column names.
+
+        Returns:
+            The collected data as Pandas DataFrame.
+
+        See also `c8y_api.model.as_` for more information about the
+        mapping syntax.
+        """
+        results = self.as_list()
+
+        # --- using tuples/records ---
+        # We assume that the select function is invoked with an as_values
+        # parameter which already converts the JSON to a tuple/record
+        if not mapping:
+            # -> results are tuples
+            columns = columns or [f'c{i}' for i in range(len(results[0]))]
+            return pd.DataFrame.from_records(results, columns=columns)
+
+        # --- using mapping ---
+        # We assume that the select function returns plain JSON and the
+        # mapping dictionary is used to extract the individual column values
+        data = {name: [get_by_path(x, path) for x in results]for name, path in mapping.items()}
+        return pd.DataFrame.from_dict(data)
+
+    def as_records(self, mapping: dict = None) -> list[dict]:
+        results = self.as_list()
+        return [as_record(x, mapping) for x in results]
 
 
 class ParallelExecutor:
@@ -55,6 +123,27 @@ class ParallelExecutor:
                 self.executor.shutdown(wait=True)
         finally:
             self.executor = None
+
+    def parallel(self, *functions) -> ParallelExecutorResult:
+        """Perform a collection of functions in parallel.
+
+        Args:
+            functions: Iterable of functions to run in parallel; this can
+            be variable args or any iterable including a generator.
+
+        Returns:
+            A ParallelExecutorResult object which provides functionality
+            conveniently collect the results.
+
+        Note: Do not use `lambda` to define function with bound variables;
+        use `functools.partial` instead.
+        See also: https://stackoverflow.com/questions/23400785
+        """
+        if len(functions) == 1:
+            if isinstance(functions[0], Iterable):
+                functions = functions[0]
+
+        return ParallelExecutorResult([self.executor.submit(f) for f in functions])
 
     def select(self, api: CumulocityResource, strategy: str = 'pages', **kwargs) -> Queue:
         """Perform multiple `select` API calls in parallel.
@@ -218,7 +307,7 @@ class ParallelExecutor:
         assumed that the `as_values` parameter is provided (for the
         underlying API calls) and the result tuples are directly mapped to
         columns within the result dataframe. The `columns` parameter can
-        be used to provide specific column names (default: c1, c2 ...).
+        be used to provide specific column names (default: c0, c1 ...).
 
         Args:
             api (CumulocityResource): An Cumulocity API instances; e.g.
