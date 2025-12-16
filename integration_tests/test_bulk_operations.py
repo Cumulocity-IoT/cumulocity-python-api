@@ -4,6 +4,7 @@ import time
 
 from c8y_api import CumulocityApi
 from c8y_api.model import BulkOperation, DeviceGroup, Operation
+from c8y_api.model.matcher import field
 
 
 def test_CRU(live_c8y: CumulocityApi, session_device):  # noqa
@@ -34,6 +35,12 @@ def test_CRU(live_c8y: CumulocityApi, session_device):  # noqa
     # Check if bulk operation was created
     all_ids = [x.id for x in live_c8y.bulk_operations.get_all()]
     assert bulk.id in all_ids
+
+    # use client side filtering
+    assert bulk.id in [x.id for x in live_c8y.bulk_operations.get_all(include=field('groupId', group.id))]
+
+    # check count
+    assert len(all_ids) == live_c8y.bulk_operations.get_count()
 
     # (3) initially the status should be EXECUTING/COMPLETED as all
     #     child operations should have been created but not completed
