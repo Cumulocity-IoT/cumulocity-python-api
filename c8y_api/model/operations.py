@@ -547,7 +547,13 @@ class BulkOperations(CumulocityResource):
         operation.c8y = self.c8y  # inject c8y connection into instance
         return operation
 
-    def select(self, limit: int = None, page_size: int = 1000, page_number: int = None) -> Generator[BulkOperation]:
+    def select(self,
+               limit: int = None,
+               include: str | JsonMatcher = None,
+               exclude: str | JsonMatcher = None,
+               page_size: int = 1000,
+               page_number: int = None,
+               **kwargs) -> Generator[BulkOperation]:
         """ Query the database for operations and iterate over the results.
 
         This function is implemented in a lazy fashion - results will only be
@@ -559,6 +565,12 @@ class BulkOperations(CumulocityResource):
 
         Args:
             limit (int):  Limit the number of results to this number.
+            include (str | JsonMatcher): Matcher/expression to filter the query
+                results (on client side). The inclusion is applied first.
+                Creates a PyDF (Python Display Filter) matcher by default for strings.
+            exclude (str | JsonMatcher): Matcher/expression to filter the query
+                results (on client side). The exclusion is applied second.
+                Creates a PyDF (Python Display Filter) matcher by default for strings.
             page_size (int):  Define the number of operations which are
                 read (and parsed in one chunk). This is a performance
                 related setting.
@@ -568,10 +580,16 @@ class BulkOperations(CumulocityResource):
         Returns:
             Generator[BulkOperation]: Iterable of matching BulkOperation objects
         """
-        base_query = self._prepare_query(page_size=sanitize_page_size(limit, page_size))
-        return super()._iterate(base_query, page_number, limit, None, None, BulkOperation.from_json)
+        base_query = self._prepare_query(page_size=sanitize_page_size(limit, page_size), **kwargs)
+        return super()._iterate(base_query, page_number, limit, include, exclude, BulkOperation.from_json)
 
-    def get_all(self, limit: int = None, page_size: int = 1000, page_number: int = None) -> List[BulkOperation]:
+    def get_all(self,
+                limit: int = None,
+                include: str | JsonMatcher = None,
+                exclude: str | JsonMatcher = None,
+                page_size: int = 1000,
+                page_number: int = None,
+                **kwargs) -> List[BulkOperation]:
         """ Query the database for bulk operations and return the results
         as list.
 
@@ -581,4 +599,20 @@ class BulkOperations(CumulocityResource):
         Returns:
             List of matching BulkOperation objects
         """
-        return list(self.select(limit=limit, page_size=page_size, page_number=page_number))
+        return list(self.select(
+            include=include,
+            exclude=exclude,
+            limit=limit,
+            page_size=page_size,
+            page_number=page_number,
+            **kwargs))
+
+    def get_count(self, **kwargs) -> int:
+        """Calculate the number of potential results of a database query.
+
+        This function uses the same parameters as the `select` function.
+
+        Returns:
+            Number of potential results
+        """
+        return self._get_count(self._prepare_query(**kwargs))
