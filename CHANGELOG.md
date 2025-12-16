@@ -1,6 +1,8 @@
 # Changelog
 
-* Adding `select`, `get_all` and `get_count` functions to Binaries API.
+* Fixed a bug in `get_count` for when _no_ additional filter parameter was provided.
+* Switching to `withTotalElements` instead of `withTotalPages` in `get_count` implementations.
+* Adding `select`, `get_all` and `get_count` functions to Binaries API and Operations API.
 * Adding `c8y_tk.analytics.parallel` module and `ParallelExecutor` class which can be used to reduce I/O wait
   time through concurrent API requests and asynchronous result collection.
 
