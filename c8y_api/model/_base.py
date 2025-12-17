@@ -862,8 +862,9 @@ class CumulocityResource:
     def _get_count(self, base_query: str) -> int:
         # the page_size=1 parameter must not be part of the query string
         sep = '&' if '?' in base_query else '?'
-        result_json = self.c8y.get(f'{base_query}{sep}pageSize=1&withTotalElements=true')
-        return result_json['statistics']['totalElements']
+        kind = 'Pages' if 'binaries' in base_query else 'Pages'
+        result_json = self.c8y.get(f'{base_query}{sep}pageSize=1&withTotal{kind}=true')
+        return result_json['statistics'][f'total{kind}']
 
     def _iterate(
             self,
