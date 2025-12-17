@@ -1,3 +1,5 @@
+# Copyright (c) 2025 Cumulocity GmbH
+
 from __future__ import annotations
 
 import logging
