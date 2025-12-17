@@ -1,3 +1,5 @@
+# Copyright (c) 2025 Cumulocity GmbH
+
 from datetime import datetime, timedelta
 from functools import partial
 
@@ -5,7 +7,7 @@ import pytest
 
 from c8y_api import CumulocityApi
 from c8y_api.model import Measurement, Count, Device
-from c8y_tk.analytics.parallel import ParallelExecutor
+from c8y_tk.analytics import ParallelExecutor
 
 
 @pytest.fixture(name='sample_measurements', scope='session')

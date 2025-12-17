@@ -10,8 +10,8 @@ from faker import Faker
 from math import ceil
 from pytest_benchmark.plugin import benchmark
 
-from c8y_tk.analytics import parallel
-from c8y_tk.analytics.parallel import ParallelExecutor
+from c8y_tk.analytics import _parallel
+from c8y_tk.analytics._parallel import ParallelExecutor
 
 
 @pytest.mark.parametrize('total, batch_size', [(100000, 0), (100000, 10), (100000, 100), (100000, 1000), ])
