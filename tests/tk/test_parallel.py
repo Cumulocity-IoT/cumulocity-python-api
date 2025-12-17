@@ -1,5 +1,6 @@
 import threading
 import time
+from datetime import datetime, timedelta
 from functools import partial
 from queue import Empty, Queue
 from unittest.mock import Mock, patch
@@ -158,6 +159,41 @@ def test_queue_performance(benchmark, num_batches, batch_size, delay, batched, c
 
     benchmark.group = delay
     benchmark(run)
+
+
+def test_dates_strategy():
+    """Verify that the 'dates' strategy works as expected."""
+
+    total = 100
+    page_size = 10
+    expected_pages = ceil(total / page_size)
+
+    def mock_select(date_from, date_to, **_kwargs):
+        yield (date_from, date_to, _kwargs)
+
+    api = Mock()
+    api.get_count = Mock(return_value=100)
+    api.select = Mock(side_effect=mock_select)
+
+    date_from = "2020-01-01T00:00:00"
+    date_to = "2020-01-11T00:00:00"
+    with ParallelExecutor(5) as executor:
+        q = executor.select(api, strategy='dates', page_size=10, date_from=date_from, date_to=date_to, p1=1)
+        # -> select is called for each page
+        assert api.select.call_count == expected_pages
+        results = list(q.queue)
+        # -> date pairs are as expected
+        date_pairs = set((r[0], r[1]) for r in results)
+        expected_date_pairs = set(
+            (datetime.fromisoformat(date_from) + timedelta(days=i),
+             datetime.fromisoformat(date_from) + timedelta(days=i+1))
+            for i in range(expected_pages)
+        )
+        assert date_pairs == expected_date_pairs
+        # -> other parameters are relayed
+        assert all(r[2]['p1'] == 1 for r in results)
+        # -> page_number is not defined
+        assert all('page_number' not in r[2] for r in results)
 
 
 @pytest.mark.parametrize('workers, total, page_size, result_total', [

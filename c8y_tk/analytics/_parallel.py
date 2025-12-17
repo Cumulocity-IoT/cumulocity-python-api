@@ -12,7 +12,7 @@ import pandas as pd
 from pandas import DataFrame
 
 from c8y_api.model import as_record, get_by_path, CumulocityResource
-
+from c8y_api.model._util import _DateUtil
 
 _logger = logging.getLogger(__name__)
 
@@ -209,7 +209,9 @@ class ParallelExecutor:
                 or Alarms; the API needs to support the `get_count` and
                 `get_all` functions.
             strategy (str): The strategy to use for parallelization;
-                Currently, only 'pages' is supported.
+                Currently, strategy 'pages' and 'dates' are supported. The
+                'dates' strategy required a defined date range; the upper
+                 bound is assumed to be 'now' of omitted.
             **kwargs: Additional keyword arguments to pass to `get_all`.
 
         Returns:
@@ -228,7 +230,7 @@ class ParallelExecutor:
                 raise AttributeError(f"Provided API does not support '{fun}' function.")
 
         # determine expected number of pages
-        default_page_size = 1000
+        default_page_size = 100
         page_size = kwargs.get('page_size', default_page_size)
         expected_total = api.get_count(**kwargs)
         expected_pages = math.ceil(expected_total / page_size)
@@ -237,29 +239,50 @@ class ParallelExecutor:
         kwargs['page_size'] = page_size
 
         # define worker function
-        queue = Queue(maxsize=expected_total)
+        queue = Queue(maxsize=expected_pages if batched else expected_total)
         read_fun = getattr(api, read_fn)
 
-        def process_page(page_number: int):
+        def process_page(**_kwargs):
             try:
                 if batched:
-                    queue.put(read_fun(page_number=page_number, **kwargs))
+                    queue.put(read_fun(**_kwargs, **kwargs))
                 else:
-                    for x in read_fun(page_number=page_number, **kwargs):
+                    for x in read_fun(**_kwargs, **kwargs):
                         queue.put(x)
             except Exception as ex:  # pylint: disable=broad-exception-caught
                 _logger.error(ex)
 
         futures = []
+        # --- pages strategy ---------
         if strategy.startswith('page'):
             futures = [
-                self.executor.submit(process_page, page_number=p + 1)
+                self.executor.submit(process_page, page_number=p+1)
                 for p in range(expected_pages)
             ]
 
+        # --- date strategy ---------
+        elif strategy.startswith('date'):
+            # read predefined date range
+            date_from = kwargs.get('date_from', kwargs.get('after', None))
+            if not date_from:
+                raise AttributeError("At least the start of a date range is required for the 'dates' strategy")
+            date_from = _DateUtil.ensure_datetime(date_from)
+            date_to = _DateUtil.ensure_datetime(kwargs.get('date_to', kwargs.get('before', _DateUtil.now())))
+            # remove date parameters as they will be defined dynamically
+            kwargs = {k: v for k, v in kwargs.items() if k not in ('after', 'before', 'date_from', 'date_to')}
+            # calculate boundary dates for our pages
+            delta = (date_to - date_from) / expected_pages
+            dates = [date_from + x * delta for x in range(expected_pages+1)]
+            # submit page requests
+            futures = [
+                self.executor.submit(process_page, date_from=dates[p], date_to=dates[p+1])
+                for p in range(expected_pages)
+            ]
+
+        # ensure that a sentinel element is added to the end
         def wait_and_close():
             await_futures(futures)
-            queue.put(None)  # sentinel
+            queue.put(None)
 
         self.executor.submit(wait_and_close)
 
