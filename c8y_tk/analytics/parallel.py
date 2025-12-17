@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from concurrent.futures import ThreadPoolExecutor, wait as await_futures
+from concurrent.futures import ThreadPoolExecutor, wait as await_futures, as_completed
 from queue import Queue, Empty
 from typing import Iterable
 
@@ -34,12 +34,25 @@ class ParallelExecutorResult:
             await_futures(self.futures)
             self.done = True
 
-    def as_list(self) -> list:
-        """Collect the results as a list."""
+    def as_list(self, batch_mode: bool = False) -> list:
+        """Collect the results as a list.
+
+        Args:
+            batch_mode (bool): If False (default), all futures are awaited
+                and their result is returned as a list in order.
+                If True, it is assumed that the future results are iterables
+                of their own; they are processed as they complete and
+                flattened into a single list.
+        """
+        if batch_mode:
+            result = []
+            for f in as_completed(self.futures):
+                result.extend(f.result())
+            return result
         self.wait()
         return [f.result() for f in self.futures]
 
-    def as_dataframe(self, mapping: dict = None, columns: list = None) -> DataFrame:
+    def as_dataframe(self, mapping: dict = None, columns: list = None, batch_mode: bool = False) -> DataFrame:
         """Collect the results as a Pandas dataframe.
 
         If `mapping` is provided, the function call results (dict-like or
@@ -54,6 +67,11 @@ class ParallelExecutorResult:
         Args:
             mapping (dict): A mapping of simplified JSON paths to columns.
             columns (list): A list of column names.
+            batch_mode (bool): If False (default), all futures are awaited
+                and their result is returned as a list in order.
+                If True, it is assumed that the future results are iterables
+                of their own; they are processed as they complete and
+                flattened into a single list.
 
         Returns:
             The collected data as Pandas DataFrame.
@@ -61,7 +79,7 @@ class ParallelExecutorResult:
         See also `c8y_api.model.as_` for more information about the
         mapping syntax.
         """
-        results = self.as_list()
+        results = self.as_list(batch_mode=batch_mode)
 
         # --- using tuples/records ---
         # We assume that the select function is invoked with an as_values
@@ -77,12 +95,17 @@ class ParallelExecutorResult:
         data = {name: [get_by_path(x, path) for x in results]for name, path in mapping.items()}
         return pd.DataFrame.from_dict(data)
 
-    def as_records(self, mapping: dict) -> list[dict]:
+    def as_records(self, mapping: dict, batch_mode: bool = False) -> list[dict]:
         """Collect the results as a list of records.
 
         Args:
             mapping (dict): A mapping of simplified JSON paths to record
                 field names.
+            batch_mode (bool): If False (default), all futures are awaited
+                and their result is returned as a list in order.
+                If True, it is assumed that the future results are iterables
+                of their own; they are processed as they complete and
+                flattened into a single list.
 
         Returns:
             The collected data as list of records/dictionaries.
@@ -90,7 +113,7 @@ class ParallelExecutorResult:
         See also `c8y_api.model.as_records` for more information about the
         mapping syntax.
         """
-        results = self.as_list()
+        results = self.as_list(batch_mode=batch_mode)
         return [as_record(x, mapping) for x in results]
 
 
@@ -271,7 +294,6 @@ class ParallelExecutor:
                 result.extend(items)
             return result
 
-
     @staticmethod
     def as_records(api, workers: int = 5, strategy: str = 'pages', mapping: dict = None, **kwargs) -> list[dict]:
         """Read data via a Cumulocity API concurrently.
@@ -303,7 +325,6 @@ class ParallelExecutor:
                     break
                 data.extend(as_record(i, mapping) for i in items)
             return data
-
 
     @staticmethod
     def as_dataframe(
