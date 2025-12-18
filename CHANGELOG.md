@@ -1,5 +1,7 @@
 # Changelog
 
+## Version 3.6.0
+
 * Fixed a bug in `get_count` for when _no_ additional filter parameter was provided.
 * Switching to `withTotalElements` instead of `withTotalPages` in `get_count` implementations.
 * Adding `select`, `get_all` and `get_count` functions to Binaries API and Operations API.
