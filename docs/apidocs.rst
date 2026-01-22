@@ -131,13 +131,14 @@ additional overhead.
     :special-members: __init__
     :members: Listener, AsyncListener, QueueListener, AsyncQueueListener
 
-The `c8y_tk.analytics` module provides helper functions that allow easy
-transformation of a Cumulocity Series to Pandas' data frames and series as
-well as NumPy arrays.
+The `c8y_tk.analytics` module provides helper functions that allow parallel
+query processing to maximise performance when dealing with large datasets as
+well as easy transformation of a Cumulocity Series to Pandas' data frames and
+series as well as NumPy arrays.
 
 .. automodule:: c8y_tk.analytics
     :special-members: __init__
-    :members: to_numpy, to_data_frame, to_series
+    :members: ParallelExecutor, to_numpy, to_data_frame, to_series
 
 The `c8y_tk.app` module provides auxiliary tools for implementing both
 interactive and micro service applications.
