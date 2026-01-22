@@ -1,5 +1,11 @@
 # Changelog
 
+## Version 3.7.0
+
+* Adding `aggregation_function` and `aggregation_interval` parameters to the `Measurements.get_series` function
+  to support the latest series aggregation features as described in the
+  [Cumulocity OpenAPI Documentation](https://cumulocity.com/api/core/#operation/getMeasurementSeriesResource).
+
 ## Version 3.6.0
 
 * Fixed a bug in `get_count` for when _no_ additional filter parameter was provided.
