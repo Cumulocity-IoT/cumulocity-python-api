@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Iterable, Set
+from typing import Any, Iterable, Set, Sequence
 from urllib.parse import urlencode
 
 from collections.abc import MutableMapping, MutableSequence
@@ -741,6 +741,7 @@ class CumulocityResource:
             fragment=None,
             source=None,  # noqa (type)
             series=None,
+            aggregation_function=None,
             owner=None,
             device_id=None,
             agent_id=None,
@@ -819,6 +820,7 @@ class CumulocityResource:
             'source': source,
             'fragmentType': fragment,
             # 'series': series,
+            # 'aggregationFunction': aggregation_function
             'deviceId': device_id,
             'agentId': agent_id,
             'bulkId': bulk_id,
@@ -842,6 +844,11 @@ class CumulocityResource:
                 tuples += [('series', s) for s in series]
             else:
                 tuples.append(('series', series))
+        if aggregation_function:
+            if isinstance(aggregation_function, str):
+                aggregation_function = [aggregation_function]
+            tuples += [('aggregationFunction', s) for s in aggregation_function]
+
         return tuples
 
     def _prepare_query(self, resource: str = None, expression: str = None, **kwargs: object) -> str | None:

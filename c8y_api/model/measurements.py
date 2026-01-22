@@ -284,7 +284,7 @@ class Series(dict):
         """Return specifications for all enclosed series."""
         return [self.SeriesSpec(type=i['type'], name=i['name'], unit=i['unit']) for i in self['series']]
 
-    def collect(self, series: str | Sequence[str] = None, value: str = None,
+    def collect(self, series: str | Sequence[str] = None, value: str | Sequence[str] = None,
                 timestamps: bool | str = None) -> List | List[tuple]:
         """Collect series results.
 
@@ -292,8 +292,8 @@ class Series(dict):
             series (str|Sequence[str]):  Which series' values to collect. If
                 multiple series are collected each element in the result will
                 be a tuple. If omitted, all available series are collected.
-            value (str):  Which value (min/max) to collect. If omitted, both
-                values will be collected, grouped as 2-tuples.
+            value (str):  Which value (min/max/avg/...) to collect. If omitted,
+                both min/max values are collected, grouped as 2-tuples.
             timestamps (bool|str):  Whether each element in the result list will
                 be prepended with the corresponding timestamp. If True, the
                 timestamp string will be included; Use 'datetime' or 'epoch' to
@@ -329,27 +329,30 @@ class Series(dict):
             i = indexes_by_name()[series]
 
             # single value
-            if value:
+            if isinstance(value, str):
                 if not timestamps:
                     # iterate over all values, select value group at specific
                     # index v[i] and extract specific value [value]. The value
                     # group may be undefined (None), hence filter for value v[i]
-                    return [v[i][value] for v in self['values'].values() if (len(v) > i and v[i])]
+                    return [v[i].get(value, None) for v in self['values'].values() if (len(v) > i and v[i])]
                 else:
                     # like above, but include timestamps
-                    return [(parse_timestamp(k), v[i][value]) for k, v in self['values'].items() if
+                    return [(parse_timestamp(k), v[i].get(value, None)) for k, v in self['values'].items() if
                             (len(v) > i and v[i])]
 
-            # all values
+            # multiple values
             else:
+                keys = next(iter(self['values'].values()))[0].keys()
                 if not timestamps:
                     # iterate over all values, select value group at specific
-                    # index v[i] and extract both values (min, max). The value
+                    # index v[i] and extract all (min, count, ...) values. The value
                     # group may be undefined (None), hence filter for value v[i]
-                    return [(v[i]['min'], v[i]['max']) for v in self['values'].values() if (len(v) > i and v[i])]
+                    return [tuple(v[i].get(key, None) for key in keys) for v in self['values'].values() if
+                            (len(v) > i and v[i])]
                 else:
                     # like above, but include timestamps
-                    return [(parse_timestamp(k), v[i]['min'], v[i]['max']) for k, v in self['values'].items() if
+                    return [(parse_timestamp(k), *(v[i].get(key, None) for key in keys)) for k, v in
+                            self['values'].items() if
                             (len(v) > i and v[i])]
 
         # multiple series
@@ -357,7 +360,7 @@ class Series(dict):
             ii = [indexes_by_name()[s] for s in series]
 
             # single value
-            if value:
+            if isinstance(value, str):
                 if not timestamps:
                     # iterate over all values, collect specified value groups
                     # at their index v[i] and extract specific value [value].
@@ -365,33 +368,34 @@ class Series(dict):
                     # in a None value in the tuple as well.
                     return [
                         # collect values of all indexes (None of not defined)
-                        tuple(v[i][value] if (len(v) > i and v[i]) else None for i in ii)
+                        tuple(v[i].get(value, None) if (len(v) > i and v[i]) else None for i in ii)
                         for v in self['values'].values()
                     ]
                 else:
                     # like above, but prepend with timestamps
                     return [
-                        (parse_timestamp(k), *(v[i][value] if (len(v) > i and v[i]) else None for i in ii))
+                        (parse_timestamp(k), *(v[i].get(value, None) if (len(v) > i and v[i]) else None for i in ii))
                         for k, v in self['values'].items()
                     ]
 
-            # all values
+            # multiple values
             else:
+                keys = next(iter(self['values'].values()))[0].keys()
                 if not timestamps:
                     # iterate over all values, collect specified value groups
-                    # at their index v[i] and extract specific value [value].
+                    # at their index v[i] and extract specific keys (min, count, ...).
                     # The value group may be undefined (None) which will result
                     # in a None value in the tuple as well.
                     return [
                         # collect values of all indexes (None of not defined)
-                        tuple((v[i]['min'], v[i]['max']) if (len(v) > i and v[i]) else None for i in ii)
+                        tuple((tuple(v[i].get(key, None) for key in keys)) if (len(v) > i and v[i]) else None for i in ii)
                         for v in self['values'].values()
                     ]
                 else:
                     # like above, but prepend with timestamps
                     return [
                         (parse_timestamp(k),
-                         *((v[i]['min'], v[i]['max']) if (len(v) > i and v[i]) else None for i in ii))
+                         *(tuple(v[i].get(key, None) for key in keys) if (len(v) > i and v[i]) else None for i in ii))
                         for k, v in self['values'].items()
                     ]
 
@@ -734,6 +738,8 @@ class Measurements(CumulocityResource):
             expression: str = None,
             source: str = None,
             aggregation: str = None,
+            aggregation_function: str | Sequence[str] = None,
+            aggregation_interval: str = None,
             series: str | Sequence[str] = None,
             before: str | datetime = None,
             after: str | datetime = None,
@@ -749,7 +755,11 @@ class Measurements(CumulocityResource):
                 passed to Cumulocity without change; all other filters
                 are ignored if this is provided
             source (str):  Database ID of a source device
-            aggregation (str):  Aggregation type
+            aggregation (str):  Aggregation type (e.g. HOURLY)
+            aggregation_function (str):  Aggregation function, e.g. "min",
+                "max", "avg", "sum", "count". Needs aggregation_interval.
+            aggregation_interval (str):  Aggregation interval for the
+                aggregation function.
             series (str|Sequence[str]):  Series' to query
             before (datetime|str):  Datetime object or ISO date/time string.
                 Only measurements assigned to a time before this date are
@@ -775,6 +785,8 @@ class Measurements(CumulocityResource):
             expression=expression,
             source=source,
             aggregationType=aggregation,  # this is a non-mapped parameter
+            aggregationInterval=aggregation_interval,  # this is a non-mapped parameter
+            aggregation_function=aggregation_function,  # needs special handling for lists
             series=series,
             before=before,
             after=after,
