@@ -8,6 +8,7 @@ import time
 from typing import List
 
 import pytest
+from numpy.random.mtrand import Sequence
 
 from c8y_api import CumulocityApi
 from c8y_api.model import Device, Measurement, Measurements, Series, Value, Kelvin, Count
@@ -216,10 +217,21 @@ def aggregated_series_result(live_c8y: CumulocityApi, sample_series_device: Devi
                                             aggregation=Measurements.AggregationType.HOURLY,
                                             after=start_time, before='now')
 
+@pytest.fixture(scope='session')
+def new_aggregated_series_result(live_c8y: CumulocityApi, sample_series_device: Device) -> Series:
+    """Provide an aggregated series result."""
+    start_time = datetime.fromisoformat('2020-01-01 00:00:00+00:00')
+    return live_c8y.measurements.get_series(source=sample_series_device.id,
+                                            series=sample_series_device.c8y_SupportedSeries,
+                                            aggregation_function=["min", "max"],
+                                            aggregation_interval="1h",
+                                            after=start_time, before='now')
 
 @pytest.mark.parametrize('series_fixture', [
     'unaggregated_series_result',
-    'aggregated_series_result'])
+    'aggregated_series_result',
+    'new_aggregated_series_result',
+])
 def test_collect_single_series(series_fixture, request):
     """Verify that collecting a single value (min or max) from a
     series works as expected."""
@@ -238,7 +250,9 @@ def test_collect_single_series(series_fixture, request):
 
 @pytest.mark.parametrize('series_fixture', [
     'unaggregated_series_result',
-    'aggregated_series_result'])
+    'aggregated_series_result',
+    'new_aggregated_series_result',
+])
 def test_collect_multiple_series(series_fixture, request):
     """Verify that collecting a single value (min or max) for multiple
     series works as expected."""
@@ -256,6 +270,78 @@ def test_collect_multiple_series(series_fixture, request):
     for i in range(0, len(series_names)):
         actual_values = [v[i] for v in values if v[i] is not None]
         assert all(isinstance(v, type(actual_values[0])) for v in actual_values)
+
+
+@pytest.mark.parametrize('aggregation_function', [
+    'min',
+    ['max', 'avg'],
+    ("avg", "sum", "count"),
+])
+def test_new_aggregation_single(live_c8y: CumulocityApi, sample_series_device: Device, aggregation_function):
+    """Verify that the new aggregation functions work as expected."""
+    for series_name in sample_series_device.c8y_SupportedSeries:
+        series = live_c8y.measurements.get_series(
+            source=sample_series_device.id,
+            series=series_name,
+            aggregation_function=aggregation_function,
+            aggregation_interval="1h",
+            after='1970-01-01',
+            before='now'
+        )
+
+        # collect all functions
+        collected = series.collect(value=aggregation_function)
+        # -> each element is a tuple (of all queried series)
+        assert isinstance(collected[0], tuple)
+        # -> each value holds the values of all aggregation function
+        if isinstance(aggregation_function, str):  # single function
+            assert isinstance(collected[0][0], float)
+        else:
+            assert isinstance(collected[0][0], tuple)
+            assert isinstance(collected[0][0][0], float)
+
+        # collect individual function results
+        aggregation_function = [aggregation_function] if isinstance(aggregation_function, str) else aggregation_function
+        for fun in aggregation_function:
+            collected = series.collect(series=series_name, value=fun)
+            # -> the values are held directly
+            assert isinstance(collected[0], float)
+
+
+@pytest.mark.parametrize('aggregation_function', [
+    'min',
+    ['max', 'avg'],
+    ("avg", "sum", "count"),
+])
+def test_new_aggregation_multi(live_c8y: CumulocityApi, sample_series_device: Device, aggregation_function):
+    """Verify that the new aggregation functions work as expected."""
+    series = live_c8y.measurements.get_series(
+        source=sample_series_device.id,
+        series=sample_series_device.c8y_SupportedSeries,
+        aggregation_function=aggregation_function,
+        aggregation_interval="1h",
+        after='1970-01-01',
+        before='now'
+    )
+
+    # collect all functions
+    collected = series.collect(value=aggregation_function)
+    # -> each element is a tuple (of all queried series)
+    assert isinstance(collected[0], tuple)
+    # -> each value holds the values of all aggregation function
+    if isinstance(aggregation_function, str):  # single function
+        assert isinstance(collected[0][0], float)
+    else:
+        assert isinstance(collected[0][0], tuple)
+        assert isinstance(collected[0][0][0], float)
+
+    # collect individual function results
+    aggregation_function = [aggregation_function] if isinstance(aggregation_function, str) else aggregation_function
+    for series_name in sample_series_device.c8y_SupportedSeries:
+        for fun in aggregation_function:
+            collected = series.collect(series=series_name, value=fun)
+            # -> the values are held directly
+            assert isinstance(collected[0], float)
 
 
 def test_get_and_collect_series(live_c8y, sample_series_device):
