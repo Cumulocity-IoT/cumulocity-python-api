@@ -60,7 +60,7 @@ def test_CRUD(live_c8y: CumulocityApi, session_device: Device):  # noqa (case)
     # 4) assert deletion
     with pytest.raises(KeyError) as e:
         live_c8y.alarms.get(created_alarm.id)
-        assert created_alarm.id in str(e)
+    assert created_alarm.id in str(e)
 
 
 def test_CRUD_2(live_c8y: CumulocityApi, session_device: Device):  # noqa (case)
