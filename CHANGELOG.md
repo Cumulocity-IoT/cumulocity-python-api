@@ -1,5 +1,7 @@
 # Changelog
 
+* Adding `clear_tenant_cache` function to `MultiTenantCumulocityApp` to explicitly wipe unsubscribed tenants.
+
 ## Version 3.7.0
 
 * Adding `aggregation_function` and `aggregation_interval` parameters to the `Measurements.get_series` function

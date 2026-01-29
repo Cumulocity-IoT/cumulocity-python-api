@@ -253,6 +253,15 @@ def test_multi_tenant__caching_instances():
     # -> the instance is a new one
     assert c8y3 is not c8y
 
+    # (4) manually clean cache
+    get_auth_mock.reset()
+    c8y_factory.clear_tenant_cache('t12345')
+    c8y4 = c8y_factory.get_tenant_instance('t12345')
+    # -> auth was read again
+    get_auth_mock.assert_called_with('t12345')
+    # -> the instance is a new one
+    assert c8y4 is not c8y3
+
 
 @mock.patch.dict(os.environ, env_multi_tenant, clear=True)
 def test_multi_tenant__build_from_subscriptions():

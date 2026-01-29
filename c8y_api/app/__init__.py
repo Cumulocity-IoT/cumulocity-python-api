@@ -349,6 +349,20 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
             self._tenant_instances[tenant_id] = instance
             return instance
 
+    def clear_tenant_cache(self, tenant_id: str) -> None:
+        """Manually clean the tenant sessions cache.
+
+        Args:
+            tenant_id (str):  Name of a specific tenant to remove or None
+                to clean the cache completely
+        """
+        if not tenant_id:
+            self._tenant_instances.clear()
+            self.log.info("Tenant cache cleared.")
+        else:
+            del self._tenant_instances[tenant_id]
+            self.log.info(f"User '{tenant_id}' cleared from cache.")
+
     def __enter__(self) -> MultiTenantCumulocityApp:
         return self
 
