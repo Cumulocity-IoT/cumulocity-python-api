@@ -155,13 +155,15 @@ class AsyncListener(object):
             consumer=consumer if self.shared else None,
         )
         # ensure that the SSL context uses certifi
-        ssl_context = ssl.create_default_context()
-        ssl_context.load_verify_locations(certifi.where())
+        ssl_context = None
+        if self.c8y.is_tls:
+            ssl_context = ssl.create_default_context()
+            ssl_context.load_verify_locations(certifi.where())
         connection = await ws_client.connect(
             uri=uri,
             ping_interval=self.ping_interval,
             ping_timeout=self.ping_timeout,
-            ssl=ssl_context,
+            ssl=ssl_context
         )
         self._log.info(
             "Websocket connection established for subscription %s, %s.",
