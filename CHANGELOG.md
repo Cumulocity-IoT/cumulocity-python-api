@@ -1,5 +1,7 @@
 # Changelog
 
+* Fixed [Issue #87](https://github.com/Cumulocity-IoT/cumulocity-python-api/issues/87)
+
 ## Version 3.7.0
 
 * Adding `aggregation_function` and `aggregation_interval` parameters to the `Measurements.get_series` function
