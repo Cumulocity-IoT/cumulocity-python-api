@@ -79,7 +79,7 @@ class AsyncListener(object):
 
         async def ack(self):
             """Acknowledge the message."""
-            await self.listener.send(self.id)
+            await self.listener.ack(self.id)
 
     def __init__(
             self,
@@ -371,7 +371,7 @@ class Listener(object):
 
         def ack(self):
             """Acknowledge the message."""
-            self.listener.send(self.id)
+            self.listener.ack(self.id)
 
     def __init__(
             self,
@@ -603,6 +603,14 @@ class Listener(object):
         See also https://cumulocity.com/api/core/#section/Overview/Consumers-and-tokens
         """
         self._event_loop.call_soon_threadsafe(self._listener.unsubscribe)
+
+    def send(self, payload: str):
+        """Send a custom message.
+
+        Args:
+            payload (str):  Message payload to send.
+        """
+        asyncio.run_coroutine_threadsafe(self._listener.send(payload), self._event_loop)
 
     def ack(self, msg_id: str = None, payload: str = None) -> None:
         """Acknowledge a Notification 2.0 message.
