@@ -79,7 +79,7 @@ class AsyncListener(object):
 
         async def ack(self):
             """Acknowledge the message."""
-            await self.listener.send(self.id)
+            await self.listener.ack(self.id)
 
     def __init__(
             self,
@@ -155,13 +155,15 @@ class AsyncListener(object):
             consumer=consumer if self.shared else None,
         )
         # ensure that the SSL context uses certifi
-        ssl_context = ssl.create_default_context()
-        ssl_context.load_verify_locations(certifi.where())
+        ssl_context = None
+        if self.c8y.is_tls:
+            ssl_context = ssl.create_default_context()
+            ssl_context.load_verify_locations(certifi.where())
         connection = await ws_client.connect(
             uri=uri,
             ping_interval=self.ping_interval,
             ping_timeout=self.ping_timeout,
-            ssl=ssl_context,
+            ssl=ssl_context
         )
         self._log.info(
             "Websocket connection established for subscription %s, %s.",
@@ -369,7 +371,7 @@ class Listener(object):
 
         def ack(self):
             """Acknowledge the message."""
-            self.listener.send(self.id)
+            self.listener.ack(self.id)
 
     def __init__(
             self,
@@ -601,6 +603,14 @@ class Listener(object):
         See also https://cumulocity.com/api/core/#section/Overview/Consumers-and-tokens
         """
         self._event_loop.call_soon_threadsafe(self._listener.unsubscribe)
+
+    def send(self, payload: str):
+        """Send a custom message.
+
+        Args:
+            payload (str):  Message payload to send.
+        """
+        asyncio.run_coroutine_threadsafe(self._listener.send(payload), self._event_loop)
 
     def ack(self, msg_id: str = None, payload: str = None) -> None:
         """Acknowledge a Notification 2.0 message.
