@@ -45,8 +45,13 @@ Source = "https://github.com/Cumulocity-IoT/cumulocity-python-api"
 Issues = "https://github.com/Cumulocity-IoT/cumulocity-python-api/issues"
 Documentation = "https://cumulocity-python-api.readthedocs.io/en/latest/"
 
-[tool.hatch.build]
-include = ["c8y_api", "c8y_tk"]
+[tool.hatch.build.targets.wheel]
+only-include = ["c8y_api", "c8y_tk"]
+packages = ["c8y_api", "c8y_tk"]
+
+[tool.hatch.build.targets.editable]
+only-include = ["c8y_api", "c8y_tk"]
+packages = ["c8y_api", "c8y_tk"]
 
 [tool.hatch.version]
 source = "vcs"

@@ -1,0 +1,41 @@
+site_name: Cumulocity Python API Docs
+site_url: !ENV READTHEDOCS_CANONICAL_URL
+
+theme:
+  name: material
+  features:
+    - navigation.expand
+    - navigation.sections
+    - navigation.instant
+
+plugins:
+  - search
+  - macros
+  - autorefs
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            filters:
+              - "!^_"          # keep public
+            show_if_no_docstring: true
+            show_source: false
+            show_bases: false
+            show_signature_annotations: true
+            show_root_full_path: true
+            extensions:
+              - docs/griffe_ext.py:HideAttributes
+
+markdown_extensions:
+  - toc:
+      toc_depth: 2
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Application Helpers: docs-app.md
+  - REST API Connectors: docs-base.md
+  - Main API classes: docs-main.md
+  - Object model classes: docs-model.md
+  - Measurement extensions: docs-measurements.md
+  - Auxiliary Tools: docs-aux.md

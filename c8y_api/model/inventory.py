@@ -554,7 +554,7 @@ class DeviceInventory(Inventory):
 
         Args:
             id (str): Unique ID of the device (e.g. Serial, IMEI); this is
-            _not_ the database ID.
+                _not_ the database ID.
         """
         self.c8y.post('/devicecontrol/newDeviceRequests', {'id': id})
 
@@ -563,7 +563,7 @@ class DeviceInventory(Inventory):
 
         Args:
             id (str): Unique ID of the device (e.g. Serial, IMEI); this is
-            _not_ the database ID.
+                _not_ the database ID.
         """
         self.c8y.put('/devicecontrol/newDeviceRequests/' + str(id), {'status': 'ACCEPTED'})
 

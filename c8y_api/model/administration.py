@@ -879,7 +879,7 @@ class CurrentUser(_BaseUser):
             code (str): A TOTP token
 
         Raises:
-            ValueError if the token is invalid/could not be verified.
+            ValueError: if the token is invalid/could not be verified.
         """
         self._assert_c8y()
         try:
@@ -1115,7 +1115,7 @@ class Users(CumulocityResource):
             only_devices (bool):  Only return device users (starting with `device_`)
                 If absent or False, the users will be excluded.
             with_subusers_count (bool):  Whether to include an additional field
-             `subusersCount` which holds the number of direct sub users.
+                `subusersCount` which holds the number of direct sub users.
             limit (int): Limit the number of results to this number.
             include (str | JsonMatcher): Matcher/expression to filter the query
                 results (on client side). The inclusion is applied first.
