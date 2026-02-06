@@ -87,7 +87,7 @@ class SubscriptionListener:
         i.e. it can be chained, to ease configuration.
 
         Args:
-             callback (Callable):  A callback function to invoke in case
+            callback (Callable):  A callback function to invoke in case
                 of a change in subscribers. If parameter `when` is either
                 "added" or "removed" the function is invoked with a single
                 tenant ID for every added/removed subscriber respectively.
@@ -240,7 +240,7 @@ class SubscriptionListener:
             timeout (float):  Maximum wait time (None to wait indefinitely).
 
         Raises:
-            TimeoutError, if the shutdown could not complete within the
+            TimeoutError: if the shutdown could not complete within the
                 specified timeout. The shutdown procedure is not interrupted
                 by this and will complete eventually.
         """
@@ -281,7 +281,7 @@ class SubscriptionListener:
             timeout (float): Maximum wait time (None to wait indefinitely)
 
         Raises:
-            TimeoutError, if there are still running callbacks after the
+            TimeoutError: if there are still running callbacks after the
                 specified timeout.
         """
         wait(self._callback_futures, timeout=timeout)

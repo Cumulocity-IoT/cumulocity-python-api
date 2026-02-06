@@ -169,7 +169,7 @@ class Measurement(ComplexObject):
         Cumulocity REST API.
 
         Args:
-            json (dict)  JSON object (nested dictionary)
+            json (dict):  JSON object (nested dictionary)
                 representing a measurement within Cumulocity
 
         Returns:

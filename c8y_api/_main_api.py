@@ -24,6 +24,28 @@ class CumulocityApi(CumulocityRestApi, contextlib.AbstractContextManager):
     """Main Cumulocity API.
 
     Provides usage centric access to a Cumulocity instance.
+
+    Attributes:
+        measurements (Measurements): Provide access to the Measurements API.
+        inventory (Inventory): Provide access to the Inventory API.
+        group_inventory (DeviceGroupInventory): Provide access to the Device Group Inventory API.
+        devicegroups (DeviceGroupInventory): Provide access to the Device Group Inventory API.
+        binaries (Binaries): Provide access to the Binary API.
+        device_inventory (DeviceInventory): Provide access to the Device Inventory API.
+        identity (Identity): Provide access to the Identity API.
+        users (Users): Provide access to the Users API.
+        global_roles (GlobalRoles): Provide access to the Global Roles API.
+        inventory_roles (InventoryRoles): Provide access to the Inventory Roles API.
+        applications (Applications): Provide access to the Applications API.
+        events (Events): Provide access to the Events API.
+        alarms (Alarms): Provide access to the Alarm API.
+        operations (Operations): Provide access to the Operation API.
+        bulk_operations (BulkOperations): Provide access to the BulkOperation API.
+        tenant_options (TenantOptions): Provide access to the Tenant Options API.
+        notification2_subscriptions (Subscriptions): Provide access to the Notification 2.0 Subscriptions API.
+        notification2_tokens (Tokens): Provide access to the Notification 2.0 Tokens API.
+        audit_records (AuditRecords): Provide access to the Audit API.
+        tenants (Tenants): Provide access to the Audit API.
     """
 
     def __init__(

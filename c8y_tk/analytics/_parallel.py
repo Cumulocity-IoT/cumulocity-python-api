@@ -167,7 +167,7 @@ class ParallelExecutor:
 
         Args:
             functions: Iterable of functions to run in parallel; this can
-            be variable args or any iterable including a generator.
+                be variable args or any iterable including a generator.
 
         Returns:
             A ParallelExecutorResult object which provides functionality

@@ -15,5 +15,5 @@ python:
     - requirements: requirements.txt
     - requirements: docs/requirements.txt
 
-sphinx:
-   configuration: docs/conf.py
+mkdocs:
+  configuration: mkdocs.yaml
