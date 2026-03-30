@@ -2,6 +2,7 @@
 
 ## Version 3.7.2
 
+* Switched to MkDocs for documentation.
 * Fixed [Issue #91](https://github.com/Cumulocity-IoT/cumulocity-python-api/issues/91) 
 * Fixed [issue #92](https://github.com/Cumulocity-IoT/cumulocity-python-api/issues/92)
 
