@@ -1,5 +1,12 @@
 # Changelog
 
+## Version 3.7.2
+
+* Fixed [Issue #91](https://github.com/Cumulocity-IoT/cumulocity-python-api/issues/91) 
+* Fixed [issue #92](https://github.com/Cumulocity-IoT/cumulocity-python-api/issues/92)
+
+## Version 3.7.1
+
 * Adding `clear_tenant_cache` function to `MultiTenantCumulocityApp` to explicitly wipe unsubscribed tenants.
 * Fixed [Issue #87](https://github.com/Cumulocity-IoT/cumulocity-python-api/issues/87)
 
