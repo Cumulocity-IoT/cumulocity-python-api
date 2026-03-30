@@ -5,7 +5,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Union
 
 from dateutil import parser
-from pandas import to_datetime
 
 
 class _StringUtil(object):
@@ -98,7 +97,8 @@ class _DateUtil(object):
         """Ensure a datetime object."""
         if isinstance(arg, datetime):
             return arg
-        return to_datetime(arg)
+        result = datetime.fromisoformat(arg)
+        return result if result.tzinfo else result.replace(tzinfo=timezone.utc)
 
     @staticmethod
     def ensure_timestring(time):
