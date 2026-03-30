@@ -13,7 +13,7 @@ from c8y_api.model.matcher import JsonMatcher
 class Binary(ManagedObject):
     """Represents a binary object/file within the Database.
 
-    See also: https://cumulocity.com/api/#tag/Binaries
+    See also: https://cumulocity.com/api/core/#tag/Binaries
     """
 
     _resource = '/inventory/binaries'
@@ -111,7 +111,7 @@ class Binary(ManagedObject):
 class Binaries(CumulocityResource):
     """ Provides access to the Identity API.
 
-    See also: https://cumulocity.com/api/#tag/Binaries
+    See also: https://cumulocity.com/api/core/#tag/Binaries
     """
 
     def __init__(self, c8y: CumulocityRestApi):

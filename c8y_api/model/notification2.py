@@ -18,7 +18,7 @@ class Subscription(SimpleObject):
     Instances of this class are returned by functions of the corresponding
     Subscriptions API. Use this class to create new options.
 
-    See also: https://cumulocity.com/api/#tag/Subscriptions
+    See also: https://cumulocity.com/api/core/#tag/Subscriptions
     """
 
     class Context(object):
@@ -119,7 +119,7 @@ class Subscriptions(CumulocityResource):
     This class can be used for get, search for, create, and
     delete Notification2 subscriptions within the Cumulocity database.
 
-    See also: https://cumulocity.com/api/#tag/Subscriptions
+    See also: https://cumulocity.com/api/core/#tag/Subscriptions
               https://cumulocity.com/guides/reference/notifications/
     """
 
@@ -269,7 +269,7 @@ class Tokens(CumulocityResource):
     This class can be used for get, search for, create, and
     delete Notification2 subscriptions within the Cumulocity database.
 
-    See also: https://cumulocity.com/api/#tag/Tokens
+    See also: https://cumulocity.com/api/core/#tag/Tokens
               https://cumulocity.com/guides/reference/notifications/
     """
 

@@ -18,7 +18,7 @@ class Alarm(ComplexObject):
     Instances of this class are returned by functions of the corresponding
     Alarms API. Use this class to create new or update Alarm objects.
 
-    See also: https://cumulocity.com/api/#tag/Alarms
+    See also: https://cumulocity.com/api/core/#tag/Alarms
     """
 
     class Severity:
@@ -221,7 +221,7 @@ class Alarms(CumulocityResource):
     This class can be used for get, search for, create, update and
     delete alarms within the Cumulocity database.
 
-    See also: https://cumulocity.com/api/#tag/Alarms
+    See also: https://cumulocity.com/api/core/#tag/Alarms
     """
 
     _RESOURCE = '/alarm/alarms/'

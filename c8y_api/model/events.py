@@ -21,7 +21,7 @@ class Event(ComplexObject):
     Instances of this class are returned by functions of the corresponding
     Events API. Use this class to create new or update Event objects.
 
-    See also: https://cumulocity.com/api/#tag/Events
+    See also: https://cumulocity.com/api/core/#tag/Events
     """
 
     _resource = '/event/events'
@@ -215,7 +215,7 @@ class Events(CumulocityResource):
     This class can be used for get, search for, create, update and
     delete events within the Cumulocity database.
 
-    See also: https://cumulocity.com/api/#tag/Events
+    See also: https://cumulocity.com/api/core/#tag/Events
     """
 
     def __init__(self, c8y):

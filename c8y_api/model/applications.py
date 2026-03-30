@@ -16,7 +16,7 @@ class Application(SimpleObject):
     Instances of this class are returned by functions of the corresponding
     API. Use this class to create new or update objects.
 
-    See also: https://cumulocity.com/api/#tag/Application-API
+    See also: https://cumulocity.com/api/core/#tag/Application-API
     """
     _parser = SimpleObjectParser({
         '_u_name': 'name',
@@ -219,7 +219,7 @@ class Applications(CumulocityResource):
     This class can be used for get, search for, create, update and
     delete applications within the Cumulocity database.
 
-    See also: https://cumulocity.com/api/#tag/Application-API
+    See also: https://cumulocity.com/api/core/#tag/Application-API
     """
 
     def __init__(self, c8y: CumulocityRestApi):
@@ -355,6 +355,6 @@ class Applications(CumulocityResource):
             application_id (str):  The Cumulocity object ID of the application
             file (str|BinaryIO):  File path or file-like object to upload.
 
-         See also: https://cumulocity.com/api/#tag/Application-binaries
+         See also: https://cumulocity.com/api/core/#tag/Application-binaries
          """
         self.c8y.post_file(self.build_object_path(application_id) + '/binaries', file=file)

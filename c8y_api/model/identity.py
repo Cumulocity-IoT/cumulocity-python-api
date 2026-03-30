@@ -16,7 +16,7 @@ class ExternalId(SimpleObject):
     Instances of this class are returned by functions of the corresponding
     Identity API. Use this class to create or remove external ID.
 
-    See also: https://cumulocity.com/api/#tag/External-IDs
+    See also: https://cumulocity.com/api/core/#tag/External-IDs
     """
 
     _parser = SimpleObjectParser({
@@ -115,8 +115,8 @@ class Identity(object):
     # cannot use the generic CumulocityResource base class helper
     """ Provides access to the Identity API.
 
-    See also: https://cumulocity.com/api/#tag/External-IDs
-              https://cumulocity.com/api/#tag/Identity-API
+    See also: https://cumulocity.com/api/core/#tag/External-IDs
+              https://cumulocity.com/api/core/#tag/Identity-API
     """
 
     def __init__(self, c8y: CumulocityRestApi):

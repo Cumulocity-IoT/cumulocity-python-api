@@ -31,7 +31,7 @@ class Permission(SimpleObject):
       - Permissions are not created/deleted but only assigned to users or
         global roles
 
-    See also: https://cumulocity.com/api/#tag/Roles
+    See also: https://cumulocity.com/api/core/#tag/Roles
     """
 
     class Level(object):
@@ -116,7 +116,7 @@ class InventoryRole(SimpleObject):
     Inventory Role API.
     Use this class to create new or update inventory role objects.
 
-    See also: https://cumulocity.com/api/#tag/Inventory-Roles
+    See also: https://cumulocity.com/api/core/#tag/Inventory-Roles
     """
 
     _parser = SimpleObjectParser({
@@ -187,7 +187,7 @@ class InventoryRoleAssignment(SimpleObject):
     This class is used internally by the InventoryRole and InventoryRoles
     classes. It cannot be used directly.
 
-    See also: https://cumulocity.com/api/#tag/Inventory-Roles
+    See also: https://cumulocity.com/api/core/#tag/Inventory-Roles
     """
     _parser = SimpleObjectParser({
         'managed_object': 'managedObject'})
@@ -232,7 +232,7 @@ class GlobalRole(SimpleObject):
       - Only a limited set of properties are actually updatable. Others must
         be set explicitly using the corresponding API (for example: permissions).
 
-    See also: https://cumulocity.com/api/#tag/Groups
+    See also: https://cumulocity.com/api/core/#tag/Groups
     """
 
     _parser = SimpleObjectParser({
@@ -914,7 +914,7 @@ class InventoryRoles(CumulocityResource):
     This class can be used for get, search for, create, update and
     delete inventory roles within the Cumulocity database.
 
-    See also: https://cumulocity.com/api/#tag/Inventory-Roles
+    See also: https://cumulocity.com/api/core/#tag/Inventory-Roles
     """
 
     def __init__(self, c8y):
@@ -1054,7 +1054,7 @@ class InventoryRoles(CumulocityResource):
 class Users(CumulocityResource):
     """Provides access to the User API.
 
-    See also: https://cumulocity.com/api/#tag/Users
+    See also: https://cumulocity.com/api/core/#tag/Users
     """
 
     def __init__(self, c8y):
@@ -1289,7 +1289,7 @@ class GlobalRoles(CumulocityResource):
         However, 'global roles' is the official concept name and therefore
         used for consistency with the Cumulocity realm.
 
-    See also: https://cumulocity.com/api/#tag/Groups
+    See also: https://cumulocity.com/api/core/#tag/Groups
     """
 
     def __init__(self, c8y):
