@@ -224,7 +224,11 @@ class AsyncListener(object):
                 self._log.info("Websocket connection failed: %s", e)
                 connection_retry += 1
                 backoff_delay = self.retry_interval * self.retry_rate ** connection_retry
-                await asyncio.wait_for(self._stop_event.wait(), timeout=min(backoff_delay, self.retry_max_delay))
+                try:
+                    await asyncio.wait_for(self._stop_event.wait(), timeout=min(backoff_delay, self.retry_max_delay))
+                except TimeoutError:
+                    # Timeout is expected when not stopping - just continue to reconnect
+                    pass
                 continue  # reconnect via main loop
             except SSLError as e:
                 self._log.error("SSL connection failed: %s", e, exc_info=e)
