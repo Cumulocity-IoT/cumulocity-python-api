@@ -144,6 +144,7 @@ class AsyncListener(object):
     # Note: Return type naming differs for different Python Versions; ClientConnection
     # refers to the latest module revision
     async def _create_connection(self)-> ws_client.ClientConnection:
+        self._log.debug("Trying to connect subscription %s, %s.", self.subscription_name, self.subscriber_name)
         self._current_token = self._create_token()
         # if shared, consumer names should be unique
         consumer = self.consumer_name  # user's choice is used
@@ -224,8 +225,8 @@ class AsyncListener(object):
                 self._log.info("Websocket connection failed: %s", e)
                 connection_retry += 1
                 backoff_delay = self.retry_interval * self.retry_rate ** connection_retry
-                await asyncio.wait_for(self._stop_event.wait(), timeout=min(backoff_delay, self.retry_max_delay))
-                continue  # reconnect via main loop
+                with contextlib.suppress(asyncio.TimeoutError):  # Timeout is expected when not stopping
+                    await asyncio.wait_for(self._stop_event.wait(), timeout=min(backoff_delay, self.retry_max_delay))
             except SSLError as e:
                 self._log.error("SSL connection failed: %s", e, exc_info=e)
                 raise e
