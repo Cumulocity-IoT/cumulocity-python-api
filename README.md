@@ -11,6 +11,9 @@ This project is a Python client for the Cumulocity REST API to make it easier to
 
 See also the [documentation on _Read the Docs_](https://cumulocity-python-api.readthedocs.io/).
 
+> [!IMPORTANT]
+> The Cumulocity Python API will be discontinued in favor of its spiritual successor, the _Cumulocity Python SDK_ ([pyc8y](https://pypi.org/project/pyc8y) package) - re-envisioned and reimplemented for asyncio. T**This project is considered deprecated for new solutions** and will only receive essential updates for continuous support of already existing production code.
+
 
 ## Installation
 
