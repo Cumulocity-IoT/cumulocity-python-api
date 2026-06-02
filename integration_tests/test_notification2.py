@@ -8,7 +8,7 @@ import logging
 import queue
 import threading
 import time
-from unittest.mock import Mock
+from unittest.mock import Mock, AsyncMock
 
 import pytest
 
@@ -716,3 +716,54 @@ async def test_queue_listener(live_c8y: CumulocityApi, sample_object):
     finally:
         listener.stop()
         listener.wait()
+
+@pytest.mark.asyncio(loop_scope='function')
+async def test_subscriber_timeout(caplog, live_c8y: CumulocityApi, sample_object):
+    """Verify that a conflict (HTTP 409) will lead to a regular reconnection attempt."""
+    mo = sample_object
+    sub = create_managed_object_subscription(live_c8y, mo)
+    l1 = AsyncListener(live_c8y, subscription_name=sub.name, subscriber_name=sub.name, shared=False)
+    l2 = AsyncListener(live_c8y, subscription_name=sub.name, subscriber_name=sub.name, shared=False)
+
+    receive_notification1 = AsyncMock(side_effect=lambda m: m.ack())
+    receive_notification2 = AsyncMock(side_effect=lambda m: m.ack())
+
+    try:
+        # start 1st listener
+        l1.start(receive_notification1)
+        # l1.retry_interval = 100
+        # l1.retry_max_delay = 100
+        await asyncio.sleep(5)  # ensure creation
+        mo.apply({'test_CustomFragment': {'num': 1}})
+        await asyncio.sleep(3)  # ensure processing
+        assert receive_notification1.call_count == 1
+
+        # start 2nd listener
+        # -> l2 can't connect until the 1st is stopped
+        # -> l1 is still responsible
+        l2.start(receive_notification2)
+        l2.retry_max_delay = 0.5  # l2 should retry frequently
+        await asyncio.sleep(5)  # ensure creation
+        mo.apply({'test_CustomFragment': {'num': 2}})
+        await asyncio.sleep(3)  # ensure processing
+        assert receive_notification1.call_count == 2
+        assert receive_notification2.call_count == 0
+
+        # close the connection of the first listener
+        # -> 2nd should connect
+        l1._create_connection = AsyncMock()  # l1 will not be able to reconnect
+        await l1._connection.close()
+        await asyncio.sleep(5)  # ensure connection of l2
+        mo.apply({'test_CustomFragment': {'num': 3}})
+        await asyncio.sleep(5)  # ensure processing
+        assert receive_notification1.call_count == 2
+        assert receive_notification2.call_count == 1
+
+    finally:
+        with contextlib.suppress(Exception):
+            l1.stop()
+            await l1.wait()
+        with contextlib.suppress(Exception):
+            l2.stop()
+            await l2.wait()
+
